@@ -1,0 +1,22 @@
+{
+  "name": "signal-server",
+  "version": "1.0.0",
+  "description": "Custom Signal Server untuk Trencher Agent",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@solana/web3.js": "^1.98.4",
+    "axios": "^1.16.1",
+    "bs58": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "ws": "^8.20.1"
+  }
+}

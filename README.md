@@ -10,13 +10,13 @@
 
 ```
 trencher-agent/
-├── ta-fe/   # Frontend — Next.js 16 · React 19 · TypeScript · Tailwind CSS v4
-└── ta-be/   # Backend  — Node.js · SQLite · Telegram Bot · Jupiter Ultra
+├── trencher-web/   # Frontend — Next.js 16 · React 19 · TypeScript · Tailwind CSS v4
+└── trencher-core/   # Backend  — Node.js · SQLite · Telegram Bot · Jupiter Ultra
 ```
 
 ---
 
-## `ta-be` — Backend Service
+## `trencher-core` — Backend Service
 
 The core agent orchestrator. Monitors Pump.fun token flow, enriches candidates, screens via LLM, and executes via Jupiter Ultra.
 
@@ -25,7 +25,7 @@ The core agent orchestrator. Monitors Pump.fun token flow, enriches candidates, 
 ### Quick Start
 
 ```bash
-cd ta-be
+cd trencher-core
 npm install
 cp .env.example .env
 # Edit .env with your credentials
@@ -99,7 +99,7 @@ All state in `trencher-agent.sqlite` — positions, decisions, strategies, walle
 
 ---
 
-## `ta-fe` — Frontend
+## `trencher-web` — Frontend
 
 Landing page and live platform dashboard for Trencher Agent.
 
@@ -108,7 +108,7 @@ Landing page and live platform dashboard for Trencher Agent.
 ### Quick Start
 
 ```bash
-cd ta-fe
+cd trencher-web
 npm install
 npm run dev      # http://localhost:3000
 npm run build    # production build
