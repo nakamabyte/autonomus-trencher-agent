@@ -10,8 +10,9 @@
 
 ```
 trencher-agent/
-├── trencher-web/   # Frontend — Next.js 16 · React 19 · TypeScript · Tailwind CSS v4
-└── trencher-core/   # Backend  — Node.js · SQLite · Telegram Bot · Jupiter Ultra
+├── trencher-web/    # Frontend — Next.js 16 · React 19 · TypeScript · Tailwind CSS v4
+├── trencher-core/   # Backend  — Node.js · SQLite · Telegram Bot · Jupiter Ultra
+└── signal-server/   # Signal   — Express · Solana WS · Pump.fun · Jupiter Trending
 ```
 
 ---
@@ -44,9 +45,9 @@ pm2 start index.js --name trencher-agent && pm2 save
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
 
-# Signal server (required — contact maintainer for key)
-SIGNAL_SERVER_URL=https://api.thecharon.xyz/api
-SIGNAL_SERVER_KEY=
+# Signal server (run signal-server locally or on a VPS)
+SIGNAL_SERVER_URL=http://localhost:4000
+SIGNAL_SERVER_KEY=your_signal_server_api_key
 
 # Solana RPC
 SOLANA_RPC_URL=https://mainnet.helius-rpc.com/?api-key=YOUR_KEY
@@ -99,6 +100,31 @@ All state in `trencher-agent.sqlite` — positions, decisions, strategies, walle
 
 ---
 
+## `signal-server` — Signal Aggregation Service
+
+Independent microservice that collects token data from Pump.fun (graduated), Jupiter (trending), and Solana WebSocket (fee claims), then serves merged signals via REST API.
+
+**Stack:** Node.js · Express · `@solana/web3.js` · `ws` · `axios`
+
+### Quick Start
+
+```bash
+cd signal-server
+npm install
+cp .env.example .env
+# Set SOLANA_WSS_URL and API_KEY
+npm start
+```
+
+For PM2:
+```bash
+pm2 start src/server.js --name signal-server && pm2 save
+```
+
+See [signal-server/README.md](signal-server/README.md) for full documentation, API reference, and troubleshooting.
+
+---
+
 ## `trencher-web` — Frontend
 
 Landing page and live platform dashboard for Trencher Agent.
@@ -123,11 +149,13 @@ npm run build    # production build
 
 ---
 
-## Getting Access
+## Getting Started
 
-Trencher Agent requires a **Signal Server Key** to receive real-time Pump.fun token flow.
+1. **Start `signal-server`** first — it collects and serves token signals
+2. **Start `trencher-core`** — it polls `signal-server` and executes trades
+3. **Start `trencher-web`** (optional) — dashboard UI
 
-Contact the maintainer to get your `SIGNAL_SERVER_KEY`. Without it, the backend has no candidates to screen.
+Make sure `SIGNAL_SERVER_KEY` in `trencher-core/.env` matches `API_KEY` in `signal-server/.env`.
 
 ---
 
