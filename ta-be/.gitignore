@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+node_modules/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.log
+.DS_Store
+npm-debug.log*
+
+ARCHITECTURE.md
+TRENCHER_AGENT_DEV_GUIDE.md
+TRENCHER_AGENT_DOCUMENTATION.md
+TRENCHER_AGENT_ANALYSIS.md
