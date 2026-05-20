@@ -35,8 +35,10 @@ async function fetchGraduated() {
       upsertSignal(mint, {
         name: coin.name || '',
         symbol: coin.ticker || coin.symbol || '',
+        marketCapUsd: Number(coin.marketCap || coin.mcap || 0),
+        volume24h: Number(coin.volume24h || coin.volume || 0),
         graduated: {
-          distanceFromAthPercent: coin.distanceFromAthPercent ?? 0,
+          distanceFromAthPercent: Number(coin.distanceFromAthPercent || 0),
         },
       }, 'graduated');
       count++;
@@ -48,6 +50,7 @@ async function fetchGraduated() {
 }
 
 // --- Trending tokens from Jupiter ---
+// Jupiter toptrending response: { id, symbol, name, usdPrice, mcap, liquidity, holderCount, stats5m: { buyVolume, sellVolume, numBuys, numSells } }
 
 async function fetchTrending() {
   const apiKey = process.env.JUPITER_API_KEY;
@@ -60,20 +63,28 @@ async function fetchTrending() {
     const rows = Array.isArray(res.data) ? res.data : [];
     let count = 0;
     for (const row of rows) {
-      const mint = row?.mint || row?.address;
+      const mint = row?.id || row?.mint || row?.address;
       if (!mint) continue;
+
+      // Extract stats from nested interval object
+      const stats = row?.stats5m || row?.stats1h || {};
+      const buyVol = Number(stats.buyVolume ?? 0);
+      const sellVol = Number(stats.sellVolume ?? 0);
+      const numBuys = Number(stats.numBuys ?? 0);
+      const numSells = Number(stats.numSells ?? 0);
+
       upsertSignal(mint, {
         name: row.name || '',
         symbol: row.symbol || '',
-        priceUsd: row.price ?? 0,
-        marketCapUsd: row.marketCap ?? row.market_cap ?? 0,
-        liquidityUsd: row.liquidity ?? 0,
-        holders: row.holder_count ?? row.holders ?? 0,
-        volume24h: row.volume24h ?? row.volume ?? 0,
-        volume5m: row.volume5m ?? 0,
+        priceUsd: Number(row.usdPrice ?? row.price ?? 0),
+        marketCapUsd: Number(row.mcap ?? row.fdv ?? row.marketCap ?? 0),
+        liquidityUsd: Number(row.liquidity ?? 0),
+        holders: Number(row.holderCount ?? row.holder_count ?? 0),
+        volume24h: buyVol + sellVol,
+        volume5m: buyVol + sellVol,
         trending: {
-          buys: row.buys ?? 0,
-          sells: row.sells ?? 0,
+          buys: numBuys,
+          sells: numSells,
         },
       }, 'trending');
       count++;
@@ -94,7 +105,7 @@ function readPubkey(buf, offset) {
 function parseDistFees(data) {
   // Layout: 8 disc | 8 timestamp | 32 mint | 32 bondingCurve | 32 sharingConfig | 32 admin | 4 count | (32+2)*N shareholders | 8 distributed
   let offset = 8;
-  offset += 8; // skip timestamp
+  offset += 8; // timestamp
   const mint = readPubkey(data, offset); offset += 32;
   offset += 32; // bondingCurve
   offset += 32; // sharingConfig
@@ -166,7 +177,7 @@ function processFeeLogs(logInfo) {
     try {
       const fee = parseDistFees(data);
       const solAmount = Number(fee.distributed) / 1e9;
-      if (solAmount < 0.5) continue; // skip dust
+      if (solAmount < 0.5) continue;
       upsertSignal(fee.mint, {
         feeClaim: {
           distributedSol: solAmount,
