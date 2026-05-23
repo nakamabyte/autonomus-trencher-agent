@@ -56,10 +56,26 @@ export async function handleMessage(msg) {
 /walletadd &lt;name&gt; &lt;address&gt; - Tambah target (mata-mata)
 /walletremove &lt;name&gt; - Hapus target
 /setwallet &lt;private_key&gt; - Masukkan Private Key eksekusi (Aman: Pesan dihapus otomatis)
+/balance - Cek dompet aktif & saldo SOL
 
 <b>Information:</b>
 /candidate &lt;mint&gt; - Tampilkan info spesifik koin`;
     return bot.sendMessage(chatId, helpText, { parse_mode: 'HTML' });
+  }
+  if (text.startsWith('/balance')) {
+    const { liveWalletPubkey, liveWalletBalanceLamports } = await import('../liveExecutor.js');
+    const pubkey = liveWalletPubkey();
+    if (!pubkey) {
+      return bot.sendMessage(chatId, '❌ Belum ada Wallet Eksekusi yang aktif.\\nGunakan /setwallet <private_key> untuk menambahkan.');
+    }
+    const msgInfo = await bot.sendMessage(chatId, '⏳ Mengecek saldo di Solana...');
+    try {
+      const lamports = await liveWalletBalanceLamports();
+      const sol = (lamports / 1000000000).toFixed(4);
+      return bot.editMessageText(`💰 <b>Wallet Eksekusi Aktif:</b>\\n<code>${pubkey}</code>\\n\\n<b>Saldo:</b> ${sol} SOL`, { chat_id: chatId, message_id: msgInfo.message_id, parse_mode: 'HTML' });
+    } catch (err) {
+      return bot.editMessageText(`❌ Gagal mengecek saldo: ${err.message}`, { chat_id: chatId, message_id: msgInfo.message_id });
+    }
   }
   if (text.startsWith('/menu')) return sendMenu(chatId);
   if (text.startsWith('/positions')) return sendPositions(chatId);
@@ -287,6 +303,7 @@ export function setupTelegram() {
     { command: 'walletremove', description: 'Remove saved wallet' },
     { command: 'wallets', description: 'List saved wallets' },
     { command: 'setwallet', description: 'Set live execution private key' },
+    { command: 'balance', description: 'Check live wallet balance' },
   ]).catch(err => console.log(`[telegram] commands ${err.message}`));
 
   bot.on('callback_query', query => handleCallback(query).catch(err => console.log(`[callback] ${err.message}`)));
