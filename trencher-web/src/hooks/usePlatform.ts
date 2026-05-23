@@ -48,8 +48,10 @@ export function usePlatform() {
             setMetrics(data.payload);
           } else if (data.type === 'STATUS_UPDATE') {
             setStatuses(data.payload);
+          } else if (data.type === 'LOG_HISTORY') {
+            setLogs(data.payload);
           } else if (data.type === 'LOG_UPDATE') {
-            setLogs(prev => [data.payload, ...prev].slice(0, 80));
+            setLogs(prev => [data.payload, ...prev].slice(0, 100));
           }
         } catch (err) {}
       };

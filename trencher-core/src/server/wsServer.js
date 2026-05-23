@@ -14,9 +14,10 @@ export function startWsServer(port = 4001) {
     });
     
     // Send immediate initial state
-    import('./stateManager.js').then(({ getMetrics, getStatuses }) => {
+    import('./stateManager.js').then(({ getMetrics, getStatuses, getLogHistory }) => {
       ws.send(JSON.stringify({ type: 'METRICS_UPDATE', payload: getMetrics() }));
       ws.send(JSON.stringify({ type: 'STATUS_UPDATE', payload: getStatuses() }));
+      ws.send(JSON.stringify({ type: 'LOG_HISTORY', payload: getLogHistory() }));
     });
   });
   

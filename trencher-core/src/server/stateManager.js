@@ -76,6 +76,12 @@ function nowTs() {
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
 }
 
+const logBuffer = [];
+
+export function getLogHistory() {
+  return logBuffer;
+}
+
 export function broadcastLog(msg, agent = 'orch', level = 'info') {
   const entry = {
     id: ++logIdCounter,
@@ -84,6 +90,8 @@ export function broadcastLog(msg, agent = 'orch', level = 'info') {
     lv: level,
     msg
   };
+  logBuffer.unshift(entry);
+  if (logBuffer.length > 100) logBuffer.pop();
   broadcast('LOG_UPDATE', entry);
 }
 
