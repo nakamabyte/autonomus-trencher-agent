@@ -52,6 +52,7 @@ export interface PlatformMetrics {
   active_positions?: {
     id: number;
     mint: string;
+    symbol: string;
     pnl_percent: number;
     pnl_sol: number;
     mode: string;

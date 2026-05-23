@@ -38,7 +38,19 @@ export function PlatformPositions({ metrics }: PlatformPositionsProps) {
                   <div className="pv-adot" style={{ background: colorClass }}></div>
                   <div className="pv-ainfo">
                     <div className="pv-aname" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span title={pos.mint}>{pos.mint.slice(0, 4)}...{pos.mint.slice(-4)}</span>
+                      <a 
+                        href={`https://gmgn.ai/sol/token/${pos.mint}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        title={pos.mint}
+                        style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
+                        className="hover:underline"
+                      >
+                        <span>{pos.symbol}</span>
+                        <span style={{ opacity: 0.5, fontFamily: 'var(--fm)', fontSize: '8px' }}>
+                          {pos.mint.slice(0, 4)}...{pos.mint.slice(-4)}
+                        </span>
+                      </a>
                       <span style={{ color: colorClass }}>{sign}{pos.pnl_percent.toFixed(2)}%</span>
                     </div>
                     <div className="pv-abar" style={{ background: `${colorClass}22`, height: '2px', marginBottom: '4px' }}>
