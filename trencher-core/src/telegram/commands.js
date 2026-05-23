@@ -259,7 +259,10 @@ export function setupTelegram() {
 
   bot.on('callback_query', query => handleCallback(query).catch(err => console.log(`[callback] ${err.message}`)));
   bot.on('message', msg => handleMessage(msg).catch(err => console.log(`[message] ${err.message}`)));
-  bot.on('polling_error', err => console.log(`[telegram] polling ${err.message}`));
+  bot.on('polling_error', err => {
+    if (err.message.includes('ECONNRESET') || err.message.includes('EFATAL')) return;
+    console.log(`[telegram] polling ${err.message}`);
+  });
 }
 
 async function sendMenu(chatId = TELEGRAM_CHAT_ID) {

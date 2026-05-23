@@ -110,18 +110,41 @@ export async function decideCandidateBatch(rows, triggerCandidateId) {
   };
 
   try {
-    const res = await axios.post(`${LLM_BASE_URL.replace(/\/$/, '')}/chat/completions`, {
-      model: LLM_MODEL,
-      temperature: 0.2,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: JSON.stringify(user) },
-      ],
-    }, {
-      timeout: LLM_TIMEOUT_MS,
-      headers: { authorization: `Bearer ${LLM_API_KEY}`, 'content-type': 'application/json' },
-    });
-    const content = res.data?.choices?.[0]?.message?.content || '';
+    let content = '';
+
+    if (LLM_BASE_URL.includes('anthropic.com')) {
+      const res = await axios.post(`${LLM_BASE_URL.replace(/\/$/, '')}/messages`, {
+        model: LLM_MODEL,
+        temperature: 0.2,
+        system: system,
+        max_tokens: 1024,
+        messages: [
+          { role: 'user', content: JSON.stringify(user) },
+        ],
+      }, {
+        timeout: LLM_TIMEOUT_MS,
+        headers: { 
+          'x-api-key': LLM_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json' 
+        },
+      });
+      content = res.data?.content?.[0]?.text || '';
+    } else {
+      const res = await axios.post(`${LLM_BASE_URL.replace(/\/$/, '')}/chat/completions`, {
+        model: LLM_MODEL,
+        temperature: 0.2,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: JSON.stringify(user) },
+        ],
+      }, {
+        timeout: LLM_TIMEOUT_MS,
+        headers: { authorization: `Bearer ${LLM_API_KEY}`, 'content-type': 'application/json' },
+      });
+      content = res.data?.choices?.[0]?.message?.content || '';
+    }
+
     const parsed = strictJsonFromText(content);
     const decision = normalizeDecision(parsed);
     const selectedId = Number(parsed.selected_candidate_id);
