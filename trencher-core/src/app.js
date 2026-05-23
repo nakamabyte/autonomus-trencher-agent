@@ -18,7 +18,7 @@ export async function startTrencherAgent() {
   
   // Start WebSocket server and passive state manager
   const { startWsServer } = await import('./server/wsServer.js');
-  startWsServer(4001);
+  startWsServer(process.env.PORT || 4001);
   await import('./server/stateManager.js');
 
   if (SIGNAL_SERVER_URL) {
