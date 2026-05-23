@@ -1,0 +1,124 @@
+import { broadcast } from './wsServer.js';
+
+let logIdCounter = 0;
+
+const AGENT_IDS = [
+  'orch', 'helius', 'signal', 'trending', 'graduated', 'enrich', 'oracle',
+  'wallet', 'fxtwitter', 'filter', 'strategy', 'risk', 'sentiment', 'llm',
+  'jup', 'exec', 'monitor', 'tg', 'scheduler'
+];
+
+let metrics = {
+  cands: 0,
+  pos: 0,
+  pnl: 0,
+  cycles: 0,
+  uptime: 0
+};
+
+let statuses = {};
+AGENT_IDS.forEach(id => {
+  statuses[id] = { st: 'idle', load: 0 };
+});
+
+export function getMetrics() {
+  metrics.uptime = Math.floor(process.uptime());
+  return metrics;
+}
+
+export function getStatuses() {
+  return statuses;
+}
+
+// Passively update state and broadcast
+export function updateMetrics(partial) {
+  metrics = { ...metrics, ...partial };
+  broadcast('METRICS_UPDATE', getMetrics());
+}
+
+// Poll DB every 5 seconds to passively update PNL, Pos, Cands
+setInterval(async () => {
+  try {
+    const { db } = await import('../db/connection.js');
+    if (!db) return;
+    
+    const posQuery = db.prepare("SELECT COUNT(*) as count FROM dry_run_positions WHERE status = 'open'").get();
+    const pnlQuery = db.prepare("SELECT SUM(pnl_sol) as total FROM dry_run_positions WHERE pnl_sol IS NOT NULL").get();
+    const candsQuery = db.prepare("SELECT COUNT(*) as count FROM candidates").get();
+    
+    updateMetrics({
+      pos: posQuery?.count || 0,
+      pnl: +(pnlQuery?.total || 0).toFixed(3),
+      cands: candsQuery?.count || 0
+    });
+  } catch (err) {
+    // DB might not be initialized yet
+  }
+}, 5000);
+
+export function pulseAgent(id, status = 'active', load = 0.8) {
+  if (!statuses[id]) return;
+  statuses[id] = { st: status, load };
+  broadcast('STATUS_UPDATE', statuses);
+  
+  // Auto revert to idle after 2 seconds
+  setTimeout(() => {
+    if (statuses[id].st === status) {
+      statuses[id] = { st: 'idle', load: 0.05 };
+      broadcast('STATUS_UPDATE', statuses);
+    }
+  }, 2000);
+}
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+function nowTs() {
+  const d = new Date();
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+}
+
+export function broadcastLog(msg, agent = 'orch', level = 'info') {
+  const entry = {
+    id: ++logIdCounter,
+    time: nowTs(),
+    ag: agent,
+    lv: level,
+    msg
+  };
+  broadcast('LOG_UPDATE', entry);
+}
+
+// Hook into console.log passively
+const originalLog = console.log;
+console.log = function(...args) {
+  originalLog.apply(console, args);
+  
+  const str = args.join(' ');
+  let agent = 'orch';
+  let level = 'info';
+  
+  if (str.includes('[fatal]') || str.includes('[error]')) level = 'error';
+  else if (str.includes('[warn]')) level = 'warn';
+  
+  if (str.includes('[bot]') || str.includes('orchestrator')) agent = 'orch';
+  if (str.includes('[telegram]')) { agent = 'tg'; pulseAgent('tg'); }
+  if (str.includes('[db]') || str.includes('enrich')) { agent = 'enrich'; pulseAgent('enrich'); }
+  if (str.includes('[llm]')) { agent = 'llm'; pulseAgent('llm'); }
+  if (str.includes('[server]') || str.includes('signals,')) { agent = 'signal'; pulseAgent('signal'); }
+  if (str.includes('[graduated]')) { agent = 'graduated'; pulseAgent('graduated'); }
+  if (str.includes('[trending]')) { agent = 'trending'; pulseAgent('trending'); }
+  if (str.includes('[monitor]') || str.includes('[position]')) { agent = 'monitor'; pulseAgent('monitor'); }
+  if (str.includes('[router]') || str.includes('[exec]')) { agent = 'exec'; pulseAgent('exec'); }
+  if (str.includes('[strategy]')) { agent = 'strategy'; pulseAgent('strategy'); }
+  if (str.includes('[candidate]') || str.includes('filtered')) { agent = 'filter'; pulseAgent('filter'); }
+  if (str.includes('[ws]') || str.includes('helius')) { agent = 'helius'; pulseAgent('helius'); }
+  if (str.includes('[oracle]') || str.includes('price')) { agent = 'oracle'; pulseAgent('oracle'); }
+  if (str.includes('wallet')) { agent = 'wallet'; pulseAgent('wallet'); }
+  if (str.includes('twitter') || str.includes('fxtwitter')) { agent = 'fxtwitter'; pulseAgent('fxtwitter'); }
+  if (str.includes('[risk]') || str.includes('rug')) { agent = 'risk'; pulseAgent('risk'); }
+  if (str.includes('[sentiment]')) { agent = 'sentiment'; pulseAgent('sentiment'); }
+  if (str.includes('[jupiter]') || str.includes('[jup]')) { agent = 'jup'; pulseAgent('jup'); }
+  
+  if (str.includes('cycle')) { updateMetrics({ cycles: metrics.cycles + 1 }); pulseAgent('scheduler'); }
+
+  broadcastLog(str, agent, level);
+};

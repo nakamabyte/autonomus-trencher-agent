@@ -17,6 +17,40 @@ interface PlatformViewProps {
 export function PlatformView({ onClose }: PlatformViewProps) {
   const { metrics, statuses, logs } = usePlatform();
   const [agentModalId, setAgentModalId] = useState<string | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(240);
+  const [logHeight, setLogHeight] = useState(120);
+
+  const startSidebarDrag = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = sidebarWidth;
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = startX - moveEvent.clientX;
+      setSidebarWidth(Math.max(150, Math.min(800, startW + deltaX)));
+    };
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [sidebarWidth]);
+
+  const startLogDrag = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = logHeight;
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const deltaY = startY - moveEvent.clientY;
+      setLogHeight(Math.max(60, Math.min(800, startH + deltaY)));
+    };
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [logHeight]);
 
   const openAgent = useCallback((id: string) => {
     setAgentModalId(id);
@@ -77,10 +111,24 @@ export function PlatformView({ onClose }: PlatformViewProps) {
 
   return (
     <>
-      <div className="pv-root">
+      <div className="pv-root" style={{ gridTemplateRows: `48px 1fr ${logHeight}px` }}>
         <PlatformHeader metrics={metrics} onClosePlatform={onClose} />
-        <div className="pv-main">
+        
+        {/* Horizontal Drag Handle for Log Strip */}
+        <div 
+          style={{ position: 'absolute', bottom: logHeight - 3, left: 0, right: 0, height: '6px', cursor: 'ns-resize', zIndex: 50 }} 
+          onMouseDown={startLogDrag} 
+        />
+
+        <div className="pv-main" style={{ gridTemplateColumns: `1fr ${sidebarWidth}px` }}>
           <PlatformGraph statuses={statuses} onOpenAgent={openAgent} />
+          
+          {/* Vertical Drag Handle for Sidebar */}
+          <div 
+            style={{ position: 'absolute', right: sidebarWidth - 3, top: 48, bottom: logHeight, width: '6px', cursor: 'ew-resize', zIndex: 50 }} 
+            onMouseDown={startSidebarDrag} 
+          />
+
           <PlatformSidebar statuses={statuses} onOpenAgent={openAgent} />
         </div>
         <PlatformLogStrip logs={logs} />

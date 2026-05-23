@@ -136,12 +136,18 @@ export const PlatformGraph = forwardRef<PlatformGraphHandle, PlatformGraphProps>
         if (!mounted) return;
         d3Ref.current = d3;
 
-        const svg = d3.select('#pv-svg')
-          .attr('viewBox', `0 0 ${W} ${H}`)
-          .attr('preserveAspectRatio', 'xMidYMid meet');
+        const svg = d3.select('#pv-svg');
+        svg.attr('viewBox', null).attr('preserveAspectRatio', null);
         svg.selectAll('*').remove();
 
-        svg.append('rect').attr('width', W).attr('height', H).attr('fill', '#000');
+        const zoom = d3.zoom()
+          .scaleExtent([0.25, 4])
+          .on('zoom', (event: any) => {
+            gZoom.attr('transform', event.transform);
+          });
+        svg.call(zoom as any);
+
+        svg.append('rect').attr('width', '100%').attr('height', '100%').attr('fill', '#000');
 
         const defs = svg.append('defs');
 
@@ -175,10 +181,12 @@ export const PlatformGraph = forwardRef<PlatformGraphHandle, PlatformGraphProps>
           gr.append('stop').attr('offset', '100%').attr('stop-color', c).attr('stop-opacity', 0);
         });
 
-        const gEdge = svg.append('g');
-        const gPart = svg.append('g');
-        const gNode = svg.append('g');
-        svg.append('rect').attr('width', W).attr('height', H)
+        const gZoom = svg.append('g').attr('class', 'g-zoom');
+
+        const gEdge = gZoom.append('g');
+        const gPart = gZoom.append('g');
+        const gNode = gZoom.append('g');
+        svg.append('rect').attr('width', '100%').attr('height', '100%')
           .attr('fill', `url(#${SID}vg)`).style('pointer-events', 'none');
 
         const edgeSel = gEdge.selectAll<SVGLineElement, typeof links[0]>('line.el').data(links).enter()
