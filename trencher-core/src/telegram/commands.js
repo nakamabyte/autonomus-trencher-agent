@@ -92,6 +92,14 @@ export async function handleMessage(msg) {
     if (!row) return bot.sendMessage(chatId, 'Candidate not found.');
     return sendCandidate(chatId, row.id);
   }
+  if (text.startsWith('/setwallet')) {
+    const pk = text.split(/\s+/)[1];
+    bot.deleteMessage(chatId, msg.message_id).catch(() => {});
+    if (!pk) return bot.sendMessage(chatId, 'Usage: /setwallet <base58_private_key>\n\n(Your message was deleted for security)');
+    setSetting('solana_private_key', pk);
+    import('../liveExecutor.js').then(({ initLiveExecution }) => initLiveExecution());
+    return bot.sendMessage(chatId, '✅ Wallet Private Key successfully updated and loaded into Live Executor.\n\n(Your message containing the key was automatically deleted for security).');
+  }
   if (text.startsWith('/walletadd')) {
     const [, label, address] = text.split(/\s+/);
     if (!label || !address) return bot.sendMessage(chatId, 'Usage: /walletadd <label> <address>');

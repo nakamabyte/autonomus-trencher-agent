@@ -10,6 +10,7 @@ import {
   getActiveRpcUrl,
   rotateRpcUrl,
 } from './config.js';
+import { setting } from './db/settings.js';
 
 let liveWallet = null;
 let solanaConnection = null;
@@ -22,9 +23,10 @@ function parseKeypair(secret) {
 }
 
 export function initLiveExecution() {
-  if (!SOLANA_PRIVATE_KEY) return;
+  const pk = setting('solana_private_key', SOLANA_PRIVATE_KEY);
+  if (!pk) return;
   try {
-    liveWallet = parseKeypair(SOLANA_PRIVATE_KEY);
+    liveWallet = parseKeypair(pk);
     solanaConnection = new Connection(getActiveRpcUrl(), 'confirmed');
     console.log(`[live] wallet loaded ${liveWallet.publicKey.toBase58()} (RPC: ${getActiveRpcUrl()})`);
   } catch (err) {
