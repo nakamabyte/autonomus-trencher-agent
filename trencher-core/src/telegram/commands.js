@@ -58,8 +58,10 @@ export async function handleMessage(msg) {
 /setwallet &lt;private_key&gt; - Masukkan Private Key eksekusi (Aman: Pesan dihapus otomatis)
 /balance - Cek dompet aktif & saldo SOL
 
-<b>Information:</b>
-/candidate &lt;mint&gt; - Tampilkan info spesifik koin`;
+<b>Information & History:</b>
+/candidate &lt;mint&gt; - Tampilkan info spesifik koin
+/history - Lihat 10 riwayat transaksi terakhir
+/exportdb - Download file database lengkap`;
     return bot.sendMessage(chatId, helpText, { parse_mode: 'HTML' });
   }
   if (text.startsWith('/balance')) {
@@ -77,6 +79,12 @@ export async function handleMessage(msg) {
       return bot.editMessageText(`❌ Gagal mengecek saldo: ${err.message}`, { chat_id: chatId, message_id: msgInfo.message_id });
     }
   }
+  if (text.startsWith('/exportdb')) {
+    const { DB_PATH } = await import('../config.js');
+    await bot.sendMessage(chatId, '⏳ Menyiapkan file database...');
+    return bot.sendDocument(chatId, DB_PATH, { caption: '📦 trencher-agent.sqlite\\nBuka menggunakan aplikasi DB Browser for SQLite atau DBeaver.' }).catch(err => bot.sendMessage(chatId, `❌ Gagal mengirim: ${err.message}`));
+  }
+  if (text.startsWith('/history')) return sendHistory(chatId);
   if (text.startsWith('/menu')) return sendMenu(chatId);
   if (text.startsWith('/positions')) return sendPositions(chatId);
   if (text.startsWith('/filters')) return bot.sendMessage(chatId, filtersText(), { parse_mode: 'HTML' });
@@ -225,6 +233,20 @@ export async function sendPosition(chatId, id, query = null) {
   await bot.sendMessage(chatId, formatPosition(row), { parse_mode: 'HTML', disable_web_page_preview: true, ...buttons });
 }
 
+export async function sendHistory(chatId) {
+  const rows = db.prepare("SELECT * FROM dry_run_positions WHERE status = 'closed' ORDER BY closed_at_ms DESC LIMIT 10").all();
+  if (!rows.length) return bot.sendMessage(chatId, 'Belum ada riwayat transaksi yang selesai.');
+  
+  const text = rows.map(r => {
+    const symbol = r.mint.slice(0, 8);
+    const pnl = Number(r.pnl_percent || 0).toFixed(2);
+    const sign = pnl > 0 ? '🟢' : (pnl < 0 ? '🔴' : '⚪');
+    return `${sign} <b>${symbol}</b>: ${pnl > 0 ? '+' : ''}${pnl}% (${escapeHtml(r.exit_reason || 'closed')})`;
+  }).join('\\n');
+  
+  await bot.sendMessage(chatId, `📜 <b>10 Riwayat Transaksi Terakhir:</b>\\n\\n${text}`, { parse_mode: 'HTML' });
+}
+
 export async function closePosition(chatId, id, reason) {
   const row = db.prepare('SELECT * FROM dry_run_positions WHERE id = ?').get(id);
   if (!row || row.status !== 'open') return bot.sendMessage(chatId, 'Open position not found.');
@@ -304,6 +326,8 @@ export function setupTelegram() {
     { command: 'wallets', description: 'List saved wallets' },
     { command: 'setwallet', description: 'Set live execution private key' },
     { command: 'balance', description: 'Check live wallet balance' },
+    { command: 'history', description: 'Show last 10 trades' },
+    { command: 'exportdb', description: 'Download sqlite database' },
   ]).catch(err => console.log(`[telegram] commands ${err.message}`));
 
   bot.on('callback_query', query => handleCallback(query).catch(err => console.log(`[callback] ${err.message}`)));
