@@ -39,6 +39,28 @@ export async function handleMessage(msg) {
   const chatId = msg.chat.id;
   if (await consumeNumericFilterInput(chatId, text, msg.message_id)) return;
   if (!text.startsWith('/')) return;
+  if (text.startsWith('/start') || text.startsWith('/help')) {
+    const helpText = `🤖 <b>Trencher Agent - Command List</b>
+
+<b>Interactive Menus:</b>
+/menu - Buka menu utama interaktif
+/positions - Lihat posisi trading aktif
+/wallets - Lihat daftar dompet target yang dipantau
+
+<b>Settings & Strategies:</b>
+/strategy - Ganti dan atur strategi trading
+/filters - Lihat pengaturan filter saat ini
+/setfilter &lt;key&gt; &lt;value&gt; - Ubah pengaturan secara manual
+
+<b>Wallet Management:</b>
+/walletadd &lt;name&gt; &lt;address&gt; - Tambah target (mata-mata)
+/walletremove &lt;name&gt; - Hapus target
+/setwallet &lt;private_key&gt; - Masukkan Private Key eksekusi (Aman: Pesan dihapus otomatis)
+
+<b>Information:</b>
+/candidate &lt;mint&gt; - Tampilkan info spesifik koin`;
+    return bot.sendMessage(chatId, helpText, { parse_mode: 'HTML' });
+  }
   if (text.startsWith('/menu')) return sendMenu(chatId);
   if (text.startsWith('/positions')) return sendPositions(chatId);
   if (text.startsWith('/filters')) return bot.sendMessage(chatId, filtersText(), { parse_mode: 'HTML' });
@@ -250,6 +272,7 @@ export async function toggleTrailing(chatId, id, query = null) {
 
 export function setupTelegram() {
   bot.setMyCommands([
+    { command: 'start', description: 'Show all shortcut commands' },
     { command: 'menu', description: 'Open Trencher Agent menu' },
     { command: 'strategy', description: 'Show/switch strategy' },
     { command: 'stratset', description: 'Set strategy config (stratset id key value)' },
@@ -263,6 +286,7 @@ export function setupTelegram() {
     { command: 'walletadd', description: 'Save wallet for exposure/PnL' },
     { command: 'walletremove', description: 'Remove saved wallet' },
     { command: 'wallets', description: 'List saved wallets' },
+    { command: 'setwallet', description: 'Set live execution private key' },
   ]).catch(err => console.log(`[telegram] commands ${err.message}`));
 
   bot.on('callback_query', query => handleCallback(query).catch(err => console.log(`[callback] ${err.message}`)));
