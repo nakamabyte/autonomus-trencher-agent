@@ -45,11 +45,19 @@ setInterval(async () => {
     const posQuery = db.prepare("SELECT COUNT(*) as count FROM dry_run_positions WHERE status = 'open'").get();
     const pnlQuery = db.prepare("SELECT SUM(pnl_sol) as total FROM dry_run_positions WHERE pnl_sol IS NOT NULL").get();
     const candsQuery = db.prepare("SELECT COUNT(*) as count FROM candidates").get();
+    const activePositions = db.prepare("SELECT id, mint, pnl_percent, pnl_sol, execution_mode FROM dry_run_positions WHERE status = 'open' ORDER BY id DESC").all();
     
     updateMetrics({
       pos: posQuery?.count || 0,
       pnl: +(pnlQuery?.total || 0).toFixed(3),
-      cands: candsQuery?.count || 0
+      cands: candsQuery?.count || 0,
+      active_positions: activePositions.map(p => ({
+        id: p.id,
+        mint: p.mint,
+        pnl_percent: p.pnl_percent || 0,
+        pnl_sol: p.pnl_sol || 0,
+        mode: p.execution_mode
+      }))
     });
   } catch (err) {
     // DB might not be initialized yet

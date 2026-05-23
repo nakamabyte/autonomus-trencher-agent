@@ -49,6 +49,13 @@ export interface PlatformMetrics {
   pnl: number;
   cycles: number;
   uptime: number;
+  active_positions?: {
+    id: number;
+    mint: string;
+    pnl_percent: number;
+    pnl_sol: number;
+    mode: string;
+  }[];
 }
 
 export interface AgentStatusInfo {
