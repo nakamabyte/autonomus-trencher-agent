@@ -47,14 +47,14 @@ setInterval(async () => {
     const candsQuery = db.prepare("SELECT COUNT(*) as count FROM candidates").get();
     const activePositions = db.prepare("SELECT id, mint, symbol, pnl_percent, pnl_sol, execution_mode FROM dry_run_positions WHERE status = 'open' ORDER BY id DESC").all();
     
-    const { activeStrategy } = await import('../db/settings.js');
+    const { activeStrategy, setting } = await import('../db/settings.js');
     const strat = activeStrategy();
     
     updateMetrics({
       pos: posQuery?.count || 0,
       pnl: +(pnlQuery?.total || 0).toFixed(3),
       cands: candsQuery?.count || 0,
-      mode: process.env.TRADING_MODE || 'dry_run',
+      mode: setting('trading_mode', 'dry_run'),
       strategy: strat?.id || 'sniper',
       active_positions: activePositions.map(p => ({
         id: p.id,

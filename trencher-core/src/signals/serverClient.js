@@ -175,6 +175,7 @@ export async function fetchServerSignals() {
     console.log(`[server] ${processed} signals, ${triggered} triggered${dipPart}, tracking ${trending.size}`);
   } catch (err) {
     console.log(`[server] ${err.message}`);
+    if (err.response?.data) console.log(`[server] Error Data:`, JSON.stringify(err.response.data));
     throw err;
   }
 }
