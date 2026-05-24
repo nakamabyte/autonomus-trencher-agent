@@ -61,7 +61,7 @@ export const LIVE_MIN_SOL_RESERVE_LAMPORTS = Math.floor(Number(process.env.LIVE_
 export const LLM_BASE_URL = process.env.LLM_BASE_URL || 'https://api.anthropic.com/v1';
 export const LLM_API_KEY = process.env.LLM_API_KEY || '';
 export const LLM_MODEL = process.env.LLM_MODEL || 'claude-3-haiku-20240307';
-export const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 15000);
+
 
 export const LLM_T1_BASE_URL = process.env.LLM_T1_BASE_URL || 'https://api.deepseek.com/v1';
 export const LLM_T1_API_KEY = process.env.LLM_T1_API_KEY || process.env.DEEPSEEK_API_KEY || '';
