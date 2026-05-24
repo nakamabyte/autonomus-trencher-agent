@@ -123,8 +123,8 @@ export function PlatformView({ onClose }: PlatformViewProps) {
         />
 
         <div className="pv-main" style={{ gridTemplateColumns: `1fr ${sidebarWidth}px`, position: 'relative' }}>
-          <PlatformPositions metrics={metrics} />
-          <PlatformHistory metrics={metrics} rightOffset={sidebarWidth + 16} />
+          <PlatformPositions metrics={metrics} logHeight={logHeight} />
+          <PlatformHistory metrics={metrics} rightOffset={sidebarWidth + 16} logHeight={logHeight} />
           <PlatformGraph statuses={statuses} onOpenAgent={openAgent} />
           
           {/* Vertical Drag Handle for Sidebar */}

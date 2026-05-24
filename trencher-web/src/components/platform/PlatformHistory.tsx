@@ -5,17 +5,18 @@ import type { PlatformMetrics } from '@/types';
 interface PlatformHistoryProps {
   metrics: PlatformMetrics;
   rightOffset?: number;
+  logHeight: number;
 }
 
-export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryProps) {
+export function PlatformHistory({ metrics, rightOffset = 16, logHeight }: PlatformHistoryProps) {
   const positions = metrics.closed_positions || [];
 
   return (
     <div 
       className="absolute top-4 z-20 pointer-events-auto flex flex-col"
-      style={{ right: `${rightOffset}px`, width: '240px', background: '#111110', border: '1px solid rgba(255,255,255,.06)', borderRadius: '2px' }}
+      style={{ right: `${rightOffset}px`, width: '240px', maxHeight: 'calc(100% - 32px)', background: '#111110', border: '1px solid rgba(255,255,255,.06)', borderRadius: '2px' }}
     >
-      <div className="pv-sec" style={{ borderBottom: 'none' }}>
+      <div className="pv-sec flex flex-col flex-1 min-h-0" style={{ borderBottom: 'none' }}>
         <div className="pv-sh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div className="w-1.5 h-1.5 rounded-full bg-[#7C3AED]"></div>
@@ -24,7 +25,7 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
           <span style={{ color: 'rgba(255,255,255,.15)', fontFamily: 'var(--fm)' }}>{positions.length}</span>
         </div>
 
-        <div className="flex flex-col gap-[2px] mt-2 max-h-[calc(100vh-250px)] overflow-y-auto custom-scrollbar">
+        <div className="flex flex-col gap-[2px] mt-2 overflow-y-auto custom-scrollbar flex-1 min-h-0">
           {positions.length === 0 ? (
             <div className="pv-ai" style={{ justifyContent: 'center' }}>
               <span className="pv-ast" style={{ opacity: 0.5 }}>[ NO HISTORY ]</span>
