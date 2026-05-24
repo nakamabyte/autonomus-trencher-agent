@@ -60,7 +60,9 @@ export const JUPITER_SLIPPAGE_BPS = Number(process.env.JUPITER_SLIPPAGE_BPS || 3
 export const LIVE_MIN_SOL_RESERVE_LAMPORTS = Math.floor(Number(process.env.LIVE_MIN_SOL_RESERVE || 0.02) * 1_000_000_000);
 export const LLM_BASE_URL = process.env.LLM_BASE_URL || 'https://api.minimax.io/v1';
 export const LLM_API_KEY = process.env.LLM_API_KEY || '';
-export const LLM_MODEL = process.env.LLM_MODEL || 'MiniMax-M2.7';
+export const LLM_MODEL = process.env.LLM_MODEL || 'claude-opus-4-7';
+export const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
+export const GROK_API_KEY = process.env.GROK_API_KEY || '';
 
 export const GRADUATED_POLL_MS = Number(process.env.GRADUATED_POLL_MS || 30_000);
 export const GRADUATED_LOOKBACK_MS = Number(process.env.GRADUATED_LOOKBACK_MS || 2 * 60 * 60 * 1000);

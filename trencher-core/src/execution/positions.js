@@ -184,26 +184,38 @@ export async function refreshPosition(position, { autoExit = true, jupiterPnl = 
     let sell;
     try {
       sell = await executeLiveSell(position, exitReason);
+    } catch (err) {
+      if (err.message.includes('Insufficient funds') || err.message.includes('not enough') || err.message.includes('token balance is 0') || err.message.includes('insufficient lamports')) {
+         console.log(`[position] ${position.id} ${err.message}. Force closing position.`);
+         db.prepare(`UPDATE dry_run_positions SET status = 'closed', closed_at_ms = ?, exit_reason = 'FORCE_CLOSE_FUNDS' WHERE id = ?`).run(now(), position.id);
+         closed = true;
+         exitReason = 'FORCE_CLOSE_FUNDS';
+      } else {
+         throw err;
+      }
     } finally {
       sellInProgress.delete(position.id);
     }
-    const receivedLamports = Number(sell.outputAmount || 0);
-    const receivedSol = receivedLamports > 0 ? receivedLamports / 1_000_000_000 : null;
-    if (receivedSol != null) {
-      finalPnlSol = receivedSol - Number(position.size_sol);
-      finalPnlPercent = (receivedSol / Number(position.size_sol) - 1) * 100;
+    
+    if (sell) {
+      const receivedLamports = Number(sell.outputAmount || 0);
+      const receivedSol = receivedLamports > 0 ? receivedLamports / 1_000_000_000 : null;
+      if (receivedSol != null) {
+        finalPnlSol = receivedSol - Number(position.size_sol);
+        finalPnlPercent = (receivedSol / Number(position.size_sol) - 1) * 100;
+      }
+      db.prepare(`
+        UPDATE dry_run_positions
+        SET status = 'closed', closed_at_ms = ?, exit_price = ?, exit_mcap = ?, exit_reason = ?,
+            pnl_percent = ?, pnl_sol = ?, exit_signature = ?
+        WHERE id = ?
+      `).run(now(), price, mcap, exitReason, finalPnlPercent, finalPnlSol, sell.signature, position.id);
+      db.prepare(`
+        INSERT INTO dry_run_trades (position_id, mint, side, at_ms, price, mcap, size_sol, token_amount_est, reason, payload_json)
+        VALUES (?, ?, 'sell', ?, ?, ?, ?, ?, ?, ?)
+      `).run(position.id, position.mint, now(), price, mcap, position.size_sol, position.token_amount_est, exitReason, json({ pnlPercent: finalPnlPercent, pnlSol: finalPnlSol, receivedSol: receivedSol ?? null, sell }));
+      closed = true;
     }
-    db.prepare(`
-      UPDATE dry_run_positions
-      SET status = 'closed', closed_at_ms = ?, exit_price = ?, exit_mcap = ?, exit_reason = ?,
-          pnl_percent = ?, pnl_sol = ?, exit_signature = ?
-      WHERE id = ?
-    `).run(now(), price, mcap, exitReason, finalPnlPercent, finalPnlSol, sell.signature, position.id);
-    db.prepare(`
-      INSERT INTO dry_run_trades (position_id, mint, side, at_ms, price, mcap, size_sol, token_amount_est, reason, payload_json)
-      VALUES (?, ?, 'sell', ?, ?, ?, ?, ?, ?, ?)
-    `).run(position.id, position.mint, now(), price, mcap, position.size_sol, position.token_amount_est, exitReason, json({ pnlPercent: finalPnlPercent, pnlSol: finalPnlSol, receivedSol: receivedSol ?? null, sell }));
-    closed = true;
   } else if (exitReason && autoExit) {
     db.prepare(`
       UPDATE dry_run_positions
