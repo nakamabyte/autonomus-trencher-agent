@@ -29,6 +29,7 @@ import { handleCallback, editMenuMessage } from './callbacks.js';
 import { consumeNumericFilterInput } from './input.js';
 import { runLearning, sendLessons } from '../learning/commands.js';
 import { fetchWalletPnl } from '../enrichment/wallets.js';
+import { sendCreditsInfo } from './credits.js';
 
 export async function handleMessage(msg) {
   if (String(msg.chat.id) !== String(TELEGRAM_CHAT_ID)) {
@@ -61,6 +62,7 @@ export async function handleMessage(msg) {
 <b>Information & History:</b>
 /candidate &lt;mint&gt; - Tampilkan info spesifik koin
 /history - Lihat 10 riwayat transaksi terakhir
+/credits - Cek status kuota & saldo API (Claude, Grok, DeepSeek)
 /exportdb - Download file database lengkap`;
     return bot.sendMessage(chatId, helpText, { parse_mode: 'HTML' });
   }
@@ -85,6 +87,7 @@ export async function handleMessage(msg) {
     return bot.sendDocument(chatId, DB_PATH, { caption: '📦 trencher-agent.sqlite\\nBuka menggunakan aplikasi DB Browser for SQLite atau DBeaver.' }).catch(err => bot.sendMessage(chatId, `❌ Gagal mengirim: ${err.message}`));
   }
   if (text.startsWith('/history')) return sendHistory(chatId);
+  if (text.startsWith('/credits')) return sendCreditsInfo(chatId);
   if (text.startsWith('/menu')) return sendMenu(chatId);
   if (text.startsWith('/positions')) return sendPositions(chatId);
   if (text.startsWith('/filters')) return bot.sendMessage(chatId, filtersText(), { parse_mode: 'HTML' });

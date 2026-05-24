@@ -23,6 +23,7 @@ setDegenHandler(maybeProcessDegenCandidate);
 setCandidateHandler(processCandidateFromSignals);
 
 export async function processCandidateFromSignals(signals) {
+  try {
   // Skip if max positions reached — don't waste enrichment/LLM calls
   if (!canOpenMorePositions()) {
     const max = numSetting('max_open_positions', 3);
@@ -119,6 +120,7 @@ export async function processCandidateFromSignals(signals) {
       },
     });
   }
+  } catch (err) { console.log(`[orchestrator] processCandidateFromSignals failed: ${err.message}`);  }
 }
 
 export async function handleApprovedBuy(selectedRow, decision, batchId, rows = [], triggerCandidateId = null) {
