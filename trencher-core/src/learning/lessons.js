@@ -1,6 +1,6 @@
-import axios from 'axios';
-import { ENABLE_LLM, LLM_API_KEY, LLM_BASE_URL, LLM_MODEL, LLM_TIMEOUT_MS } from '../config.js';
-import { now, json, stripThinking, strictJsonFromText } from '../utils.js';
+import { runAnalysis } from '../agents/llmScreener.js';
+import { ENABLE_LLM } from '../config.js';
+import { now, json, strictJsonFromText } from '../utils.js';
 import { fmtPct } from '../format.js';
 import { db } from '../db/connection.js';
 
@@ -38,46 +38,28 @@ export function fallbackLessons(summary) {
 
 export async function generateLessons(summary) {
   const fallback = fallbackLessons(summary);
-  if (!ENABLE_LLM || !LLM_API_KEY) return { lessons: fallback, raw: { fallback: true } };
+  if (!ENABLE_LLM) return { lessons: fallback, raw: { fallback: true } };
+  
   try {
-    const res = await axios.post(`${LLM_BASE_URL.replace(/\/$/, '')}/chat/completions`, {
-      model: LLM_MODEL,
-      temperature: 0.1,
-      messages: [
-        {
-          role: 'system',
-          content: [
-            'You are Trencher Agent learning from dry-run trading evidence.',
-            'Return strict JSON only.',
-            'Do not invent trades or outcomes.',
-            'Create compact operational lessons that can improve the next screening prompt.',
-          ].join(' '),
-        },
-        {
-          role: 'user',
-          content: JSON.stringify({
-            task: 'Analyze this dry-run window and produce up to 6 lessons for future candidate screening.',
-            output_schema: {
-              lessons: [{ lesson: 'short actionable rule', evidence: 'specific supporting data' }],
-            },
-            summary,
-          }),
-        },
-      ],
-    }, {
-      timeout: LLM_TIMEOUT_MS,
-      headers: { authorization: `Bearer ${LLM_API_KEY}`, 'content-type': 'application/json' },
-    });
-    const parsed = strictJsonFromText(res.data?.choices?.[0]?.message?.content || '');
+    const payload = {
+      command: 'learn',
+      window: summary.windowMs,
+      trades: summary.positions.best.concat(summary.positions.worst)
+    };
+    
+    const resultText = await runAnalysis(payload);
+    const parsed = strictJsonFromText(resultText);
+    
     const lessons = Array.isArray(parsed.lessons)
       ? parsed.lessons.map(item => ({
-          lesson: String(item.lesson || '').slice(0, 500),
-          evidence: item.evidence ?? {},
+          lesson: String(item.insight || item.lesson || '').slice(0, 500),
+          evidence: { strategy: item.strategy, confidence: item.confidence, sample_size: item.sample_size },
         })).filter(item => item.lesson)
       : [];
+      
     return { lessons: lessons.length ? lessons.slice(0, 6) : fallback, raw: parsed };
   } catch (err) {
-    console.log(`[learn] LLM failed: ${err.message}`);
+    console.error(`[learn] Claude Analysis failed: ${err.message}`);
     return { lessons: fallback, raw: { error: err.message, fallback: true } };
   }
 }
