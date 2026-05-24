@@ -58,9 +58,26 @@ export const SOLANA_WS_URL = getActiveWsUrl();
 export const JUPITER_SWAP_BASE_URL = process.env.JUPITER_SWAP_BASE_URL || 'https://api.jup.ag/swap/v2';
 export const JUPITER_SLIPPAGE_BPS = Number(process.env.JUPITER_SLIPPAGE_BPS || 300);
 export const LIVE_MIN_SOL_RESERVE_LAMPORTS = Math.floor(Number(process.env.LIVE_MIN_SOL_RESERVE || 0.02) * 1_000_000_000);
-export const LLM_BASE_URL = process.env.LLM_BASE_URL || 'https://api.minimax.io/v1';
+export const LLM_BASE_URL = process.env.LLM_BASE_URL || 'https://api.anthropic.com/v1';
 export const LLM_API_KEY = process.env.LLM_API_KEY || '';
-export const LLM_MODEL = process.env.LLM_MODEL || 'claude-opus-4-7';
+export const LLM_MODEL = process.env.LLM_MODEL || 'claude-3-haiku-20240307';
+export const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 15000);
+
+export const LLM_T1_BASE_URL = process.env.LLM_T1_BASE_URL || 'https://api.deepseek.com/v1';
+export const LLM_T1_API_KEY = process.env.LLM_T1_API_KEY || process.env.DEEPSEEK_API_KEY || '';
+export const LLM_T1_MODEL = process.env.LLM_T1_MODEL || 'deepseek-chat';
+export const LLM_T1_CONFIDENCE_PASS = Number(process.env.LLM_T1_CONFIDENCE_PASS || 0.55);
+export const LLM_T1_CONFIDENCE_BUY = Number(process.env.LLM_T1_CONFIDENCE_BUY || 0.80);
+
+export const LLM_T2_BASE_URL = process.env.LLM_T2_BASE_URL || 'https://api.x.ai/v1';
+export const LLM_T2_API_KEY = process.env.LLM_T2_API_KEY || process.env.GROK_API_KEY || '';
+export const LLM_T2_MODEL = process.env.LLM_T2_MODEL || 'grok-4-0309';
+export const LLM_T2_CONFIDENCE_BUY = Number(process.env.LLM_T2_CONFIDENCE_BUY || 0.65);
+
+export const LLM_T3_BASE_URL = process.env.LLM_T3_BASE_URL || 'https://api.anthropic.com/v1';
+export const LLM_T3_API_KEY = process.env.LLM_T3_API_KEY || process.env.LLM_API_KEY || '';
+export const LLM_T3_MODEL = process.env.LLM_T3_MODEL || 'claude-3-5-sonnet-20240620';
+
 export const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
 export const GROK_API_KEY = process.env.GROK_API_KEY || '';
 
