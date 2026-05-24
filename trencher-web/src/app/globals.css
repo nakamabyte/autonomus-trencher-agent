@@ -415,9 +415,9 @@ footer{background:#080808;padding:36px 0;border-top:1px solid rgba(255,255,255,.
   pointer-events:none;user-select:none;text-align:center;
 }
 .pv-gcorner{
-  position:absolute;bottom:13px;right:13px;
+  position:absolute;bottom:13px;left:50%;transform:translateX(-50%);
   font-family:var(--fm);font-size:7px;color:rgba(255,255,255,.15);
-  pointer-events:none;user-select:none;text-align:right;line-height:1.8;
+  pointer-events:none;user-select:none;text-align:center;line-height:1.8;
 }
 .pv-legend{
   position:absolute;bottom:13px;left:13px;
