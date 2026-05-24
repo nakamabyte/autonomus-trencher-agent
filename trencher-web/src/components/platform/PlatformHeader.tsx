@@ -30,6 +30,8 @@ export function PlatformHeader({ metrics, onClosePlatform }: PlatformHeaderProps
         ← Back to Landing
       </button>
       <div className="pv-mx" id="pv-metrics">
+        <MetricCell label="Mode" value={(metrics.mode || 'dry_run').toUpperCase()} />
+        <MetricCell label="Strategy" value={(metrics.strategy || 'sniper').toUpperCase()} />
         <MetricCell label="Candidates" value={String(metrics.cands).padStart(5, '0')} />
         <MetricCell label="Positions"  value={String(metrics.pos)} />
         <MetricCell label="PnL (SOL)"  value={pnlStr} cls={pnlCls} />

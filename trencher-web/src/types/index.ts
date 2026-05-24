@@ -49,6 +49,8 @@ export interface PlatformMetrics {
   pnl: number;
   cycles: number;
   uptime: number;
+  mode?: string;
+  strategy?: string;
   active_positions?: {
     id: number;
     mint: string;
