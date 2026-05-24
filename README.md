@@ -19,7 +19,13 @@ trencher-agent/
 
 ## `trencher-core` — Backend Service
 
-The core agent orchestrator. Monitors Pump.fun token flow, enriches candidates, screens via LLM, and executes via Jupiter Ultra.
+The core agent orchestrator. Monitors Pump.fun token flow, enriches candidates, and executes via Jupiter Ultra.
+
+### 🧠 3-Tier LLM Cascade Architecture
+Trencher uses a multi-agent LLM pipeline to balance speed, cost, and analytical depth:
+1. **Tier 1 (Bulk Screener):** Powered by DeepSeek for rapid, high-volume, initial-pass candidate filtering.
+2. **Tier 2 (KOL Validator):** Powered by Grok to analyze Twitter/CT narratives and validate trusted KOLs for edge cases.
+3. **Tier 3 (Analyst):** Powered by Claude for post-trade analysis, strategy generation, and learning extraction via `/learn`.
 
 **Stack:** Node.js (ESM) · `better-sqlite3` · `node-telegram-bot-api` · `@solana/web3.js` v1 · `ws`
 
@@ -56,11 +62,23 @@ HELIUS_API_KEY=
 # Execution mode: dry_run | confirm | live
 TRADING_MODE=dry_run
 
-# LLM (any OpenAI-compatible endpoint)
+# Multi-Tier LLM Architecture (Cascade)
 ENABLE_LLM=true
-LLM_BASE_URL=https://api.minimax.io/v1
-LLM_API_KEY=
-LLM_MODEL=MiniMax-M2.7
+
+# TIER 1: DeepSeek (Bulk Screener)
+LLM_T1_BASE_URL=https://api.deepseek.com/v1
+LLM_T1_API_KEY=
+LLM_T1_MODEL=deepseek-chat
+
+# TIER 2: Grok (KOL & CT Validator)
+LLM_T2_BASE_URL=https://api.x.ai/v1
+LLM_T2_API_KEY=
+LLM_T2_MODEL=grok-2-latest
+
+# TIER 3: Claude (Post-hoc Analysis & Lessons)
+LLM_T3_BASE_URL=https://api.anthropic.com/v1
+LLM_T3_API_KEY=
+LLM_T3_MODEL=claude-3-5-sonnet-20240620
 
 # Live/confirm mode only
 SOLANA_PRIVATE_KEY=
