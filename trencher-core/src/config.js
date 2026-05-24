@@ -71,7 +71,7 @@ export const LLM_T1_CONFIDENCE_BUY = Number(process.env.LLM_T1_CONFIDENCE_BUY ||
 
 export const LLM_T2_BASE_URL = process.env.LLM_T2_BASE_URL || 'https://api.x.ai/v1';
 export const LLM_T2_API_KEY = process.env.LLM_T2_API_KEY || process.env.GROK_API_KEY || '';
-export const LLM_T2_MODEL = process.env.LLM_T2_MODEL || 'grok-4-0309';
+export const LLM_T2_MODEL = process.env.LLM_T2_MODEL || 'grok-2';
 export const LLM_T2_CONFIDENCE_BUY = Number(process.env.LLM_T2_CONFIDENCE_BUY || 0.65);
 
 export const LLM_T3_BASE_URL = process.env.LLM_T3_BASE_URL || 'https://api.anthropic.com/v1';
