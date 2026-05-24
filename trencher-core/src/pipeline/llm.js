@@ -3,6 +3,7 @@ import { ENABLE_LLM, LLM_API_KEY, LLM_BASE_URL, LLM_MODEL, LLM_TIMEOUT_MS, DEEPS
 import { now, stripThinking, strictJsonFromText } from '../utils.js';
 import { numSetting } from '../db/settings.js';
 import { db } from '../db/connection.js';
+import { screenCandidates } from '../agents/llmScreener.js';
 
 export function normalizeDecision(parsed, fallbackReason = '') {
   const verdict = ['BUY', 'WATCH', 'PASS'].includes(String(parsed?.verdict).toUpperCase())
@@ -66,14 +67,15 @@ export function compactCandidateForLlm(row) {
   };
 }
 
+
 export async function decideCandidateBatch(rows, triggerCandidateId) {
-  if (!ENABLE_LLM || !LLM_API_KEY || !DEEPSEEK_API_KEY || !GROK_API_KEY) {
+  if (!ENABLE_LLM) {
     return {
       verdict: 'WATCH',
       confidence: 0,
       selected_candidate_id: null,
       selected_mint: null,
-      reason: 'LLM disabled or missing API Keys (need Claude, DeepSeek, Grok).',
+      reason: 'LLM disabled.',
       risks: ['no_llm_decision'],
       suggested_tp_percent: numSetting('default_tp_percent', 50),
       suggested_sl_percent: numSetting('default_sl_percent', -25),
@@ -82,127 +84,41 @@ export async function decideCandidateBatch(rows, triggerCandidateId) {
   }
 
   const candidatesData = rows.map(compactCandidateForLlm);
-  const recentLessons = activeLessonsForPrompt();
-
-  // STEP 1: CLAUDE OPUS (Conductor)
-  const claudeSystem = `You are the Conductor for a Meme Coin Trench operation.
-Analyze the provided candidates briefly. Exclude obvious trash. Provide a strategic research direction for the Worker.
-Do not output JSON, just return your strategic plan and focus points.`;
-  const claudeUser = `Task: Plan the analysis for these meme coin candidates.\n\nCandidates: ${JSON.stringify(candidatesData)}\nLessons: ${recentLessons}`;
   
-  let claudePlan = '';
   try {
-    const res = await axios.post(`${LLM_BASE_URL.replace(/\/$/, '')}/messages`, {
-      model: LLM_MODEL,
-      system: claudeSystem,
-      max_tokens: 1024,
-      messages: [{ role: 'user', content: claudeUser }],
-    }, {
-      timeout: LLM_TIMEOUT_MS,
-      headers: { 'x-api-key': LLM_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    });
-    claudePlan = res.data?.content?.[0]?.text || '';
-    console.log(`[llm] Claude Conductor plan completed.`);
-  } catch (err) {
-    console.log(`[llm] Claude Conductor failed: ${err.message}`);
-    if (err.response?.data) console.log(`[llm] Claude Error Data:`, JSON.stringify(err.response.data));
-    throw err;
-  }
-
-  // STEP 2: DEEPSEEK (Worker/Grinder)
-  const deepseekSystem = `You are the Worker Grinder. You will receive a strategic plan from the Conductor and candidate data.
-Your job is to execute the analysis and draft an engaging X (Twitter) narrative for the best candidate (if any).
-Return your full analysis and the draft narrative. Do not output JSON.`;
-  const deepseekUser = `Conductor Plan:\n${claudePlan}\n\nCandidates:\n${JSON.stringify(candidatesData)}`;
-  
-  let deepseekAnalysis = '';
-  try {
-    const res = await axios.post(`https://api.deepseek.com/chat/completions`, {
-      model: 'deepseek-chat',
-      temperature: 0.4,
-      messages: [
-        { role: 'system', content: deepseekSystem },
-        { role: 'user', content: deepseekUser },
-      ],
-    }, {
-      timeout: LLM_TIMEOUT_MS,
-      headers: { authorization: `Bearer ${DEEPSEEK_API_KEY}`, 'content-type': 'application/json' },
-    });
-    deepseekAnalysis = res.data?.choices?.[0]?.message?.content || '';
-    console.log(`[llm] DeepSeek Worker analysis completed.`);
-  } catch (err) {
-    console.log(`[llm] DeepSeek Worker failed: ${err.message}`);
-    throw err;
-  }
-
-  // STEP 3: GROK (Critic)
-  const grokSystem = `You are the Critic and JSON Formatter. 
-You will receive the Worker's analysis and draft X (Twitter) narrative.
-Your job is to review the decision, refine the narrative to be highly engaging for Crypto X, and output the final decision in STRICT JSON ONLY.
-Output Schema:
-{
-  "verdict": "BUY|WATCH|PASS",
-  "selected_candidate_id": integer or null,
-  "selected_mint": string or null,
-  "confidence": number 0-100,
-  "reason": "short explanation",
-  "risks": ["risk 1", "risk 2"],
-  "suggested_tp_percent": positive number,
-  "suggested_sl_percent": negative number,
-  "x_narrative": "Highly engaging tweet draft"
-}`;
-  const grokUser = `Worker Analysis & Draft:\n${deepseekAnalysis}\n\nReview this, pick the best (or PASS), refine the X narrative, and output strict JSON.`;
-
-  let grokJson = '';
-  try {
-    const res = await axios.post(`https://api.x.ai/v1/chat/completions`, {
-      model: 'grok-4.3',
-      temperature: 0.2,
-      messages: [
-        { role: 'system', content: grokSystem },
-        { role: 'user', content: grokUser },
-      ],
-    }, {
-      timeout: LLM_TIMEOUT_MS,
-      headers: { authorization: `Bearer ${GROK_API_KEY}`, 'content-type': 'application/json' },
-    });
-    grokJson = res.data?.choices?.[0]?.message?.content || '';
-    console.log(`[llm] Grok Critic review completed.`);
-  } catch (err) {
-    console.log(`[llm] Grok Critic failed: ${err.message}`);
-    throw err;
-  }
-
-  try {
-    const parsed = strictJsonFromText(grokJson);
-    const decision = normalizeDecision(parsed);
-    const selectedId = Number(parsed.selected_candidate_id);
-    const selectedMint = String(parsed.selected_mint || '');
-    const row = rows.find(item => item.id === selectedId || item.candidate.token?.mint === selectedMint);
+    const result = await screenCandidates(candidatesData);
+    
+    const verdict = result.decision === 'BUY' ? 'BUY' : 'PASS';
+    const selectedMint = result.mint || '';
+    const row = rows.find(item => item.candidate.token?.mint === selectedMint);
+    
     return {
-      ...decision,
-      selected_candidate_id: decision.verdict === 'BUY' && row ? row.id : null,
-      selected_mint: decision.verdict === 'BUY' && row ? row.candidate.token.mint : null,
-      selected_row: decision.verdict === 'BUY' && row ? row : null,
+      verdict,
+      confidence: Math.round(Number(result.confidence || 0) * 100),
+      reason: result.reasoning || '',
+      risks: [],
+      suggested_tp_percent: numSetting('default_tp_percent', 50),
+      suggested_sl_percent: numSetting('default_sl_percent', -25),
+      x_narrative: result.kol_signal ? `KOL Signal Detected: ${result.kol_signal}
+
+${result.reasoning}` : result.reasoning || '',
+      raw: result,
+      selected_candidate_id: verdict === 'BUY' && row ? row.id : null,
+      selected_mint: verdict === 'BUY' && row ? row.candidate.token.mint : null,
+      selected_row: verdict === 'BUY' && row ? row : null,
     };
   } catch (err) {
-    console.log(`[llm] batch parse failed: ${err.message}`);
+    console.error('[llm] cascade failed:', err.message);
     return {
-      verdict: 'WATCH',
+      verdict: 'PASS',
       confidence: 0,
       selected_candidate_id: null,
       selected_mint: null,
-      reason: `LLM parse failed: ${err.message}`,
+      reason: `Cascade LLM Error: ${err.message}`,
       risks: ['llm_error'],
       suggested_tp_percent: numSetting('default_tp_percent', 50),
       suggested_sl_percent: numSetting('default_sl_percent', -25),
       raw: { error: err.message },
     };
   }
-}
-
-export async function decideCandidate(candidate) {
-  const pseudoRow = { id: 0, candidate };
-  const decision = await decideCandidateBatch([pseudoRow], 0);
-  return normalizeDecision(decision.raw || decision, decision.reason);
 }
