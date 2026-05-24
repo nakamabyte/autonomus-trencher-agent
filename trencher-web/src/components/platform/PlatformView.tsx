@@ -7,6 +7,7 @@ import { PlatformSidebar } from './PlatformSidebar';
 import { PlatformGraph } from './PlatformGraph';
 import { PlatformLogStrip } from './PlatformLogStrip';
 import { PlatformPositions } from './PlatformPositions';
+import { PlatformHistory } from './PlatformHistory';
 import { Modal } from '@/components/ui/Modal';
 import { NODES, NODE_FULL, AGENT_DATA } from '@/constants/agents';
 import { LC } from '@/constants/layers';
@@ -123,6 +124,7 @@ export function PlatformView({ onClose }: PlatformViewProps) {
 
         <div className="pv-main" style={{ gridTemplateColumns: `1fr ${sidebarWidth}px`, position: 'relative' }}>
           <PlatformPositions metrics={metrics} />
+          <PlatformHistory metrics={metrics} rightOffset={sidebarWidth + 16} />
           <PlatformGraph statuses={statuses} onOpenAgent={openAgent} />
           
           {/* Vertical Drag Handle for Sidebar */}

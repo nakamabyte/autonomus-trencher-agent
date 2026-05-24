@@ -123,12 +123,17 @@ function parseDistFees(data) {
 
 function startFeeClaimListener(wssUrl) {
   const WebSocket = require('ws');
+  
+  const urls = wssUrl.split(',').map(s => s.trim()).filter(Boolean);
+  let endpointIndex = 0;
+  
   let ws;
   let pingTimer;
 
   function connect() {
-    console.log(`[ws] connecting to ${wssUrl.substring(0, 50)}...`);
-    ws = new WebSocket(wssUrl);
+    const currentUrl = urls[endpointIndex];
+    console.log(`[ws] connecting to ${currentUrl.substring(0, 50)}...`);
+    ws = new WebSocket(currentUrl);
 
     ws.on('open', () => {
       console.log('[ws] connected');
@@ -155,6 +160,7 @@ function startFeeClaimListener(wssUrl) {
 
     ws.on('close', () => {
       clearInterval(pingTimer);
+      endpointIndex = (endpointIndex + 1) % urls.length;
       console.log('[ws] closed, reconnecting in 5s');
       setTimeout(connect, 5000);
     });

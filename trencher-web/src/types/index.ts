@@ -59,6 +59,14 @@ export interface PlatformMetrics {
     pnl_sol: number;
     mode: string;
   }[];
+  closed_positions?: {
+    id: number;
+    mint: string;
+    symbol: string;
+    pnl_percent: number;
+    pnl_sol: number;
+    mode: string;
+  }[];
 }
 
 export interface AgentStatusInfo {

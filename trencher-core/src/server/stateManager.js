@@ -46,6 +46,7 @@ setInterval(async () => {
     const pnlQuery = db.prepare("SELECT SUM(pnl_sol) as total FROM dry_run_positions WHERE pnl_sol IS NOT NULL").get();
     const candsQuery = db.prepare("SELECT COUNT(*) as count FROM candidates").get();
     const activePositions = db.prepare("SELECT id, mint, symbol, pnl_percent, pnl_sol, execution_mode FROM dry_run_positions WHERE status = 'open' ORDER BY id DESC").all();
+    const closedPositions = db.prepare("SELECT id, mint, symbol, pnl_percent, pnl_sol, execution_mode FROM dry_run_positions WHERE status = 'closed' ORDER BY updated_at DESC LIMIT 50").all();
     
     const { activeStrategy, setting } = await import('../db/settings.js');
     const strat = activeStrategy();
@@ -57,6 +58,14 @@ setInterval(async () => {
       mode: setting('trading_mode', 'dry_run'),
       strategy: strat?.id || 'sniper',
       active_positions: activePositions.map(p => ({
+        id: p.id,
+        mint: p.mint,
+        symbol: p.symbol || (p.mint.slice(0, 4) + '...' + p.mint.slice(-4)),
+        pnl_percent: p.pnl_percent || 0,
+        pnl_sol: p.pnl_sol || 0,
+        mode: p.execution_mode
+      })),
+      closed_positions: closedPositions.map(p => ({
         id: p.id,
         mint: p.mint,
         symbol: p.symbol || (p.mint.slice(0, 4) + '...' + p.mint.slice(-4)),
