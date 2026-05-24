@@ -94,7 +94,6 @@ Do not output JSON, just return your strategic plan and focus points.`;
   try {
     const res = await axios.post(`${LLM_BASE_URL.replace(/\/$/, '')}/messages`, {
       model: LLM_MODEL,
-      temperature: 0.2,
       system: claudeSystem,
       max_tokens: 1024,
       messages: [{ role: 'user', content: claudeUser }],
@@ -106,6 +105,7 @@ Do not output JSON, just return your strategic plan and focus points.`;
     console.log(`[llm] Claude Conductor plan completed.`);
   } catch (err) {
     console.log(`[llm] Claude Conductor failed: ${err.message}`);
+    if (err.response?.data) console.log(`[llm] Claude Error Data:`, JSON.stringify(err.response.data));
     throw err;
   }
 
