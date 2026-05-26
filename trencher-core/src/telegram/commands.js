@@ -104,6 +104,7 @@ export async function handleMessage(msg) {
     const tmpSqlite = path.resolve(`./export-tmp-${timestamp}.sqlite`);
     const tmpZip = path.resolve(`./export-tmp-${timestamp}.zip`);
     let sizeMB = '0.00';
+    let keepZip = false;
     try {
       // Checkpoint WAL then VACUUM into a clean copy
       db.pragma('wal_checkpoint(TRUNCATE)');
@@ -136,21 +137,19 @@ export async function handleMessage(msg) {
       });
     } catch (err) {
       if (err.message.includes('413') || err.message.includes('Too Large')) {
-        await bot.editMessageText(`⏳ File terlalu besar untuk Telegram (${sizeMB} MB). Mengupload ke server eksternal (transfer.sh)...`, {
+        const domain = process.env.RAILWAY_PUBLIC_DOMAIN || 'APP_URL';
+        const downloadUrl = `https://${domain}/download/export-tmp-${timestamp}.zip`;
+        
+        await bot.editMessageText(`⏳ File terlalu besar untuk Telegram (${sizeMB} MB).`, {
           chat_id: chatId, message_id: statusMsg.message_id,
         }).catch(() => {});
-        const util = require('util');
-        const execAsync = util.promisify(require('child_process').exec);
-        try {
-          const { stdout } = await execAsync(`curl -sT ${tmpZip} https://transfer.sh/trencher-db-${timestamp}.zip`);
-          if (stdout && stdout.startsWith('http')) {
-            await bot.sendMessage(chatId, `📦 <b>trencher-agent.sqlite</b> — ${timestamp}\nUkuran: ${sizeMB} MB\n\n⬇️ <b>Download Link (berlaku 14 hari):</b>\n${stdout.trim()}\n\n<i>Note: Ekstrak zip lalu buka file .sqlite menggunakan DB Browser for SQLite atau DBeaver.</i>`, { parse_mode: 'HTML' }).catch(() => {});
-          } else {
-            await bot.sendMessage(chatId, `❌ Gagal upload file besar ke server eksternal. Server response: ${stdout}`).catch(() => {});
-          }
-        } catch (execErr) {
-          await bot.sendMessage(chatId, `❌ Gagal upload file besar ke server eksternal. Error: ${execErr.message}`).catch(() => {});
-        }
+        
+        await bot.sendMessage(chatId, `📦 <b>trencher-agent.sqlite</b> — ${timestamp}\nUkuran: ${sizeMB} MB\n\n⬇️ <b>Direct Download Link:</b>\n${downloadUrl}\n\n<i>Note: Ekstrak zip lalu buka file .sqlite menggunakan DB Browser for SQLite atau DBeaver.</i>`, { parse_mode: 'HTML' }).catch(() => {});
+        
+        // Only unlink the sqlite, KEEP the zip so it can be downloaded via HTTP
+        fs.unlink(tmpSqlite, () => {});
+        keepZip = true;
+        return;
       } else {
         await bot.editMessageText(`❌ Gagal export database: ${err.message}`, {
           chat_id: chatId, message_id: statusMsg.message_id,
@@ -158,7 +157,7 @@ export async function handleMessage(msg) {
       }
     } finally {
       fs.unlink(tmpSqlite, () => {});
-      fs.unlink(tmpZip, () => {});
+      if (!keepZip) fs.unlink(tmpZip, () => {});
     }
     return;
   }

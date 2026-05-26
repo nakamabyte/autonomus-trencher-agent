@@ -1,10 +1,35 @@
 import { WebSocketServer } from 'ws';
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
 
 let wss;
 const clients = new Set();
 
 export function startWsServer(port = 4001) {
-  wss = new WebSocketServer({ port });
+  const server = http.createServer((req, res) => {
+    // Simple file server for exported DB ZIPs
+    if (req.url.startsWith('/download/') && req.url.endsWith('.zip')) {
+      const fileName = path.basename(req.url);
+      const filePath = path.resolve('./', fileName);
+      if (fs.existsSync(filePath)) {
+        res.writeHead(200, {
+          'Content-Type': 'application/zip',
+          'Content-Disposition': `attachment; filename="${fileName}"`,
+        });
+        fs.createReadStream(filePath).pipe(res);
+        return;
+      }
+    }
+    res.writeHead(404);
+    res.end('Not found');
+  });
+
+  wss = new WebSocketServer({ server });
+  
+  server.listen(port, () => {
+    console.log(`[ws-server] HTTP & WebSocket broadcasting on port ${port}`);
+  });
   
   wss.on('connection', (ws) => {
     clients.add(ws);
@@ -20,8 +45,6 @@ export function startWsServer(port = 4001) {
       ws.send(JSON.stringify({ type: 'LOG_HISTORY', payload: getLogHistory() }));
     });
   });
-  
-  console.log(`[ws-server] WebSocket broadcasting on port ${port}`);
 }
 
 export function broadcast(type, payload) {
