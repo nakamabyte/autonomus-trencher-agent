@@ -158,6 +158,15 @@ export async function handleApprovedBuy(selectedRow, decision, batchId, rows = [
     ].join('\n'));
     return;
   }
+  
+  // Momentum Check: Reject if price dumped >15% since LLM checked (unless we are dip buying)
+  const origPrice = Number(selectedRow.candidate.metrics?.priceUsd || 0);
+  const freshPrice = Number(freshSelectedRow.candidate.metrics?.priceUsd || 0);
+  const strat = (await import('../db/settings.js')).activeStrategy();
+  if (strat?.entry_mode !== 'wait_for_dip' && origPrice > 0 && freshPrice > 0 && freshPrice < origPrice * 0.85) {
+    console.log(`[orchestrator] Momentum killed: Price dumped from ${origPrice} to ${freshPrice}. Aborting.`);
+    return;
+  }
 
   if (mode === 'dry_run') {
     const positionId = await createDryRunPosition(freshSelectedRow.id, freshSelectedRow.candidate, decision, `llm_batch_${batchId}`);

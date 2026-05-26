@@ -28,7 +28,16 @@ export function allPositions(limit = 10) {
 
 export function createDryRunPosition(candidateId, candidate, decision, reason = 'llm_buy') {
   const strat = activeStrategy();
-  const sizeSol = strat.position_size_sol ?? numSetting('dry_run_buy_sol', 0.1);
+  let sizeSol = strat.position_size_sol ?? numSetting('dry_run_buy_sol', 0.1);
+  if (decision && typeof decision.confidence === 'number' && candidate.filters?.sources) {
+    const confidence = decision.confidence;
+    const sourceCount = candidate.filters.sources.length || 1;
+    if (confidence >= 0.90 && sourceCount >= 3) {
+      sizeSol = sizeSol * 2.0;
+    } else if (confidence < 0.75) {
+      sizeSol = sizeSol * 0.5;
+    }
+  }
   const entryPrice = Number(candidate.metrics.priceUsd || 0) || null;
   const entryMcap = Number(candidate.metrics.marketCapUsd || candidate.metrics.graduatedMarketCapUsd || 0) || null;
   const tp = Math.abs(Number(decision.suggested_tp_percent || strat.tp_percent || numSetting('default_tp_percent', 50)));
@@ -83,7 +92,16 @@ export function createDryRunPosition(candidateId, candidate, decision, reason = 
 
 export function createLivePosition(candidateId, candidate, decision, swap, reason = 'live_buy') {
   const strat = activeStrategy();
-  const sizeSol = strat.position_size_sol ?? numSetting('dry_run_buy_sol', 0.1);
+  let sizeSol = strat.position_size_sol ?? numSetting('dry_run_buy_sol', 0.1);
+  if (decision && typeof decision.confidence === 'number' && candidate.filters?.sources) {
+    const confidence = decision.confidence;
+    const sourceCount = candidate.filters.sources.length || 1;
+    if (confidence >= 0.90 && sourceCount >= 3) {
+      sizeSol = sizeSol * 2.0;
+    } else if (confidence < 0.75) {
+      sizeSol = sizeSol * 0.5;
+    }
+  }
   const entryPrice = Number(candidate.metrics.priceUsd || 0) || null;
   const entryMcap = Number(candidate.metrics.marketCapUsd || candidate.metrics.graduatedMarketCapUsd || 0) || null;
   const tp = Math.abs(Number(decision.suggested_tp_percent || strat.tp_percent || numSetting('default_tp_percent', 50)));

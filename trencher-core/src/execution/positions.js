@@ -127,7 +127,19 @@ export async function refreshPosition(position, { autoExit = true, jupiterPnl = 
   const slHit = pnlPercent <= Number(position.sl_percent);
   const trailingArmed = position.trailing_armed || (position.trailing_enabled && tpHit);
   const trailDrop = highWaterMcap > 0 ? (Number(mcap) / highWaterMcap - 1) * 100 : 0;
-  const trailingHit = trailingArmed && position.trailing_enabled && trailDrop <= -Math.abs(Number(position.trailing_percent));
+  
+  // Smart Trailing: Adjust trailing stop drop based on how high the profit reached
+  let dynamicTrailingPercent = Number(position.trailing_percent);
+  const highWaterPnlPercent = (highWaterMcap / Number(position.entry_mcap) - 1) * 100;
+  if (highWaterPnlPercent > 100) {
+    dynamicTrailingPercent = Math.max(dynamicTrailingPercent, 30); // Loosen to 30% if we are up > 2x to let it run
+  } else if (highWaterPnlPercent > 50 && highWaterPnlPercent <= 100) {
+    dynamicTrailingPercent = 20; // Standard 20% for good gains
+  } else if (highWaterPnlPercent > 20 && highWaterPnlPercent <= 50) {
+    dynamicTrailingPercent = 10; // Tighten to 10% for small gains to prevent total loss
+  }
+  
+  const trailingHit = trailingArmed && position.trailing_enabled && trailDrop <= -Math.abs(dynamicTrailingPercent);
   let exitReason = null;
   let closed = false;
 
@@ -159,6 +171,19 @@ export async function refreshPosition(position, { autoExit = true, jupiterPnl = 
       } catch (err) {
         console.log(`[position] ${position.id} partial sell failed: ${err.message}`);
       }
+    }
+  }
+
+  // Fast-Exit Anti Rug check
+  if (!exitReason) {
+    const ageMs = now() - position.opened_at_ms;
+    // If it dumps >= 15% within the first 60 seconds, or >= 20% in 120s, exit immediately
+    if (ageMs < 60000 && pnlPercent <= -15) {
+      exitReason = 'FAST_EXIT_RUG';
+      console.log(`[position] ${position.id} FAST EXIT TRIGGERED: -15% dump in <60s`);
+    } else if (ageMs < 120000 && pnlPercent <= -20) {
+      exitReason = 'FAST_EXIT_RUG';
+      console.log(`[position] ${position.id} FAST EXIT TRIGGERED: -20% dump in <120s`);
     }
   }
 

@@ -1,9 +1,19 @@
 import { db } from './connection.js';
 import { now, safeJson, json } from '../utils.js';
-import { numSetting } from './settings.js';
+import { activeStrategy, numSetting } from './settings.js';
 
 export function createTradeIntent(candidateId, candidate, decision, mode, status, side = 'buy') {
-  const sizeSol = numSetting('dry_run_buy_sol', 0.1);
+  const strat = activeStrategy();
+  let sizeSol = strat?.position_size_sol ?? numSetting('dry_run_buy_sol', 0.1);
+  if (decision && typeof decision.confidence === 'number' && candidate.filters?.sources) {
+    const confidence = decision.confidence;
+    const sourceCount = candidate.filters.sources.length || 1;
+    if (confidence >= 0.90 && sourceCount >= 3) {
+      sizeSol = sizeSol * 2.0;
+    } else if (confidence < 0.75) {
+      sizeSol = sizeSol * 0.5;
+    }
+  }
   const result = db.prepare(`
     INSERT INTO trade_intents (
       candidate_id, mint, mode, status, created_at_ms, updated_at_ms, side,
