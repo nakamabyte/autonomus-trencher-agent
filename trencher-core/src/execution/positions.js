@@ -12,6 +12,7 @@ import { updateCandidateSnapshot } from '../db/candidates.js';
 import { trending } from '../signals/trending.js';
 import { executeLiveSell } from './router.js';
 import { sendPositionExit } from '../telegram/send.js';
+import { setCooldown } from '../db/cooldown.js';
 
 export async function freshEntryMarket(mint, candidate) {
   const gmgn = await fetchGmgnTokenInfo(mint, false);
@@ -228,6 +229,7 @@ export async function refreshPosition(position, { autoExit = true, jupiterPnl = 
     `).run(position.id, position.mint, now(), price, mcap, position.size_sol, position.token_amount_est, exitReason, json({ pnlPercent, pnlSol }));
     closed = true;
   }
+  if (closed) setCooldown(position.mint, exitReason);
   return {
     ...position,
     status: closed ? 'closed' : position.status,

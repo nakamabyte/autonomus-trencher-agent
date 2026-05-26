@@ -191,6 +191,13 @@ export function initDb() {
       triggered_at_ms INTEGER,
       expires_at_ms INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS mint_cooldowns (
+      mint TEXT PRIMARY KEY,
+      closed_at_ms INTEGER NOT NULL,
+      exit_reason TEXT NOT NULL,
+      cooldown_until_ms INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_cooldowns_until ON mint_cooldowns(cooldown_until_ms);
     CREATE INDEX IF NOT EXISTS idx_alerts_status ON price_alerts(status, expires_at_ms);
     CREATE INDEX IF NOT EXISTS idx_candidates_mint ON candidates(mint);
     CREATE INDEX IF NOT EXISTS idx_positions_status ON dry_run_positions(status);
@@ -240,6 +247,7 @@ export function initDb() {
     trending_min_swaps: process.env.TRENDING_MIN_SWAPS || '0',
     trending_max_rug_ratio: process.env.TRENDING_MAX_RUG_RATIO || '0.3',
     trending_max_bundler_rate: process.env.TRENDING_MAX_BUNDLER_RATE || '0.5',
+    cooldown_rebuy_ms: process.env.COOLDOWN_REBUY_MS || String(60 * 60 * 1000),
   };
   const insert = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
   for (const [key, value] of Object.entries(defaults)) insert.run(key, value);

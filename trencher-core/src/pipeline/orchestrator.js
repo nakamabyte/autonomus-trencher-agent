@@ -16,6 +16,7 @@ import { setDegenHandler } from '../signals/trending.js';
 import { setCandidateHandler } from '../signals/feeClaim.js';
 import { short } from '../format.js';
 import { escapeHtml } from '../format.js';
+import { isMintOnCooldown } from '../db/cooldown.js';
 
 export const seenSignalCandidates = new Map();
 
@@ -28,6 +29,12 @@ export async function processCandidateFromSignals(signals) {
   if (!canOpenMorePositions()) {
     const max = numSetting('max_open_positions', 3);
     console.log(`[agent] max positions reached (${openPositionCount()}/${max}), skipping ${signals.mint.slice(0, 8)}...`);
+    return;
+  }
+
+  // Skip if mint is on cooldown (recently closed position)
+  if (isMintOnCooldown(signals.mint)) {
+    console.log(`[agent] cooldown active for ${signals.mint.slice(0, 8)}..., skipping rebuy`);
     return;
   }
 

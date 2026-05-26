@@ -36,6 +36,7 @@ import { consumeNumericFilterInput } from './input.js';
 import { runLearning, sendLessons } from '../learning/commands.js';
 import { fetchWalletPnl } from '../enrichment/wallets.js';
 import { sendCreditsInfo } from './credits.js';
+import { setCooldown, clearCooldown, activeCooldowns } from '../db/cooldown.js';
 
 export async function handleMessage(msg) {
   if (String(msg.chat.id) !== String(TELEGRAM_CHAT_ID)) {
@@ -135,6 +136,22 @@ export async function handleMessage(msg) {
   }
   if (text.startsWith('/history')) return sendHistory(chatId);
   if (text.startsWith('/credits')) return sendCreditsInfo(chatId);
+  if (text.startsWith('/cooldown_clear')) {
+    const mint = text.split(/\s+/)[1];
+    if (!mint) return bot.sendMessage(chatId, 'Usage: /cooldown_clear <mint address>');
+    clearCooldown(mint);
+    return bot.sendMessage(chatId, `✅ Cooldown dihapus untuk ${mint.slice(0, 8)}...\nMint ini bisa dibeli lagi.`);
+  }
+  if (text.startsWith('/cooldowns')) {
+    const list = activeCooldowns();
+    if (!list.length) return bot.sendMessage(chatId, '✅ Tidak ada cooldown aktif.\nSemua token bisa dibeli.');
+    const lines = list.map(c => {
+      const remaining = Math.max(0, c.cooldown_until_ms - now());
+      const mins = Math.ceil(remaining / 60000);
+      return `• <code>${c.mint.slice(0, 8)}...</code> — ${c.exit_reason} — ${mins}m tersisa`;
+    });
+    return bot.sendMessage(chatId, `⏳ <b>Cooldown Aktif (${list.length})</b>\n\n${lines.join('\n')}\n\nGunakan /cooldown_clear <mint> untuk menghapus.`, { parse_mode: 'HTML' });
+  }
   if (text.startsWith('/menu')) return sendMenu(chatId);
   if (text.startsWith('/positions')) return sendPositions(chatId);
   if (text.startsWith('/filters')) return bot.sendMessage(chatId, filtersText(), { parse_mode: 'HTML' });
@@ -242,6 +259,7 @@ export async function handleMessage(msg) {
       'default_sl_percent',
       'default_trailing_enabled',
       'default_trailing_percent',
+      'cooldown_rebuy_ms',
     ]);
     if (!valid.has(key) || value == null) {
       return bot.sendMessage(chatId, `Usage: /setfilter &lt;name&gt; &lt;value&gt;\n\n${filtersText()}`, { parse_mode: 'HTML' });
@@ -318,6 +336,7 @@ export async function closePosition(chatId, id, reason) {
     VALUES (?, ?, 'sell', ?, ?, ?, ?, ?, ?, ?)
   `).run(id, row.mint, now(), price, mcap, row.size_sol, row.token_amount_est, reason, json({ pnlPercent, pnlSol, sell }));
   const label = row.execution_mode === 'live' ? 'Closed live position' : 'Closed dry-run position';
+  setCooldown(row.mint, reason);
   await bot.sendMessage(chatId, `${label} #${id}: ${escapeHtml(reason)} ${fmtPct(pnlPercent)}`, { parse_mode: 'HTML' });
 }
 
