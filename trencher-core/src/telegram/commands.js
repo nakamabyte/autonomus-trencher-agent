@@ -6,6 +6,10 @@ import { db } from '../db/connection.js';
 import { numSetting, boolSetting, setSetting, activeStrategy, setActiveStrategy, strategyById, updateStrategyConfig } from '../db/settings.js';
 import { candidateById, latestCandidateByMint, updateCandidateStatus } from '../db/candidates.js';
 import { storeDecision, logDecisionEvent } from '../db/decisions.js';
+import fs from 'fs';
+import path from 'path';
+import { createWriteStream } from 'fs';
+import archiver from 'archiver';
 import {
   menuKeyboard,
   filtersText,
@@ -83,8 +87,49 @@ export async function handleMessage(msg) {
   }
   if (text.startsWith('/exportdb')) {
     const { DB_PATH } = await import('../config.js');
-    await bot.sendMessage(chatId, '⏳ Menyiapkan file database...');
-    return bot.sendDocument(chatId, DB_PATH, { caption: '📦 trencher-agent.sqlite\\nBuka menggunakan aplikasi DB Browser for SQLite atau DBeaver.' }).catch(err => bot.sendMessage(chatId, `❌ Gagal mengirim: ${err.message}`));
+    const statusMsg = await bot.sendMessage(chatId, '⏳ Menyiapkan export database...');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const tmpSqlite = path.resolve(`./export-tmp-${timestamp}.sqlite`);
+    const tmpZip = path.resolve(`./export-tmp-${timestamp}.zip`);
+    try {
+      // Checkpoint WAL then VACUUM into a clean copy
+      db.pragma('wal_checkpoint(TRUNCATE)');
+      db.prepare(`VACUUM INTO ?`).run(tmpSqlite);
+
+      // Compress to zip
+      await new Promise((resolve, reject) => {
+        const output = createWriteStream(tmpZip);
+        const archive = archiver('zip', { zlib: { level: 9 } });
+        output.on('close', resolve);
+        archive.on('error', reject);
+        archive.pipe(output);
+        archive.file(tmpSqlite, { name: 'trencher-agent.sqlite' });
+        archive.finalize();
+      });
+
+      const zipStat = fs.statSync(tmpZip);
+      const sizeMB = (zipStat.size / 1024 / 1024).toFixed(2);
+
+      await bot.editMessageText(`⏳ Mengirim file (${sizeMB} MB)...`, {
+        chat_id: chatId, message_id: statusMsg.message_id,
+      });
+
+      await bot.sendDocument(chatId, tmpZip, {
+        caption: `📦 trencher-agent.sqlite — ${timestamp}\nUkuran: ${sizeMB} MB\nBuka menggunakan DB Browser for SQLite atau DBeaver.`,
+      });
+
+      await bot.editMessageText(`✅ Database berhasil dikirim (${sizeMB} MB).`, {
+        chat_id: chatId, message_id: statusMsg.message_id,
+      });
+    } catch (err) {
+      await bot.editMessageText(`❌ Gagal export database: ${err.message}`, {
+        chat_id: chatId, message_id: statusMsg.message_id,
+      }).catch(() => {});
+    } finally {
+      fs.unlink(tmpSqlite, () => {});
+      fs.unlink(tmpZip, () => {});
+    }
+    return;
   }
   if (text.startsWith('/history')) return sendHistory(chatId);
   if (text.startsWith('/credits')) return sendCreditsInfo(chatId);
