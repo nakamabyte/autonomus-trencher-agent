@@ -4,7 +4,7 @@ import { openPositionCount, tradingMode, allPositions } from '../db/positions.js
 import { savedWallets } from '../enrichment/wallets.js';
 import { gmgnStatusText } from '../enrichment/gmgn.js';
 import { formatPosition } from './format.js';
-import { ENABLE_LLM, LLM_API_KEY } from '../config.js';
+import { ENABLE_LLM, LLM_API_KEY, LLM_T1_API_KEY } from '../config.js';
 
 export function menuKeyboard() {
   return {
@@ -122,7 +122,7 @@ export function agentText() {
     `Strategy: <b>${escapeHtml(strat.name)}</b>`,
     `Agent: <b>${boolSetting('agent_enabled', true) ? 'on' : 'off'}</b>`,
     `Mode: <b>${escapeHtml(tradingMode())}</b>`,
-    `LLM: <b>${strat.use_llm && ENABLE_LLM && LLM_API_KEY ? 'configured' : 'disabled'}</b>`,
+    `LLM: <b>${strat.use_llm && ENABLE_LLM && (LLM_API_KEY || LLM_T1_API_KEY) ? 'configured' : 'disabled'}</b>`,
     `Confidence: ${fmtPct(strat.llm_min_confidence || numSetting('llm_min_confidence', 75))}`,
     `Open positions: ${openPositionCount()}/${strat.max_open_positions || 'unlimited'}`,
     `Batch candidates: ${numSetting('llm_candidate_pick_count', 10)}`,
