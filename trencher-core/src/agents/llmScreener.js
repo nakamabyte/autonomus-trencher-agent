@@ -107,13 +107,12 @@ If ct_narrative contains a post or mention from any of these accounts, apply KOL
 - @DegenCapitalLLC (DegenCapitalLLC — 1000x hunter, 22K reach)
 - @Ga__ke         (gake — 183K followers, NOT Financial Advice disclaimer, gmgn.ai affiliate)
 
-KOL BOOST RULES:
-1. ONE trusted KOL mentions the CA: add +0.15 to tier1_confidence as base. Flag: "KOL signal: @handle"
-2. TWO OR MORE trusted KOLs mention same CA: add +0.25. Flag: "MULTI-KOL: @handle1 @handle2". Treat as near-mandatory BUY unless hard veto.
-3. @Ga__ke posts the CA: add +0.20 alone (highest reach, narrow execution window).
-4. @yujincrab posts CA alongside on-chain signal: add +0.18 (dev/UI community overlap).
-5. KOL boost caps final confidence at 0.97.
-6. KOL boost NEVER overrides hard veto: bundler_rate > 0.15 or rug_ratio > 0.08 = SKIP regardless.
+KOL NEGATIVE FILTER RULES:
+KOL signals are ONLY used as a negative filter or strict risk-awareness layer. A trusted KOL mention DOES NOT boost confidence. It only means you must apply stricter filters because of potential dump risk (exit liquidity).
+1. DO NOT boost confidence for any KOL mention.
+2. If ANY KOL (trusted or otherwise) mentions the CA, you MUST scrutinize on-chain metrics (bundler_rate, rug_ratio) more harshly.
+3. If the narrative is highly promotional ("buy my bags", "1000x guaranteed") from a KOL, treat it as a hard veto (SKIP).
+4. Never skip simply because there are NO trusted KOL signals. Organic momentum without KOLs is often safer.
 
 INPUT FORMAT:
 JSON array with tier1 data appended:
@@ -153,7 +152,7 @@ SKIP:
 EVALUATION FRAMEWORK:
 
 CT NARRATIVE QUALITY — scan ct_narrative for:
-POSITIVE: organic buy calls, contract analysis posts, dev community discussion, trusted KOL mentions
+POSITIVE: organic buy calls, contract analysis posts, dev community discussion (Organic momentum preferred over KOLs)
 NEGATIVE: paid shill language, pump group calls, buy my bags, guaranteed returns, coordinated spam
 
 ON-CHAIN VALIDATION:
@@ -173,9 +172,8 @@ HARD VETO CONDITIONS (always SKIP regardless of KOL):
 - ct_narrative: "buy my bags", "1000x guaranteed", pump group calls, paid promotion
 
 BATCH BEHAVIOR:
-- If KOL-boosted candidate exists, it takes priority over non-KOL at equal base score
 - Select only ONE winner per batch
-- Always name KOL handle in reasoning if boost was applied
+- Do not prioritize candidates just because they have a KOL mention; evaluate strictly on on-chain data and organic narrative
 - confidence range: 0.0 to 0.97
 - If input empty or malformed: return SKIP`;
 
