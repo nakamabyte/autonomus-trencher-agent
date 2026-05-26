@@ -9,7 +9,9 @@ import { storeDecision, logDecisionEvent } from '../db/decisions.js';
 import fs from 'fs';
 import path from 'path';
 import { createWriteStream } from 'fs';
-import archiver from 'archiver';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const archiver = require('archiver');
 import {
   menuKeyboard,
   filtersText,
