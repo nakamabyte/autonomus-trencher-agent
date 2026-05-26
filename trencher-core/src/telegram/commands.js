@@ -11,7 +11,7 @@ import path from 'path';
 import { createWriteStream } from 'fs';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const archiver = require('archiver');
+const { Archiver } = require('archiver');
 import {
   menuKeyboard,
   filtersText,
@@ -101,7 +101,7 @@ export async function handleMessage(msg) {
       // Compress to zip
       await new Promise((resolve, reject) => {
         const output = createWriteStream(tmpZip);
-        const archive = archiver('zip', { zlib: { level: 9 } });
+        const archive = new Archiver('zip', { zlib: { level: 9 } });
         output.on('close', resolve);
         archive.on('error', reject);
         archive.pipe(output);
