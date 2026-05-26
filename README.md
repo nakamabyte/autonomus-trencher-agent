@@ -1,5 +1,3 @@
----
-
 > **Trencher Agent** is built on top of [Charon](https://github.com/yunus-0x/charon) by [@yunus-0x](https://github.com/yunus-0x).
 > It extends Charon with a 3-tier multi-LLM cascade screener, trusted KOL signal detection, and a full Next.js web dashboard.
 > See [ATTRIBUTION.md](./ATTRIBUTION.md) for full details.
