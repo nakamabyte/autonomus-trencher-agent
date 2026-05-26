@@ -69,8 +69,17 @@ export async function handleMessage(msg) {
 <b>Information & History:</b>
 /candidate &lt;mint&gt; - Tampilkan info spesifik koin
 /history - Lihat 10 riwayat transaksi terakhir
+/pnl - Ringkasan profit & loss
 /credits - Cek status kuota & saldo API (Claude, Grok, DeepSeek)
-/exportdb - Download file database lengkap`;
+/exportdb - Download file database lengkap
+
+<b>Cooldown Anti-Rebuy:</b>
+/cooldowns - Lihat daftar token yang sedang cooldown
+/cooldown_clear &lt;mint&gt; - Hapus cooldown token tertentu
+
+<b>Learning:</b>
+/learn &lt;window&gt; - Analisis trade & buat pelajaran (misal: /learn 12h)
+/lessons - Lihat pelajaran aktif`;
     return bot.sendMessage(chatId, helpText, { parse_mode: 'HTML' });
   }
   if (text.startsWith('/balance')) {
