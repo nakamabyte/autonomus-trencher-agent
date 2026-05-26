@@ -47,6 +47,8 @@ export function filtersText() {
     `Trending interval: ${escapeHtml(setting('trending_interval', '5m'))} · Limit: ${numSetting('trending_limit', 100)}`,
     `Min trend volume: ${fmtUsd(strat.trending_min_volume_usd)} · Min swaps: ${strat.trending_min_swaps}`,
     `Max trend rug: ${fmtPct(strat.trending_max_rug_ratio * 100)} · Max bundler: ${fmtPct(strat.trending_max_bundler_rate * 100)}`,
+    '',
+    `Cooldown anti-rebuy: ${Math.round(numSetting('cooldown_rebuy_ms', 3600000) / 60000)}m`,
   ].filter(Boolean).join('\n');
 }
 
