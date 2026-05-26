@@ -103,6 +103,7 @@ export async function handleMessage(msg) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const tmpSqlite = path.resolve(`./export-tmp-${timestamp}.sqlite`);
     const tmpZip = path.resolve(`./export-tmp-${timestamp}.zip`);
+    let sizeMB = '0.00';
     try {
       // Checkpoint WAL then VACUUM into a clean copy
       db.pragma('wal_checkpoint(TRUNCATE)');
@@ -120,7 +121,7 @@ export async function handleMessage(msg) {
       });
 
       const zipStat = fs.statSync(tmpZip);
-      const sizeMB = (zipStat.size / 1024 / 1024).toFixed(2);
+      sizeMB = (zipStat.size / 1024 / 1024).toFixed(2);
 
       await bot.editMessageText(`⏳ Mengirim file (${sizeMB} MB)...`, {
         chat_id: chatId, message_id: statusMsg.message_id,
@@ -134,9 +135,27 @@ export async function handleMessage(msg) {
         chat_id: chatId, message_id: statusMsg.message_id,
       });
     } catch (err) {
-      await bot.editMessageText(`❌ Gagal export database: ${err.message}`, {
-        chat_id: chatId, message_id: statusMsg.message_id,
-      }).catch(() => {});
+      if (err.message.includes('413') || err.message.includes('Too Large')) {
+        await bot.editMessageText(`⏳ File terlalu besar untuk Telegram (${sizeMB} MB). Mengupload ke server eksternal (transfer.sh)...`, {
+          chat_id: chatId, message_id: statusMsg.message_id,
+        }).catch(() => {});
+        const util = require('util');
+        const execAsync = util.promisify(require('child_process').exec);
+        try {
+          const { stdout } = await execAsync(`curl -sT ${tmpZip} https://transfer.sh/trencher-db-${timestamp}.zip`);
+          if (stdout && stdout.startsWith('http')) {
+            await bot.sendMessage(chatId, `📦 <b>trencher-agent.sqlite</b> — ${timestamp}\nUkuran: ${sizeMB} MB\n\n⬇️ <b>Download Link (berlaku 14 hari):</b>\n${stdout.trim()}\n\n<i>Note: Ekstrak zip lalu buka file .sqlite menggunakan DB Browser for SQLite atau DBeaver.</i>`, { parse_mode: 'HTML' }).catch(() => {});
+          } else {
+            await bot.sendMessage(chatId, `❌ Gagal upload file besar ke server eksternal. Server response: ${stdout}`).catch(() => {});
+          }
+        } catch (execErr) {
+          await bot.sendMessage(chatId, `❌ Gagal upload file besar ke server eksternal. Error: ${execErr.message}`).catch(() => {});
+        }
+      } else {
+        await bot.editMessageText(`❌ Gagal export database: ${err.message}`, {
+          chat_id: chatId, message_id: statusMsg.message_id,
+        }).catch(() => {});
+      }
     } finally {
       fs.unlink(tmpSqlite, () => {});
       fs.unlink(tmpZip, () => {});
