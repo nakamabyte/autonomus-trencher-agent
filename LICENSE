@@ -3,6 +3,7 @@ MIT License
 Copyright (c) 2026 VLTCAP
 
 Trencher Agent contains original code licensed under the MIT License, and derivative works of the Charon project (https://github.com/yunus-0x/charon).
+Notice: Several files derived from the upstream Charon repository are currently unlicensed.
 See ATTRIBUTION.md for details regarding upstream code components.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
