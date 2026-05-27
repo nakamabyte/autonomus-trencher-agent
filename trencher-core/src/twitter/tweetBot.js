@@ -46,7 +46,7 @@ export async function tweetOpenPosition(position, decision = {}) {
       : null
 
     const lines = [
-      `⚡ POSITION OPENED #${position.id || Math.floor(Date.now() / 1000)}`,
+      `⚡ POSITION OPENED #${position.id || Date.now().toString().slice(-6)}`,
       ``,
       `$${position.symbol}`,
       `Token: ${position.mint}`,
@@ -89,7 +89,7 @@ export async function tweetClosePosition(position) {
     const exitLabel = exitLabels[position.exit_reason] || position.exit_reason
 
     const lines = [
-      `${emoji} POSITION CLOSED #${position.id || Math.floor(Date.now() / 1000)}`,
+      `${emoji} POSITION CLOSED #${position.id || Date.now().toString().slice(-6)}`,
       ``,
       `$${position.symbol}`,
       `Token: ${position.mint}`,
