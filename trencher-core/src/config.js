@@ -74,10 +74,6 @@ export const LLM_T2_API_KEY = process.env.LLM_T2_API_KEY || process.env.GROK_API
 export const LLM_T2_MODEL = process.env.LLM_T2_MODEL || 'grok-4.3';
 export const LLM_T2_CONFIDENCE_BUY = Number(process.env.LLM_T2_CONFIDENCE_BUY || 0.65);
 
-export const LLM_T3_BASE_URL = process.env.LLM_T3_BASE_URL || 'https://api.anthropic.com/v1';
-export const LLM_T3_API_KEY = process.env.LLM_T3_API_KEY || process.env.LLM_API_KEY || '';
-export const LLM_T3_MODEL = process.env.LLM_T3_MODEL || 'claude-3-5-sonnet-20240620';
-
 export const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
 export const GROK_API_KEY = process.env.GROK_API_KEY || '';
 
