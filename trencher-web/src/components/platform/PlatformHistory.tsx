@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { PlatformMetrics } from '@/types';
 
@@ -34,22 +34,80 @@ const EXIT_LABELS: Record<string, string> = {
   MANUAL: 'Manual',
 };
 
+// Taglines based on exit reason and PnL
+function tagline(isWin: boolean, exitReason: string | null): string {
+  if (isWin) {
+    if (exitReason === 'TRAILING_TP') return 'Perfect timing! 🎯';
+    if (exitReason === 'TP') return 'Target hit! ✅';
+    return 'Sniped it! 🔥';
+  }
+  if (exitReason === 'SL') return 'Cut the loss. 🛡️';
+  return 'Next one. 🔄';
+}
+
 function PnlModal({ pos, onClose }: { pos: ClosedPos; onClose: () => void }) {
   const isWin = pos.pnl_percent >= 0;
   const sign = isWin ? '+' : '';
-  const accentColor = isWin ? '#4ADE80' : '#F87171';
+  const accentColor = isWin ? '#00E87A' : '#FF4D4D';
   const exitLabel = pos.exit_reason ? (EXIT_LABELS[pos.exit_reason] || pos.exit_reason) : '—';
-  const holdStr = pos.closed_at_ms && pos.opened_at_ms ? holdTime(pos.opened_at_ms, pos.closed_at_ms) : '—';
+  const holdStr = pos.closed_at_ms && pos.opened_at_ms
+    ? holdTime(pos.opened_at_ms, pos.closed_at_ms) : '—';
+  const tLine = tagline(isWin, pos.exit_reason);
 
-  const rows: [string, React.ReactNode][] = [
-    ['PNL', <span key="pnl" style={{ color: accentColor, fontWeight: 700 }}>{sign}{pos.pnl_percent.toFixed(2)}%</span>],
-    ['Invested', <span key="inv" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ color: '#9945FF', fontSize: '10px' }}>◎</span>{pos.size_sol.toFixed(3)}</span>],
-    ['Position', <span key="pos" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ color: '#9945FF', fontSize: '10px' }}>◎</span>{(pos.size_sol + pos.pnl_sol).toFixed(3)}</span>],
-    ['Strategy', <span key="strat" style={{ textTransform: 'uppercase', fontFamily: 'var(--fm)', fontSize: '11px' }}>{pos.strategy || '—'}</span>],
-    ['Entry MCap', <span key="mcap">{formatMcap(pos.entry_mcap)}</span>],
-    ['Hold Time', <span key="hold">{holdStr}</span>],
-    ['Exit', <span key="exit">{exitLabel}</span>],
-  ];
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [sharing, setSharing] = useState(false);
+
+  const handleDownload = useCallback(async () => {
+    if (!cardRef.current || sharing) return;
+    setSharing(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(cardRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: null,
+        logging: false,
+      });
+      const link = document.createElement('a');
+      link.download = `trencher-${pos.symbol}-${sign}${pos.pnl_percent.toFixed(1)}pct.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (e) {
+      console.error('Screenshot failed', e);
+    }
+    setSharing(false);
+  }, [pos, sign, sharing]);
+
+  const handleShare = useCallback(async () => {
+    if (!cardRef.current || sharing) return;
+    setSharing(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(cardRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: null,
+        logging: false,
+      });
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], `trencher-pnl-${pos.symbol}.png`, { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: `$${pos.symbol} ${sign}${pos.pnl_percent.toFixed(2)}% | Trencher Agent` });
+        } else {
+          // Fallback: just download
+          const link = document.createElement('a');
+          link.download = file.name;
+          link.href = URL.createObjectURL(blob);
+          link.click();
+        }
+        setSharing(false);
+      }, 'image/png');
+    } catch (e) {
+      console.error('Share failed', e);
+      setSharing(false);
+    }
+  }, [pos, sign, sharing]);
 
   const content = (
     <div
@@ -57,81 +115,185 @@ function PnlModal({ pos, onClose }: { pos: ClosedPos; onClose: () => void }) {
       style={{
         position: 'fixed', inset: 0, zIndex: 9999,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)',
+        background: 'rgba(0,0,0,0.80)', backdropFilter: 'blur(8px)',
       }}
     >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          position: 'relative', width: '340px', borderRadius: '12px', overflow: 'hidden',
-          background: '#0c0c0c', border: `1px solid ${accentColor}33`,
-          boxShadow: `0 0 60px ${accentColor}22, 0 20px 60px rgba(0,0,0,0.8)`,
-          fontFamily: 'var(--ff)',
-        }}
-      >
-        {/* Background logo */}
-        <div style={{
-          position: 'absolute', inset: 0, zIndex: 0,
-          backgroundImage: 'url(/logo.png)',
-          backgroundSize: 'cover', backgroundPosition: 'center top',
-          opacity: 0.15,
-        }} />
-        <div style={{
-          position: 'absolute', inset: 0, zIndex: 1,
-          background: isWin
-            ? 'linear-gradient(135deg, rgba(74,222,128,0.06) 0%, transparent 60%)'
-            : 'linear-gradient(135deg, rgba(248,113,113,0.06) 0%, transparent 60%)',
-        }} />
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}
+        onClick={e => e.stopPropagation()}>
 
-        <div style={{ position: 'relative', zIndex: 2, padding: '24px' }}>
-          {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-            <div>
-              <div style={{ fontSize: '10px', letterSpacing: '0.12em', opacity: 0.35, fontFamily: 'var(--fm)', marginBottom: '4px', textTransform: 'uppercase' }}>
-                Autonomous Trencher Agent
+        {/* ─── CARD (the shareable image) ─── */}
+        <div
+          ref={cardRef}
+          style={{
+            /* Portrait card — 400×520 like Axiom */
+            width: '400px',
+            height: '520px',
+            position: 'relative',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            fontFamily: "'Barlow Condensed', sans-serif",
+            userSelect: 'none',
+          }}
+        >
+          {/* Background: full-bleed logo image */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            backgroundImage: 'url(/logo.png)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center 10%',
+          }} />
+
+          {/* Dark overlay gradient */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(160deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.82) 55%, rgba(0,0,0,0.95) 100%)',
+          }} />
+
+          {/* Accent glow in corner */}
+          <div style={{
+            position: 'absolute', top: '-80px', right: '-80px',
+            width: '280px', height: '280px', borderRadius: '50%',
+            background: `${accentColor}18`,
+            filter: 'blur(40px)',
+          }} />
+
+          {/* ── CONTENT ── */}
+          <div style={{
+            position: 'relative', zIndex: 2,
+            height: '100%', display: 'flex', flexDirection: 'column',
+            padding: '22px 24px',
+          }}>
+
+            {/* Row 1: Logo mark + Brand name */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              {/* Logo icon */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <img src="/logo.png" alt="logo"
+                  style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: `1.5px solid ${accentColor}66` }}
+                />
               </div>
-              <div style={{ fontSize: '22px', fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }}>
-                {pos.symbol}
+              {/* Brand */}
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: '18px', fontWeight: 800, color: '#fff', letterSpacing: '-0.01em' }}>
+                  TRENCHER
+                </span>
+                <span style={{ fontSize: '14px', fontWeight: 400, color: 'rgba(255,255,255,0.55)', marginLeft: '3px' }}>
+                  Agent
+                </span>
               </div>
             </div>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: '18px', cursor: 'pointer', lineHeight: 1, padding: 0 }}>✕</button>
-          </div>
 
-          {/* Big PnL badge */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '6px', marginBottom: '20px', background: accentColor }}>
-            <span style={{ fontSize: '11px', opacity: 0.7, color: '#000' }}>◎</span>
-            <span style={{ fontSize: '26px', fontWeight: 800, color: '#000', letterSpacing: '-0.03em' }}>
-              {sign}{pos.pnl_sol.toFixed(3)}
-            </span>
-          </div>
+            {/* Row 2: Token symbol */}
+            <div style={{ fontSize: '36px', fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1, marginBottom: '14px' }}>
+              {pos.symbol}
+            </div>
 
-          {/* Stats rows */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
-            {rows.map(([label, val], i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
-                <span style={{ fontSize: '13px', opacity: 0.45 }}>{label as string}</span>
-                <span style={{ fontSize: '13px', color: '#fff' }}>{val}</span>
-              </div>
-            ))}
-          </div>
+            {/* Row 3: Big PnL SOL badge */}
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: '10px',
+              background: accentColor,
+              borderRadius: '8px',
+              padding: '10px 18px',
+              marginBottom: '24px',
+              width: 'fit-content',
+            }}>
+              <svg width="18" height="14" viewBox="0 0 18 14" fill="none">
+                <circle cx="3" cy="7" r="3" fill="#000" opacity="0.6"/>
+                <circle cx="9" cy="7" r="3" fill="#000" opacity="0.6"/>
+                <circle cx="15" cy="7" r="3" fill="#000" opacity="0.6"/>
+              </svg>
+              <span style={{ fontSize: '34px', fontWeight: 900, color: '#000', letterSpacing: '-0.04em', lineHeight: 1 }}>
+                {sign}{pos.pnl_sol.toFixed(3)}
+              </span>
+            </div>
 
-          {/* Tagline */}
-          <div style={{ marginBottom: '16px' }}>
-            <span style={{ fontSize: '18px', fontWeight: 800, color: '#fff' }}>
-              {isWin ? 'Sniped it! 🎯' : 'Next one. 🔄'}
-            </span>
-          </div>
+            {/* Row 4: Stats table */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+              {([
+                ['PNL', `${sign}${pos.pnl_percent.toFixed(2)}%`, accentColor],
+                ['Invested', `${pos.size_sol.toFixed(3)} SOL`, '#9945FF'],
+                ['Position', `${(pos.size_sol + pos.pnl_sol).toFixed(3)} SOL`, '#9945FF'],
+                ['Strategy', (pos.strategy || 'SNIPER').toUpperCase(), 'rgba(255,255,255,0.5)'],
+                ['Entry MCap', formatMcap(pos.entry_mcap), 'rgba(255,255,255,0.5)'],
+                ['Hold', holdStr, 'rgba(255,255,255,0.5)'],
+                ['Exit', exitLabel, 'rgba(255,255,255,0.5)'],
+              ] as [string, string, string][]).map(([label, val, color]) => (
+                <div key={label} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+                }}>
+                  <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.45)', fontWeight: 400 }}>{label}</span>
+                  <span style={{ fontSize: '15px', color, fontWeight: 700, letterSpacing: label === 'Strategy' ? '0.06em' : undefined }}>
+                    {label === 'Invested' || label === 'Position'
+                      ? <><span style={{ color: '#9945FF', fontSize: '12px', marginRight: '3px' }}>◎</span>{val.replace(' SOL','')}</>
+                      : val}
+                  </span>
+                </div>
+              ))}
+            </div>
 
-          {/* Footer */}
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-            <span style={{ fontSize: '11px', opacity: 0.35, color: '#fff' }}>🌐 trencher-agent.vercel.app</span>
-            {pos.exit_signature && (
-              <a href={`https://solscan.io/tx/${pos.exit_signature}`} target="_blank" rel="noreferrer"
-                style={{ fontSize: '11px', color: 'var(--c-accent)', textDecoration: 'none' }}>
-                🔗 Proof
-              </a>
-            )}
+            {/* Row 5: Tagline */}
+            <div style={{ marginTop: '20px', marginBottom: '12px' }}>
+              <span style={{ fontSize: '26px', fontWeight: 900, color: '#fff', letterSpacing: '-0.02em' }}>
+                {tLine}
+              </span>
+            </div>
+
+            {/* Row 6: Footer */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)' }}>
+                🌐 trencher-agent.vercel.app
+              </span>
+              {pos.exit_signature && (
+                <span style={{ fontSize: '12px', color: accentColor, opacity: 0.8 }}>
+                  🔗 {pos.exit_signature.slice(0, 6)}...
+                </span>
+              )}
+            </div>
           </div>
+        </div>
+
+        {/* ─── ACTION BUTTONS (outside card, not included in screenshot) ─── */}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={handleDownload}
+            disabled={sharing}
+            style={{
+              padding: '10px 22px', borderRadius: '8px', border: 'none',
+              background: accentColor, color: '#000',
+              fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+              fontFamily: "'Barlow Condensed', sans-serif",
+              letterSpacing: '0.06em', textTransform: 'uppercase',
+              opacity: sharing ? 0.6 : 1,
+              transition: 'opacity 0.2s',
+            }}
+          >
+            {sharing ? 'Processing...' : '⬇ Download PNG'}
+          </button>
+          <button
+            onClick={handleShare}
+            disabled={sharing}
+            style={{
+              padding: '10px 22px', borderRadius: '8px',
+              border: `1px solid ${accentColor}55`, background: 'transparent',
+              color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+              fontFamily: "'Barlow Condensed', sans-serif",
+              letterSpacing: '0.06em', textTransform: 'uppercase',
+              opacity: sharing ? 0.6 : 1,
+              transition: 'opacity 0.2s',
+            }}
+          >
+            {sharing ? '...' : '↗ Share'}
+          </button>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '10px 16px', borderRadius: '8px',
+              border: '1px solid rgba(255,255,255,0.12)', background: 'transparent',
+              color: 'rgba(255,255,255,0.45)', fontSize: '13px', cursor: 'pointer',
+            }}
+          >
+            ✕
+          </button>
         </div>
       </div>
     </div>
@@ -177,7 +339,7 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
                   className="pv-ai"
                   onClick={() => setSelectedPos(pos)}
                   style={{ cursor: 'pointer' }}
-                  title="Click to view PnL detail"
+                  title="Click to view & share PnL card"
                 >
                   <div className="pv-adot" style={{ background: colorClass }}></div>
                   <div className="pv-ainfo">
