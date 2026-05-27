@@ -64,7 +64,7 @@ export async function tweetOpenPosition(position, decision = {}) {
     await getClient().v2.tweet(lines)
     console.log(`[TWITTER] Tweeted open position: ${position.symbol}`)
   } catch (err) {
-    console.error(`[TWITTER] Failed to tweet open position:`, err.message)
+    console.error(`[TWITTER] Failed to tweet open position:`, err.data || err.message)
   }
 }
 
@@ -105,7 +105,7 @@ export async function tweetClosePosition(position) {
     await getClient().v2.tweet(lines)
     console.log(`[TWITTER] Tweeted close position: ${position.symbol} ${pnlSign}${position.pnl_percent.toFixed(2)}%`)
   } catch (err) {
-    console.error(`[TWITTER] Failed to tweet close position:`, err.message)
+    console.error(`[TWITTER] Failed to tweet close position:`, err.data || err.message)
   }
 }
 
@@ -122,7 +122,7 @@ export async function tweetDailySummary(stats) {
       : '0'
 
     const lines = [
-      `📊 DAILY SUMMARY`,
+      `📊 DAILY SUMMARY #${Date.now().toString().slice(-6)}`,
       ``,
       `${emoji} PnL: ${pnlSign}${parseFloat(stats.total_pnl_sol).toFixed(4)} SOL`,
       `Win Rate: ${winRate}% (${stats.wins}W/${stats.losses}L)`,
@@ -136,7 +136,7 @@ export async function tweetDailySummary(stats) {
     await getClient().v2.tweet(lines)
     console.log(`[TWITTER] Tweeted daily summary`)
   } catch (err) {
-    console.error(`[TWITTER] Failed to tweet daily summary:`, err.message)
+    console.error(`[TWITTER] Failed to tweet daily summary:`, err.data || err.message)
   }
 }
 
