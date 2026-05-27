@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   description:
     'A 19-agent AI orchestrator that monitors Pump.fun token flow, enriches with on-chain data, screens via LLM, and executes via Jupiter Ultra. Telegram-controlled, crash-resilient, fully autonomous.',
   keywords: ['Solana', 'Pump.fun', 'trading bot', 'AI agent', 'LLM', 'Jupiter', 'trenching'],
+  icons: {
+    icon: '/logo.jpg',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
