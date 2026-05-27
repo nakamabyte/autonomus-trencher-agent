@@ -37,12 +37,12 @@ const EXIT_LABELS: Record<string, string> = {
 // Taglines based on exit reason and PnL
 function tagline(isWin: boolean, exitReason: string | null): string {
   if (isWin) {
-    if (exitReason === 'TRAILING_TP') return 'Perfect timing! 🎯';
-    if (exitReason === 'TP') return 'Target hit! ✅';
-    return 'Sniped it! 🔥';
+    if (exitReason === 'TRAILING_TP') return 'Perfect timing!';
+    if (exitReason === 'TP') return 'Target hit!';
+    return 'Sniped it!';
   }
-  if (exitReason === 'SL') return 'Cut the loss. 🛡️';
-  return 'Next one. 🔄';
+  if (exitReason === 'SL') return 'Cut the loss.';
+  return 'Next one.';
 }
 
 function PnlModal({ pos, onClose }: { pos: ClosedPos; onClose: () => void }) {
@@ -241,11 +241,11 @@ function PnlModal({ pos, onClose }: { pos: ClosedPos; onClose: () => void }) {
             {/* Row 6: Footer */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)' }}>
-                🌐 trencher-agent.vercel.app
+                trencher-agent.vercel.app
               </span>
               {pos.exit_signature && (
                 <span style={{ fontSize: '12px', color: accentColor, opacity: 0.8 }}>
-                  🔗 {pos.exit_signature.slice(0, 6)}...
+                  {pos.exit_signature.slice(0, 10)}...
                 </span>
               )}
             </div>
@@ -267,7 +267,7 @@ function PnlModal({ pos, onClose }: { pos: ClosedPos; onClose: () => void }) {
               transition: 'opacity 0.2s',
             }}
           >
-            {sharing ? 'Processing...' : '⬇ Download PNG'}
+            {sharing ? 'Processing...' : 'Download PNG'}
           </button>
           <button
             onClick={handleShare}
@@ -282,7 +282,7 @@ function PnlModal({ pos, onClose }: { pos: ClosedPos; onClose: () => void }) {
               transition: 'opacity 0.2s',
             }}
           >
-            {sharing ? '...' : '↗ Share'}
+            {sharing ? '...' : 'Share'}
           </button>
           <button
             onClick={onClose}
