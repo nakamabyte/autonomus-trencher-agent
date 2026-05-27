@@ -69,6 +69,11 @@ export interface PlatformMetrics {
     pnl_sol: number;
     mode: string;
     opened_at_ms: number;
+    closed_at_ms: number;
+    size_sol: number;
+    exit_reason: string | null;
+    entry_mcap: number | null;
+    strategy: string | null;
     entry_signature?: string | null;
     exit_signature?: string | null;
   }[];

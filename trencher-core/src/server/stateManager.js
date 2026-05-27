@@ -46,7 +46,7 @@ setInterval(async () => {
     const pnlQuery = db.prepare("SELECT SUM(pnl_sol) as total FROM dry_run_positions WHERE pnl_sol IS NOT NULL").get();
     const candsQuery = db.prepare("SELECT COUNT(*) as count FROM candidates").get();
     const activePositions = db.prepare("SELECT id, mint, symbol, pnl_percent, pnl_sol, execution_mode, opened_at_ms, entry_signature FROM dry_run_positions WHERE status = 'open' ORDER BY id DESC").all();
-    const closedPositions = db.prepare("SELECT id, mint, symbol, pnl_percent, pnl_sol, execution_mode, opened_at_ms, entry_signature, exit_signature FROM dry_run_positions WHERE status = 'closed' ORDER BY closed_at_ms DESC LIMIT 50").all();
+    const closedPositions = db.prepare("SELECT id, mint, symbol, pnl_percent, pnl_sol, execution_mode, opened_at_ms, closed_at_ms, entry_signature, exit_signature, size_sol, exit_reason, entry_mcap, strategy FROM dry_run_positions WHERE status = 'closed' ORDER BY closed_at_ms DESC LIMIT 50").all();
     
     const { activeStrategy, setting } = await import('../db/settings.js');
     const strat = activeStrategy();
@@ -75,8 +75,13 @@ setInterval(async () => {
         pnl_sol: p.pnl_sol || 0,
         mode: p.execution_mode,
         opened_at_ms: p.opened_at_ms || 0,
+        closed_at_ms: p.closed_at_ms || 0,
         entry_signature: p.entry_signature || null,
-        exit_signature: p.exit_signature || null
+        exit_signature: p.exit_signature || null,
+        size_sol: p.size_sol || 0,
+        exit_reason: p.exit_reason || null,
+        entry_mcap: p.entry_mcap || null,
+        strategy: p.strategy || null
       }))
     });
   } catch (err) {
