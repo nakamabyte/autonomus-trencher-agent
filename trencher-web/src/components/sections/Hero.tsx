@@ -17,7 +17,7 @@ export function Hero({ onOpenPlatform }: HeroProps) {
       <div className="hero-inner">
         <div className="hero-tag">Solana · Pump.fun · LLM-Powered · 19 Agents</div>
         <h1 className="hero-h1">
-          THE<br />TRENCH<br /><span>AGENT</span>
+          AUTONOMOUS<br />TRENCHER<br /><span>AGENT</span>
         </h1>
         <p className="hero-sub">
           A 19-agent AI orchestrator that monitors Pump.fun token flow, enriches with on-chain data,
