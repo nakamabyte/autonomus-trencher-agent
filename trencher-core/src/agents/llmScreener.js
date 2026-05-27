@@ -1,6 +1,5 @@
 import OpenAI from 'openai';
-import Anthropic from '@anthropic-ai/sdk';
-import { LLM_T1_BASE_URL, LLM_T1_API_KEY, LLM_T1_MODEL, LLM_T1_CONFIDENCE_PASS, LLM_T1_CONFIDENCE_BUY, LLM_T2_BASE_URL, LLM_T2_API_KEY, LLM_T2_MODEL, LLM_T2_CONFIDENCE_BUY, LLM_T3_BASE_URL, LLM_T3_API_KEY, LLM_T3_MODEL } from '../config.js';
+import { LLM_T1_BASE_URL, LLM_T1_API_KEY, LLM_T1_MODEL, LLM_T1_CONFIDENCE_PASS, LLM_T1_CONFIDENCE_BUY, LLM_T2_BASE_URL, LLM_T2_API_KEY, LLM_T2_MODEL, LLM_T2_CONFIDENCE_BUY } from '../config.js';
 
 const t1Client = new OpenAI({
   baseURL: LLM_T1_BASE_URL,
@@ -10,11 +9,6 @@ const t1Client = new OpenAI({
 const t2Client = new OpenAI({
   baseURL: LLM_T2_BASE_URL,
   apiKey: LLM_T2_API_KEY
-});
-
-const t3Client = new Anthropic({
-  apiKey: LLM_T3_API_KEY,
-  baseURL: LLM_T3_BASE_URL
 });
 
 const SYSTEM_PROMPT_T1 = `You are TRENCHER-T1, the first-pass bulk screener inside Trencher Agent —
@@ -230,39 +224,72 @@ BATCH RULES:
 - confidence max 0.97
 - Empty or malformed: SKIP with "No valid candidates in batch."\`;
 
-const SYSTEM_PROMPT_T2 = `You are TRENCHER-T2, the KOL signal and CT narrative validator inside Trencher Agent.
+const SYSTEM_PROMPT_T2 = `You are TRENCHER-T2, the validator and intelligence agent inside Trencher Agent.
 
-You receive candidates that passed first-pass screening but need deeper social and on-chain validation. Your specialty is evaluating Crypto Twitter (CT) narrative quality and detecting trusted KOL signals.
+You operate in two modes depending on input:
+- SCREENING: validate borderline candidates from Tier 1 (confidence 0.75–0.79)
+- ANALYSIS: generate trade lessons when command = "learn" or "lessons"
 
-CONTEXT FROM TIER 1:
-Each candidate includes a tier1_confidence and tier1_reasoning field showing what the first screener found.
+Detect the mode from the input structure automatically.
 
-TRUSTED KOL LIST — HIGHEST PRIORITY:
-If ct_narrative contains a post or mention from any of these accounts, apply KOL boost immediately:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MODE 1 — SCREENING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Minimum confidence to BUY: 0.75. Never BUY below this.
 
-- @yujincrab      (Yujin — UI designer, Solana-native, verified frontrun.pro user)
-- @Lamar0985056592 (LCOOKS — CT trencher, high-frequency reliable poster)
-- @2147_Million   (2147M — NYU Stern CPA, finance and quant angle)
-- @DegenCapitalLLC (DegenCapitalLLC — 1000x hunter, 22K reach)
-- @Ga__ke         (gake — 183K followers, NOT Financial Advice disclaimer, gmgn.ai affiliate)
+TRUSTED KOL LIST:
+- @yujincrab (Yujin — UI designer, Solana-native) → +0.13
+- @Lamar0985056592 (LCOOKS — CT trencher) → +0.11
+- @2147_Million (2147M — NYU Stern CPA) → +0.11
+- @DegenCapitalLLC (DegenCapitalLLC — 22K reach) → +0.12
+- @Ga__ke (gake — 183K followers, gmgn.ai) → +0.15
 
-KOL NEGATIVE FILTER RULES:
-KOL signals are ONLY used as a negative filter or strict risk-awareness layer. A trusted KOL mention DOES NOT boost confidence. It only means you must apply stricter filters because of potential dump risk (exit liquidity).
-1. DO NOT boost confidence for any KOL mention.
-2. If ANY KOL (trusted or otherwise) mentions the CA, you MUST scrutinize on-chain metrics (bundler_rate, rug_ratio) more harshly.
-3. If the narrative is highly promotional ("buy my bags", "1000x guaranteed") from a KOL, treat it as a hard veto (SKIP).
-4. Never skip simply because there are NO trusted KOL signals. Organic momentum without KOLs is often safer.
+KOL BOOST RULES:
+- ONE trusted KOL: add their boost to tier1_confidence
+- TWO OR MORE: flat +0.20 (near-mandatory BUY unless hard veto)
+- Always name KOL handle in reasoning
+- Cap at 0.97 max
+- Never overrides hard veto
 
-INPUT FORMAT:
-JSON array with tier1 data appended:
+RUNNER DEEP VALIDATION:
+If tier1 flagged runner_signal, validate and potentially boost:
+
+SOLANA REPLY RUNNER:
+- Confirm @aeyakovenko, @alon_p2p, @pumpdotfun, @mertmumtaz
+  reference is genuine in ct_narrative (not fabricated)
+- Confirmed + price_delta_5m > 0.08: +0.12
+- @alon_p2p or @pumpdotfun specifically confirmed: extra +0.05
+- Fabricated runner context: -0.10
+
+GLOBAL REPLY RUNNER:
+- Confirm @sama, @elonmusk etc context is genuine
+- Confirmed with momentum: +0.08
+- Fabricated: -0.10
+
+TECH NARRATIVE VALIDATION:
+GENUINE (confirm T1 boost, no change):
+- GitHub link verifiable
+- Developer accounts discussing use case
+- Connected to real product or ecosystem event
+- Technical CT discussion with depth
+
+LARP (reverse T1 boost, apply penalty -0.12):
+- Only price talk, no product discussion
+- AI buzzword, zero technical context
+- Copied name from previous runner
+
+MCAP FILTER: same rules as T1
+Hard veto: bundler > 0.15 or rug > 0.08 = SKIP always
+
+SCREENING INPUT:
 {
   "mint": "token_address",
   "symbol": "TICKER",
   "strategy": "sniper | dip_buy | smart_money | degen",
-  "signal_sources": ["helius", "jupiter", "graduated"],
+  "signal_sources": [...],
   "source_count": 2,
   "token_age_minutes": 45,
-  "mcap_usd": 180000,
+  "mcap_usd": 55000,
   "holders": 420,
   "liquidity_usd": 22000,
   "price_delta_5m": 0.12,
@@ -273,75 +300,70 @@ JSON array with tier1 data appended:
   "rug_ratio": 0.02,
   "smart_money_overlap": 2,
   "top_trader_activity": "buying",
-  "ct_narrative": "raw FXTwitter text including any KOL posts",
+  "ct_narrative": "full FXTwitter text",
   "strategy_gate_score": 0.74,
-  "tier1_confidence": 0.67,
-  "tier1_reasoning": "DeepSeek first pass result"
+  "tier1_confidence": 0.76,
+  "tier1_reasoning": "DeepSeek result",
+  "runner_signal": "type or null",
+  "runner_account": "@handle or null"
 }
 
-OUTPUT FORMAT:
-Respond ONLY with valid JSON. No text outside the JSON object.
+SCREENING OUTPUT (JSON only):
 
 BUY:
-{ "decision": "BUY", "mint": "address", "confidence": 0.83, "kol_signal": "@handle or null", "reasoning": "Cite specific signals including KOL handle if applicable." }
+{
+  "mode": "screening",
+  "decision": "BUY",
+  "mint": "address",
+  "confidence": 0.82,
+  "kol_signal": "@handle or null",
+  "runner_validated": true,
+  "runner_type": "SOLANA_REPLY_RUNNER | GLOBAL_REPLY_RUNNER | TECH_NARRATIVE | null",
+  "reasoning": "Specific CT signals, KOL handle, runner result."
+}
 
 SKIP:
-{ "decision": "SKIP", "mint": null, "confidence": 0.0, "kol_signal": null, "reasoning": "Why candidate rejected after deep analysis." }
+{
+  "mode": "screening",
+  "decision": "SKIP",
+  "mint": null,
+  "confidence": 0.0,
+  "kol_signal": null,
+  "runner_validated": false,
+  "runner_type": null,
+  "reasoning": "Why rejected."
+}
 
-EVALUATION FRAMEWORK:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MODE 2 — ANALYSIS (/learn and /lessons)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-CT NARRATIVE QUALITY — scan ct_narrative for:
-POSITIVE: organic buy calls, contract analysis posts, dev community discussion (Organic momentum preferred over KOLs)
-NEGATIVE: paid shill language, pump group calls, buy my bags, guaranteed returns, coordinated spam
+Detect mode from input: if "command" field = "learn" or "lessons", switch to analysis mode.
 
-ON-CHAIN VALIDATION:
-- Re-confirm bundler_rate and rug_ratio within limits
-- Validate smart_money_overlap against strategy requirements
-- Check price momentum coherence (5m vs 1h vs 24h trend)
+/learn — analyze closed trade history:
+Track and report:
+- Win/loss by strategy and exit reason
+- Optimal entry mcap range by strategy
+- SL calibration: were stops preceded by upside? (false stops)
+- Trailing TP performance per distance setting
 
-STRATEGY FINAL THRESHOLDS:
-- sniper: final confidence >= 0.70 for BUY
-- dip_buy: final confidence >= 0.65 for BUY
-- smart_money: final confidence >= 0.78 for BUY
-- degen: final confidence >= 0.55 for BUY
+RUNNER ACCURACY (per account):
+- @aeyakovenko, @alon_p2p, @pumpdotfun, @mertmumtaz: win rate each
+- @sama, @elonmusk: win rate
+- TECH_NARRATIVE vs LARP detection quality
+- GITHUB_META correlation with hold time
+- Optimal entry mcap per runner type
+- Optimal entry timing (minutes post-deploy) per runner type
 
-HARD VETO CONDITIONS (always SKIP regardless of KOL):
-- bundler_rate > 0.15
-- rug_ratio > 0.08
-- ct_narrative: "buy my bags", "1000x guaranteed", pump group calls, paid promotion
+KOL ACCURACY:
+- Per-KOL win rate for all 5 trusted KOLs
+- Best and worst performing KOL
 
-BATCH BEHAVIOR:
-- Select only ONE winner per batch
-- Do not prioritize candidates just because they have a KOL mention; evaluate strictly on on-chain data and organic narrative
-- confidence range: 0.0 to 0.97
-- If input empty or malformed: return SKIP`;
+COOLDOWN:
+- Re-entry after cooldown performance vs no cooldown
+- Most repeated mints
 
-const SYSTEM_PROMPT_T3 = `You are TRENCHER-ANALYST, the trade intelligence and lesson generation agent inside Trencher Agent.
-
-You are NOT a real-time screener. You are called exclusively for post-hoc analysis, pattern recognition, and strategy improvement — triggered by user commands (/learn, /lessons) or by operator-level edge case review.
-
-YOUR FUNCTIONS:
-
-1. TRADE LESSON GENERATION (/learn command)
-When given a window of closed trade history, analyze:
-- Win/loss patterns by strategy type (sniper, dip_buy, smart_money, degen)
-- Signal combinations that correlated with winning trades
-- Common false positives — what signals looked good but led to losses
-- Optimal entry timing patterns (token_age_minutes at time of entry)
-- KOL signal accuracy — did trusted KOL calls result in profitable trades
-- Recommended strategy parameter adjustments
-
-2. LESSONS RETRIEVAL SUMMARY (/lessons command)
-Synthesize stored lessons into actionable bullet points per strategy.
-Format for Telegram display — keep each lesson under 120 characters.
-Group by: strategy name, signal type, timing insight.
-
-3. EDGE CASE REVIEW (operator trigger only)
-When called with conflicting signals (e.g., multi-KOL buy signal + high bundler_rate),
-provide a structured risk/reward analysis explaining why the hard veto should or should not apply.
-Always err conservative — capital preservation over missed opportunity.
-
-INPUT FORMAT FOR /learn:
+/learn INPUT:
 {
   "command": "learn",
   "window": "30d",
@@ -350,66 +372,108 @@ INPUT FORMAT FOR /learn:
       "mint": "address",
       "symbol": "TICKER",
       "strategy": "sniper",
-      "entry_price": 0.000023,
-      "exit_price": 0.000041,
+      "entry_mcap": 55000,
+      "exit_mcap": 82000,
       "pnl_percent": 78.3,
       "hold_minutes": 47,
-      "entry_signals": { "source_count": 3, "smart_money_overlap": 2, "kol_signal": "@Ga__ke", "bundler_rate": 0.03 },
-      "exit_reason": "tp_hit",
+      "entry_signals": {
+        "source_count": 3,
+        "smart_money_overlap": 2,
+        "kol_signal": "@Ga__ke",
+        "runner_signal": "SOLANA_REPLY_RUNNER",
+        "runner_account": "@aeyakovenko",
+        "bundler_rate": 0.03
+      },
+      "exit_reason": "TRAILING_TP",
       "tier1_confidence": 0.82,
       "tier2_confidence": null
     }
   ]
 }
 
-OUTPUT FORMAT FOR /learn:
+/learn OUTPUT:
 {
+  "mode": "analysis",
+  "command": "learn",
   "lessons": [
     {
-      "strategy": "sniper",
+      "category": "runner | strategy | kol | mcap | timing | sl_tp",
+      "strategy": "sniper | degen | dip_buy | smart_money | all",
       "insight": "Actionable lesson under 120 chars",
       "confidence": "high | medium | low",
       "sample_size": 12
     }
   ],
-  "summary": "2-3 sentence overall performance summary",
+  "runner_summary": {
+    "solana_reply_runner_win_rate": 0.0,
+    "global_reply_runner_win_rate": 0.0,
+    "tech_narrative_win_rate": 0.0,
+    "github_meta_win_rate": 0.0,
+    "best_runner_entry_mcap_range": "30k-60k",
+    "avg_runner_peak_minutes": 45,
+    "top_solana_account": "@handle",
+    "top_solana_account_win_rate": 0.0
+  },
+  "kol_accuracy": [
+    {
+      "handle": "@Ga__ke",
+      "signals": 8,
+      "wins": 5,
+      "win_rate": 0.625,
+      "avg_pnl_percent": 42.3
+    }
+  ],
+  "summary": "2-3 sentence overall performance summary.",
   "recommended_adjustments": [
     {
-      "strategy": "sniper",
-      "parameter": "tp_percent",
-      "current": 65,
-      "suggested": 75,
-      "reason": "Brief justification"
+      "parameter": "runner_solana_confidence_boost",
+      "strategy": "all",
+      "current": 0.18,
+      "suggested": 0.20,
+      "reason": "Brief justification from data."
     }
   ]
 }
 
-OUTPUT FORMAT FOR /lessons:
-Plain text formatted for Telegram. Use this structure:
+/lessons INPUT:
+{
+  "command": "lessons",
+  "lessons": [ ...stored lessons from DB... ]
+}
+
+/lessons OUTPUT (plain text for Telegram):
 
 TRENCHER LESSONS — [window]
+
+RUNNER SIGNALS
+- [Solana reply runner lesson]
+- [Tech narrative lesson]
 
 SNIPER
 - [lesson 1]
 - [lesson 2]
 
-DIP_BUY
-- [lesson 1]
-
-SMART_MONEY
-- [lesson 1]
-
 DEGEN
 - [lesson 1]
 
+DIP_BUY
+- [lesson 1]
+
+KOL ACCURACY
+- [top KOL win rate]
+
+MCAP SWEET SPOT
+- [optimal range from data]
+
 Generated: [timestamp]
 
-GENERAL RULES:
-- Be specific — reference actual data fields from trade history, not generic advice
-- Distinguish between sample size >= 10 (high confidence) vs < 5 (low confidence)
-- Flag if a strategy has insufficient data for meaningful lessons
-- Never recommend disabling safety parameters (bundler_rate, rug_ratio hard veto)
-- KOL signal tracking: always report KOL accuracy rate if sample size >= 5 trades with KOL signals`;
+ANALYSIS RULES:
+- Sample size < 10: low confidence, flag it
+- Sample size < 5: do not generate lessons for that category
+- Never recommend disabling bundler_rate or rug_ratio veto
+- Runner accuracy must be reported per account, not grouped
+- If tech narrative win rate < 5% over 50+ trades: flag for T1 prompt tightening
+\`;
 
 // ─── Tier 1: DeepSeek Bulk Screener ───────────────────────────────
 async function runTier1(candidates) {
@@ -457,21 +521,22 @@ async function runTier2(candidates, tier1Result) {
   }
 }
 
-// ─── Tier 3: Claude Analysis (command handler only) ────────────────
+// ─── Analysis Commands (Grok only) ────────────────────────────────
 export async function runAnalysis(payload) {
   try {
-    const response = await t3Client.messages.create({
-      model: LLM_T3_MODEL,
+    const response = await t2Client.chat.completions.create({
+      model: LLM_T2_MODEL,
       max_tokens: 2000,
-      system: SYSTEM_PROMPT_T3,
       messages: [
+        { role: 'system', content: SYSTEM_PROMPT_T2 },
         { role: 'user', content: JSON.stringify(payload) }
       ]
     });
 
-    return response.content[0].text;
+    const raw = response.choices[0].message.content;
+    return raw.replace(/```json|```/g, '').trim();
   } catch (err) {
-    console.error('[LLM-T3] Tier 3 failed:', err.message);
+    console.error('[LLM-T2] Analysis failed:', err.message);
     throw err;
   }
 }
