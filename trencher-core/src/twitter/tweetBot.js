@@ -148,7 +148,11 @@ export async function tweetBatchReveal(batchId, rows, decision, triggerCandidate
     // Generate the summary using the same formatter as Telegram
     let text = batchRevealSummary(batchId, rows, decision, triggerCandidateId)
     
-    // Strip HTML tags for Twitter
+    // Preserve URLs from <a> tags before stripping other HTML
+    // This turns <a href="https://...">text</a> into https://...
+    text = text.replace(/<a\s+(?:[^>]*?\s+)?href=["']([^"']*)["'][^>]*>.*?<\/a>/gi, '$1')
+    
+    // Strip remaining HTML tags for Twitter
     text = text.replace(/<[^>]*>?/gm, '')
     
     // Append footer
