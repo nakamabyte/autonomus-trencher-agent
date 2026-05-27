@@ -16,7 +16,7 @@ import { setDegenHandler } from '../signals/trending.js';
 import { setCandidateHandler } from '../signals/feeClaim.js';
 import { short } from '../format.js';
 import { escapeHtml } from '../format.js';
-import { isMintOnCooldown } from '../db/cooldown.js';
+import { isOnCooldown, setCooldown } from '../utils/mintCooldown.js';
 
 export const seenSignalCandidates = new Map();
 
@@ -32,8 +32,8 @@ export async function processCandidateFromSignals(signals) {
     return;
   }
 
-  // Skip if mint is on cooldown (recently closed position)
-  if (isMintOnCooldown(signals.mint)) {
+  // Skip if mint is on cooldown
+  if (isOnCooldown(signals.mint)) {
     console.log(`[agent] cooldown active for ${signals.mint.slice(0, 8)}..., skipping rebuy`);
     return;
   }
@@ -181,6 +181,7 @@ export async function handleApprovedBuy(selectedRow, decision, batchId, rows = [
       guardrails: { maxOpenPositions: numSetting('max_open_positions', 3), openPositions: openPositionCount() },
       execution: { positionId },
     });
+    setCooldown(freshSelectedRow.candidate.token.mint, freshSelectedRow.candidate.token.symbol, decision.strategy);
     await sendPositionOpen(positionId);
     return;
   }

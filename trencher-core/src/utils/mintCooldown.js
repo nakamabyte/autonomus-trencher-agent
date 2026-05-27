@@ -47,3 +47,14 @@ export function getCooldownRemaining(mint) {
   const remaining = COOLDOWN_MS - (Date.now() - row.last_entry_ms)
   return Math.max(0, Math.floor(remaining / 60000)) // return in minutes
 }
+
+export function clearCooldown(mint) {
+  getDb().prepare('DELETE FROM mint_cooldowns WHERE mint = ?').run(mint);
+  console.log(`[COOLDOWN] cleared ${mint.slice(0, 8)}...`);
+}
+
+export function activeCooldowns() {
+  // Return all cooldowns that are still active (within 2 hours)
+  const cutoff = Date.now() - COOLDOWN_MS;
+  return getDb().prepare('SELECT * FROM mint_cooldowns WHERE last_entry_ms > ? ORDER BY last_entry_ms DESC').all(cutoff);
+}

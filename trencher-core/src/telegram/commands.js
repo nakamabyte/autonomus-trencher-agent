@@ -36,7 +36,7 @@ import { consumeNumericFilterInput } from './input.js';
 import { runLearning, sendLessons } from '../learning/commands.js';
 import { fetchWalletPnl } from '../enrichment/wallets.js';
 import { sendCreditsInfo } from './credits.js';
-import { setCooldown, clearCooldown, activeCooldowns } from '../db/cooldown.js';
+import { setCooldown, clearCooldown, activeCooldowns } from '../utils/mintCooldown.js';
 
 export async function handleMessage(msg) {
   if (String(msg.chat.id) !== String(TELEGRAM_CHAT_ID)) {
