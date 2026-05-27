@@ -153,11 +153,6 @@ export async function tweetBatchReveal(batchId, rows, decision, triggerCandidate
     
     // Append footer
     text += '\n\n🤖 Autonomous Trencher Agent\ntrencher-agent.vercel.app'
-    
-    // Check Twitter length limits (basic check, truncating if over 280)
-    if (text.length > 280) {
-      text = text.substring(0, 277) + '...'
-    }
 
     await getClient().v2.tweet(text)
     console.log(`[TWITTER] Tweeted batch screening: #${batchId}`)
