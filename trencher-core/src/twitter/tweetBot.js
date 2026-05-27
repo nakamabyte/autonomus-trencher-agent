@@ -52,7 +52,7 @@ export async function tweetOpenPosition(position, decision = {}) {
       `Token: https://gmgn.ai/sol/token/${position.mint}`,
       `MCap: ${formatMcap(position.entry_mcap)}`,
       `Strategy: ${position.strategy?.toUpperCase() || 'SNIPER'}`,
-      `Confidence: ${decision.confidence ? (decision.confidence * 100).toFixed(0) : 'N/A'}%`,
+      `Confidence: ${decision.confidence ? Number(decision.confidence).toFixed(0) : 'N/A'}%`,
       runnerLine,
       kolLine,
       ``,
