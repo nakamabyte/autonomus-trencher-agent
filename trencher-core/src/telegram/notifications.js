@@ -48,56 +48,51 @@ function formatStrategy(strategy) {
 
 // ─── TELEGRAM: OPEN POSITION ───────────────────────────────────────
 export function formatOpenPosition(position, decision = {}) {
-  const runnerTag = formatRunnerTag(decision.runner_signal, decision.runner_account)
-  const kolTag = formatKolTag(decision.kol_signal)
-  const confidence = decision.confidence
-    ? `${(decision.confidence * 100).toFixed(0)}%`
-    : 'N/A'
+  const mode = position.execution_mode || position.mode || 'live';
+  const strategy = position.strategy_id || position.strategy || 'sniper';
+  const tx = position.entry_signature 
+    ? `${position.entry_signature.slice(0, 6)}...${position.entry_signature.slice(-4)}` 
+    : 'N/A';
+  const token = position.mint 
+    ? `${position.mint.slice(0, 6)}...${position.mint.slice(-4)}` 
+    : 'N/A';
 
   return `
-⚡ *POSITION OPENED*
+✅ Live buy executed
 
-🪙 *${position.symbol}*
-📊 MCap: ${formatMcap(position.entry_mcap)}
-💰 Size: ${formatSol(position.size_sol)}
-🎯 Strategy: ${formatStrategy(position.strategy)}
-🛑 SL: ${position.sl_percent}%  |  ✅ TP: ${position.tp_percent}%${position.trailing_enabled ? `\n📐 Trailing: ${position.trailing_percent}% (arm @ ${position.trailing_arm_percent}%)` : ''}${runnerTag}${kolTag}
-
-🔗 \`${position.mint}\`
-
-🤖 Confidence: ${confidence}
-⏱ Token Age: ${position.token_age_minutes}m
-─────────────────
-_Autonomous Trencher Agent_
+📍 ${position.symbol || 'UNKNOWN'} #${position.id || 'N/A'}
+Token: ${token}
+Status: open · Mode: ${mode} · Strategy: ${strategy}
+Entry TX: ${tx}
+Entry mcap: ${formatMcap(position.entry_mcap)} · High: ${formatMcap(position.high_water_mcap || position.entry_mcap)}
+Size: ${formatSol(position.size_sol)} · PnL: ${(position.pnl_percent || 0).toFixed(1)}%
+TP: ${position.tp_percent?.toFixed(1) || '0.0'}% · SL: ${position.sl_percent?.toFixed(1) || '0.0'}% · Trail: ${position.trailing_enabled ? position.trailing_percent?.toFixed(1) : '0.0'}%
 `.trim()
 }
 
 // ─── TELEGRAM: CLOSE POSITION ─────────────────────────────────────
 export function formatClosePosition(position) {
-  const isWin = position.pnl_percent > 0
-  const pnlEmoji = isWin ? '🟢' : '🔴'
-  const pnlSign = isWin ? '+' : ''
-  const exitLabels = {
-    SL:                '🛑 Stop Loss',
-    TP:                '✅ Take Profit',
-    TRAILING_TP:       '📐 Trailing TP',
-    MAX_HOLD:          '⏰ Max Hold',
-    FORCE_CLOSE_FUNDS: '⚠️ Force Close',
-    MANUAL:            '👤 Manual Close'
-  }
-  const exitLabel = exitLabels[position.exit_reason] || position.exit_reason
+  const mode = position.execution_mode || position.mode || 'live';
+  const strategy = position.strategy_id || position.strategy || 'sniper';
+  const tx = position.entry_signature 
+    ? `${position.entry_signature.slice(0, 6)}...${position.entry_signature.slice(-4)}` 
+    : 'N/A';
+  const token = position.mint 
+    ? `${position.mint.slice(0, 6)}...${position.mint.slice(-4)}` 
+    : 'N/A';
+  const exitReason = position.exit_reason || 'MANUAL';
 
   return `
-${pnlEmoji} *POSITION CLOSED*
+🏁 Live exit: ${exitReason}
 
-🪙 *${position.symbol}*
-🔗 \`${position.mint}\`
-${pnlSign}${position.pnl_percent.toFixed(2)}%  |  ${pnlSign}${formatSol(position.pnl_sol)}
-📊 Exit MCap: ${formatMcap(position.exit_mcap)}
-⏱ Hold: ${Math.round(position.hold_minutes || 0)}m
-🚪 Exit: ${exitLabel}
-─────────────────
-_Autonomous Trencher Agent_
+📍 ${position.symbol || 'UNKNOWN'} #${position.id || 'N/A'}
+Token: ${token}
+Status: closed · Mode: ${mode} · Strategy: ${strategy}
+Entry TX: ${tx}
+Entry mcap: ${formatMcap(position.entry_mcap)} · High: ${formatMcap(position.high_water_mcap)}
+Size: ${formatSol(position.size_sol)} · PnL: ${(position.pnl_percent || 0).toFixed(1)}%
+TP: ${position.tp_percent?.toFixed(1) || '0.0'}% · SL: ${position.sl_percent?.toFixed(1) || '0.0'}% · Trail: ${position.trailing_enabled ? position.trailing_percent?.toFixed(1) : '0.0'}%
+Exit: ${exitReason} at ${formatMcap(position.exit_mcap)} (${(position.pnl_percent || 0).toFixed(1)}%)
 `.trim()
 }
 
