@@ -23,14 +23,14 @@ const CHAT_ID = TELEGRAM_CHAT_ID
 // Open position — kirim Telegram + tweet
 export async function notifyOpenPosition(position, decision) {
   const msg = formatOpenPosition(position, decision)
-  await bot.sendMessage(CHAT_ID, msg, { parse_mode: 'Markdown' })
+  await bot.sendMessage(CHAT_ID, msg, { parse_mode: 'HTML', disable_web_page_preview: true })
   await tweetOpenPosition(position, decision) // auto tweet
 }
 
 // Close position — kirim Telegram + tweet kalau win
 export async function notifyClosePosition(position) {
   const msg = formatClosePosition(position)
-  await bot.sendMessage(CHAT_ID, msg, { parse_mode: 'Markdown' })
+  await bot.sendMessage(CHAT_ID, msg, { parse_mode: 'HTML', disable_web_page_preview: true })
   await tweetClosePosition(position) // auto tweet wins only
 }
 
