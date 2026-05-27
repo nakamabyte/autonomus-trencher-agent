@@ -1,4 +1,5 @@
 import { TwitterApi } from 'twitter-api-v2'
+import { batchRevealSummary } from '../telegram/format.js'
 
 // ─── Init client ───────────────────────────────────────────────────
 let client = null
@@ -136,5 +137,31 @@ export async function tweetDailySummary(stats) {
     console.log(`[TWITTER] Tweeted daily summary`)
   } catch (err) {
     console.error(`[TWITTER] Failed to tweet daily summary:`, err.message)
+  }
+}
+
+// ─── TWEET: BATCH REVEAL ───────────────────────────────────────────
+export async function tweetBatchReveal(batchId, rows, decision, triggerCandidateId) {
+  if (!isEnabled() || process.env.TWEET_ON_SCREENING !== 'true') return
+
+  try {
+    // Generate the summary using the same formatter as Telegram
+    let text = batchRevealSummary(batchId, rows, decision, triggerCandidateId)
+    
+    // Strip HTML tags for Twitter
+    text = text.replace(/<[^>]*>?/gm, '')
+    
+    // Append footer
+    text += '\n\n🤖 Autonomous Trencher Agent\ntrencher-agent.vercel.app'
+    
+    // Check Twitter length limits (basic check, truncating if over 280)
+    if (text.length > 280) {
+      text = text.substring(0, 277) + '...'
+    }
+
+    await getClient().v2.tweet(text)
+    console.log(`[TWITTER] Tweeted batch screening: #${batchId}`)
+  } catch (err) {
+    console.error(`[TWITTER] Failed to tweet batch screening:`, err.message)
   }
 }

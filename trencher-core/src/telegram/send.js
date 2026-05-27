@@ -42,6 +42,8 @@ export async function sendBatchReveal(batchId, rows, decision, triggerCandidateI
     sent.message_id,
     json({ batchId, candidateIds: rows.map(row => row.id), decision, triggerCandidateId }),
   );
+  
+  import('../twitter/tweetBot.js').then(m => m.tweetBatchReveal(batchId, rows, decision, triggerCandidateId));
 }
 
 export async function sendBatch(chatId, batchId) {
