@@ -57,7 +57,7 @@ export async function tweetOpenPosition(position, decision = {}) {
       kolLine,
       ``,
       `🤖 Autonomous Trencher Agent`,
-      `trencher-agent.vercel.app`,
+      `autonomustrencheragent.tech`,
       position.entry_signature ? `\n🔗 Proof: solscan.io/tx/${position.entry_signature}` : null
     ].filter(Boolean).join('\n')
 
@@ -98,7 +98,7 @@ export async function tweetClosePosition(position) {
       `Exit: ${exitLabel}`,
       ``,
       `🤖 Autonomous Trencher Agent`,
-      `trencher-agent.vercel.app`,
+      `autonomustrencheragent.tech`,
       position.exit_signature ? `\n🔗 Proof: solscan.io/tx/${position.exit_signature}` : null
     ].filter(Boolean).join('\n')
 
@@ -130,7 +130,7 @@ export async function tweetDailySummary(stats) {
       `Best: +${stats.best_pnl?.toFixed(2) || '0'}%`,
       ``,
       `🤖 Autonomous Trencher Agent`,
-      `trencher-agent.vercel.app`,
+      `autonomustrencheragent.tech`,
     ].join('\n')
 
     await getClient().v2.tweet(lines)
@@ -156,7 +156,7 @@ export async function tweetBatchReveal(batchId, rows, decision, triggerCandidate
     text = text.replace(/<[^>]*>?/gm, '')
     
     // Append footer
-    text += '\n\n🤖 Autonomous Trencher Agent\ntrencher-agent.vercel.app'
+    text += '\n\n🤖 Autonomous Trencher Agent\nautonomustrencheragent.tech'
 
     await getClient().v2.tweet(text)
     console.log(`[TWITTER] Tweeted batch screening: #${batchId}`)

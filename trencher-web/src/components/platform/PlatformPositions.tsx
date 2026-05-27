@@ -44,7 +44,8 @@ export function PlatformPositions({ metrics, logHeight }: PlatformPositionsProps
                         target="_blank" 
                         rel="noopener noreferrer"
                         title={pos.mint}
-                        style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
+                        onClick={e => e.stopPropagation()}
+                        style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', position: 'relative', zIndex: 30 }}
                         className="hover:underline"
                       >
                         <span>{pos.symbol}</span>
@@ -64,7 +65,14 @@ export function PlatformPositions({ metrics, logHeight }: PlatformPositionsProps
                     </div>
                     {pos.entry_signature && (
                       <div className="pv-ast" style={{ marginTop: '4px' }}>
-                        <a href={`https://solscan.io/tx/${pos.entry_signature}`} target="_blank" rel="noreferrer" style={{ color: 'var(--c-accent)' }}>
+                        <a 
+                          href={`https://solscan.io/tx/${pos.entry_signature}`} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          onClick={e => e.stopPropagation()}
+                          style={{ color: 'var(--c-accent)', position: 'relative', zIndex: 30 }}
+                          className="hover:underline"
+                        >
                           Tx: {pos.entry_signature.slice(0, 8)}...
                         </a>
                       </div>
