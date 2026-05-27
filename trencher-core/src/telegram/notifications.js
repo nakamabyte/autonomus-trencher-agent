@@ -91,6 +91,7 @@ export function formatClosePosition(position) {
 ${pnlEmoji} *POSITION CLOSED*
 
 🪙 *${position.symbol}*
+🔗 \`${position.mint}\`
 ${pnlSign}${position.pnl_percent.toFixed(2)}%  |  ${pnlSign}${formatSol(position.pnl_sol)}
 📊 Exit MCap: ${formatMcap(position.exit_mcap)}
 ⏱ Hold: ${Math.round(position.hold_minutes || 0)}m
