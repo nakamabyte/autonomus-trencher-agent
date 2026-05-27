@@ -389,3 +389,34 @@ export function ensureColumn(table, column, ddl) {
   const columns = db.prepare(`PRAGMA table_info(${table})`).all().map(row => row.name);
   if (!columns.includes(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
 }
+
+export function getDailyStats(dateStr = null) {
+  const date = dateStr || new Date().toISOString().split('T')[0]
+  const start = new Date(date).getTime()
+  const end = start + 86400000
+
+  const main = db.prepare(`
+    SELECT
+      COUNT(*) as total_trades,
+      SUM(CASE WHEN pnl_percent > 0 THEN 1 ELSE 0 END) as wins,
+      SUM(CASE WHEN pnl_percent <= 0 THEN 1 ELSE 0 END) as losses,
+      ROUND(SUM(pnl_sol), 4) as total_pnl_sol,
+      ROUND(MAX(pnl_percent), 2) as best_pnl,
+      ROUND(MIN(pnl_percent), 2) as worst_pnl
+    FROM dry_run_positions
+    WHERE status = 'closed'
+    AND closed_at_ms >= ? AND closed_at_ms < ?
+  `).get(start, end)
+
+  const byStrategy = db.prepare(`
+    SELECT strategy_id as strategy,
+      SUM(CASE WHEN pnl_percent > 0 THEN 1 ELSE 0 END) as wins,
+      SUM(CASE WHEN pnl_percent <= 0 THEN 1 ELSE 0 END) as losses
+    FROM dry_run_positions
+    WHERE status = 'closed'
+    AND closed_at_ms >= ? AND closed_at_ms < ?
+    GROUP BY strategy_id
+  `).all(start, end)
+
+  return { ...main, by_strategy: byStrategy }
+}
