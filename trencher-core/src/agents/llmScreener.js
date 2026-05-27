@@ -222,7 +222,7 @@ BATCH RULES:
 - Select ONE winner or SKIP all
 - Solana runner > Global runner > Tech narrative > no signal (priority)
 - confidence max 0.97
-- Empty or malformed: SKIP with "No valid candidates in batch."\`;
+- Empty or malformed: SKIP with "No valid candidates in batch."`;
 
 const SYSTEM_PROMPT_T2 = `You are TRENCHER-T2, the validator and intelligence agent inside Trencher Agent.
 
@@ -473,7 +473,7 @@ ANALYSIS RULES:
 - Never recommend disabling bundler_rate or rug_ratio veto
 - Runner accuracy must be reported per account, not grouped
 - If tech narrative win rate < 5% over 50+ trades: flag for T1 prompt tightening
-\`;
+`;
 
 // ─── Tier 1: DeepSeek Bulk Screener ───────────────────────────────
 async function runTier1(candidates) {
