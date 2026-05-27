@@ -46,13 +46,13 @@ export async function tweetOpenPosition(position, decision = {}) {
       : null
 
     const lines = [
-      `⚡ POSITION OPENED`,
+      `⚡ POSITION OPENED #${position.id || Math.floor(Date.now() / 1000)}`,
       ``,
       `$${position.symbol}`,
       `Token: ${position.mint}`,
       `MCap: ${formatMcap(position.entry_mcap)}`,
-      `Strategy: ${position.strategy?.toUpperCase()}`,
-      `Confidence: ${(decision.confidence * 100).toFixed(0)}%`,
+      `Strategy: ${position.strategy?.toUpperCase() || 'SNIPER'}`,
+      `Confidence: ${decision.confidence ? (decision.confidence * 100).toFixed(0) : 'N/A'}%`,
       runnerLine,
       kolLine,
       ``,
@@ -89,7 +89,7 @@ export async function tweetClosePosition(position) {
     const exitLabel = exitLabels[position.exit_reason] || position.exit_reason
 
     const lines = [
-      `${emoji} POSITION CLOSED`,
+      `${emoji} POSITION CLOSED #${position.id || Math.floor(Date.now() / 1000)}`,
       ``,
       `$${position.symbol}`,
       `Token: ${position.mint}`,
