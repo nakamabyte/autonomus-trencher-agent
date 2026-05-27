@@ -94,7 +94,7 @@ export async function tweetClosePosition(position) {
       `$${position.symbol}`,
       `Token: https://gmgn.ai/sol/token/${position.mint}`,
       `PnL: ${pnlSign}${position.pnl_percent.toFixed(2)}%`,
-      `Hold: ${Math.round(position.hold_minutes || 0)}m`,
+      `Hold: ${Math.round(position.hold_minutes || 0)} m`,
       `Exit: ${exitLabel}`,
       ``,
       `🤖 Autonomous Trencher Agent`,
