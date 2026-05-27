@@ -56,6 +56,7 @@ export async function tweetOpenPosition(position, decision = {}) {
       ``,
       `🤖 Autonomous Trencher Agent`,
       `trencher-agent.vercel.app`,
+      position.entry_signature ? `\n🔗 Proof: solscan.io/tx/${position.entry_signature}` : null
     ].filter(Boolean).join('\n')
 
     await getClient().v2.tweet(lines)
@@ -95,7 +96,8 @@ export async function tweetClosePosition(position) {
       ``,
       `🤖 Autonomous Trencher Agent`,
       `trencher-agent.vercel.app`,
-    ].join('\n')
+      position.exit_signature ? `\n🔗 Proof: solscan.io/tx/${position.exit_signature}` : null
+    ].filter(Boolean).join('\n')
 
     await getClient().v2.tweet(lines)
     console.log(`[TWITTER] Tweeted close position: ${position.symbol} ${pnlSign}${position.pnl_percent.toFixed(2)}%`)
