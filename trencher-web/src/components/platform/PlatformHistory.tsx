@@ -60,6 +60,7 @@ export function PlatformHistory({ metrics, rightOffset = 16, logHeight }: Platfo
                     </div>
                     <div className="pv-ast" style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>MODE: {pos.mode.toUpperCase()}</span>
+                      <span suppressHydrationWarning>{new Date(pos.opened_at_ms).toLocaleString('en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                       <span style={{ color: colorClass }}>{sign}{pos.pnl_sol.toFixed(4)} SOL</span>
                     </div>
                   </div>

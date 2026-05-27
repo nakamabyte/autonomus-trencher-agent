@@ -58,6 +58,7 @@ export interface PlatformMetrics {
     pnl_percent: number;
     pnl_sol: number;
     mode: string;
+    opened_at_ms: number;
   }[];
   closed_positions?: {
     id: number;
@@ -66,6 +67,7 @@ export interface PlatformMetrics {
     pnl_percent: number;
     pnl_sol: number;
     mode: string;
+    opened_at_ms: number;
   }[];
 }
 
