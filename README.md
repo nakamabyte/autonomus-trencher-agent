@@ -1,5 +1,5 @@
 > **Trencher Agent** is built on top of [Charon](https://github.com/yunus-0x/charon) by [@yunus-0x](https://github.com/yunus-0x).
-> It extends Charon with a 3-tier multi-LLM cascade screener, trusted KOL signal detection, and a full Next.js web dashboard.
+> It extends Charon with a 2-tier multi-LLM cascade screener, trusted KOL signal detection, and a full Next.js web dashboard.
 > See [ATTRIBUTION.md](./ATTRIBUTION.md) for full details.
 
 ---
@@ -27,11 +27,10 @@ trencher-agent/
 
 The core agent orchestrator. Monitors Pump.fun token flow, enriches candidates, and executes via Jupiter Ultra.
 
-### 🧠 3-Tier LLM Cascade Architecture
+### 🧠 2-Tier LLM Cascade Architecture
 Trencher uses a multi-agent LLM pipeline to balance speed, cost, and analytical depth:
 1. **Tier 1 (Bulk Screener):** Powered by DeepSeek for rapid, high-volume, initial-pass candidate filtering.
-2. **Tier 2 (KOL Validator):** Powered by Grok to analyze Twitter/CT narratives and validate trusted KOLs for edge cases.
-3. **Tier 3 (Analyst):** Powered by Claude for post-trade analysis, strategy generation, and learning extraction via `/learn`.
+2. **Tier 2 (KOL Validator & Analyst):** Powered by Grok to analyze Twitter/CT narratives, validate trusted KOLs for edge cases, and perform post-trade analysis via `/learn`.
 
 **Stack:** Node.js (ESM) · `better-sqlite3` · `node-telegram-bot-api` · `@solana/web3.js` v1 · `ws`
 
@@ -76,15 +75,10 @@ LLM_T1_BASE_URL=https://api.deepseek.com/v1
 LLM_T1_API_KEY=
 LLM_T1_MODEL=deepseek-chat
 
-# TIER 2: Grok (KOL & CT Validator)
+# TIER 2: Grok (KOL & CT Validator, Post-hoc Analysis)
 LLM_T2_BASE_URL=https://api.x.ai/v1
 LLM_T2_API_KEY=
 LLM_T2_MODEL=grok-2-latest
-
-# TIER 3: Claude (Post-hoc Analysis & Lessons)
-LLM_T3_BASE_URL=https://api.anthropic.com/v1
-LLM_T3_API_KEY=
-LLM_T3_MODEL=claude-3-5-sonnet-20240620
 
 # Live/confirm mode only
 SOLANA_PRIVATE_KEY=
