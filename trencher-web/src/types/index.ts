@@ -59,6 +59,7 @@ export interface PlatformMetrics {
     pnl_sol: number;
     mode: string;
     opened_at_ms: number;
+    entry_signature?: string | null;
   }[];
   closed_positions?: {
     id: number;
@@ -68,6 +69,8 @@ export interface PlatformMetrics {
     pnl_sol: number;
     mode: string;
     opened_at_ms: number;
+    entry_signature?: string | null;
+    exit_signature?: string | null;
   }[];
 }
 

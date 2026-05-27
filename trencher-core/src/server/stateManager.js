@@ -45,8 +45,8 @@ setInterval(async () => {
     const posQuery = db.prepare("SELECT COUNT(*) as count FROM dry_run_positions WHERE status = 'open'").get();
     const pnlQuery = db.prepare("SELECT SUM(pnl_sol) as total FROM dry_run_positions WHERE pnl_sol IS NOT NULL").get();
     const candsQuery = db.prepare("SELECT COUNT(*) as count FROM candidates").get();
-    const activePositions = db.prepare("SELECT id, mint, symbol, pnl_percent, pnl_sol, execution_mode, opened_at_ms FROM dry_run_positions WHERE status = 'open' ORDER BY id DESC").all();
-    const closedPositions = db.prepare("SELECT id, mint, symbol, pnl_percent, pnl_sol, execution_mode, opened_at_ms FROM dry_run_positions WHERE status = 'closed' ORDER BY closed_at_ms DESC LIMIT 50").all();
+    const activePositions = db.prepare("SELECT id, mint, symbol, pnl_percent, pnl_sol, execution_mode, opened_at_ms, entry_signature FROM dry_run_positions WHERE status = 'open' ORDER BY id DESC").all();
+    const closedPositions = db.prepare("SELECT id, mint, symbol, pnl_percent, pnl_sol, execution_mode, opened_at_ms, entry_signature, exit_signature FROM dry_run_positions WHERE status = 'closed' ORDER BY closed_at_ms DESC LIMIT 50").all();
     
     const { activeStrategy, setting } = await import('../db/settings.js');
     const strat = activeStrategy();
@@ -64,7 +64,8 @@ setInterval(async () => {
         pnl_percent: p.pnl_percent || 0,
         pnl_sol: p.pnl_sol || 0,
         mode: p.execution_mode,
-        opened_at_ms: p.opened_at_ms || 0
+        opened_at_ms: p.opened_at_ms || 0,
+        entry_signature: p.entry_signature || null
       })),
       closed_positions: closedPositions.map(p => ({
         id: p.id,
@@ -73,7 +74,9 @@ setInterval(async () => {
         pnl_percent: p.pnl_percent || 0,
         pnl_sol: p.pnl_sol || 0,
         mode: p.execution_mode,
-        opened_at_ms: p.opened_at_ms || 0
+        opened_at_ms: p.opened_at_ms || 0,
+        entry_signature: p.entry_signature || null,
+        exit_signature: p.exit_signature || null
       }))
     });
   } catch (err) {

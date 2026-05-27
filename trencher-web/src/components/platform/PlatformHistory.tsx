@@ -58,11 +58,18 @@ export function PlatformHistory({ metrics, rightOffset = 16, logHeight }: Platfo
                     <div className="pv-abar" style={{ background: `${colorClass}22`, height: '2px', marginBottom: '4px' }}>
                       <div className="pv-afill" style={{ width: '100%', background: colorClass }}></div>
                     </div>
-                    <div className="pv-ast" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div className="pv-ast" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
                       <span>MODE: {pos.mode.toUpperCase()}</span>
                       <span suppressHydrationWarning>{new Date(pos.opened_at_ms).toLocaleString('en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                       <span style={{ color: colorClass }}>{sign}{pos.pnl_sol.toFixed(4)} SOL</span>
                     </div>
+                    {pos.exit_signature && (
+                      <div className="pv-ast" style={{ marginTop: '4px' }}>
+                        <a href={`https://solscan.io/tx/${pos.exit_signature}`} target="_blank" rel="noreferrer" style={{ color: 'var(--c-accent)' }}>
+                          Tx: {pos.exit_signature.slice(0, 8)}...
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
