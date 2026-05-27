@@ -488,7 +488,11 @@ async function runTier1(candidates) {
     });
 
     const raw = response.choices[0].message.content;
-    return JSON.parse(raw.replace(/```json|```/g, '').trim());
+    const result = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    if (typeof result.confidence === 'number') {
+      result.confidence = Math.min(result.confidence, 0.97);
+    }
+    return result;
   } catch (err) {
     console.error('[LLM-T1] Tier 1 failed:', err.message);
     return { decision: 'SKIP', mint: null, confidence: 0.0, reasoning: 'Tier 1 API Error' };
@@ -514,7 +518,11 @@ async function runTier2(candidates, tier1Result) {
     });
 
     const raw = response.choices[0].message.content;
-    return JSON.parse(raw.replace(/```json|```/g, '').trim());
+    const result = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    if (typeof result.confidence === 'number') {
+      result.confidence = Math.min(result.confidence, 0.97);
+    }
+    return result;
   } catch (err) {
     console.error('[LLM-T2] Tier 2 failed:', err.message);
     return { decision: 'SKIP', mint: null, confidence: 0.0, reasoning: 'Tier 2 API Error' };
