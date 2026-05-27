@@ -61,6 +61,7 @@ export const LIVE_MIN_SOL_RESERVE_LAMPORTS = Math.floor(Number(process.env.LIVE_
 export const LLM_BASE_URL = process.env.LLM_BASE_URL || 'https://api.anthropic.com/v1';
 export const LLM_API_KEY = process.env.LLM_API_KEY || '';
 export const LLM_MODEL = process.env.LLM_MODEL || 'claude-3-haiku-20240307';
+export const LLM_MULTI_AGENT = process.env.LLM_MULTI_AGENT !== 'false';
 
 
 export const LLM_T1_BASE_URL = process.env.LLM_T1_BASE_URL || 'https://api.deepseek.com/v1';
@@ -71,8 +72,8 @@ export const LLM_T1_CONFIDENCE_BUY = Number(process.env.LLM_T1_CONFIDENCE_BUY ||
 
 export const LLM_T2_BASE_URL = process.env.LLM_T2_BASE_URL || 'https://api.x.ai/v1';
 export const LLM_T2_API_KEY = process.env.LLM_T2_API_KEY || process.env.GROK_API_KEY || '';
-export const LLM_T2_MODEL = process.env.LLM_T2_MODEL || 'grok-4.3';
-export const LLM_T2_CONFIDENCE_BUY = Number(process.env.LLM_T2_CONFIDENCE_BUY || 0.65);
+export const LLM_T2_MODEL = process.env.LLM_T2_MODEL || 'grok-4-0309';
+export const LLM_T2_CONFIDENCE_BUY = Number(process.env.LLM_T2_CONFIDENCE_BUY || 0.75);
 
 export const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
 export const GROK_API_KEY = process.env.GROK_API_KEY || '';
@@ -85,6 +86,7 @@ export const GMGN_CACHE_TTL_MS = Number(process.env.GMGN_CACHE_TTL_MS || 5 * 60 
 export const POSITION_CHECK_MS = Number(process.env.POSITION_CHECK_MS || 10_000);
 export const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 60_000);
 export const ENABLE_LLM = process.env.ENABLE_LLM !== 'false';
+export const MINT_COOLDOWN_MS = Number(process.env.MINT_COOLDOWN_MS || 2 * 60 * 60 * 1000);
 export const SIGNAL_SERVER_URL = process.env.SIGNAL_SERVER_URL || 'http://localhost:3456';
 export const SIGNAL_SERVER_KEY = process.env.SIGNAL_SERVER_KEY || '';
 export const SIGNAL_POLL_MS = Number(process.env.SIGNAL_POLL_MS || 30_000);

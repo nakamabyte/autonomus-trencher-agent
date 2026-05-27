@@ -1,7 +1,8 @@
-import Database from 'better-sqlite3'
-import path from 'path'
+import Database from 'better-sqlite3';
+import path from 'path';
+import { MINT_COOLDOWN_MS } from '../config.js';
 
-const COOLDOWN_MS = 2 * 60 * 60 * 1000 // 2 hours
+const COOLDOWN_MS = MINT_COOLDOWN_MS;
 
 let db
 
@@ -57,4 +58,14 @@ export function activeCooldowns() {
   // Return all cooldowns that are still active (within 2 hours)
   const cutoff = Date.now() - COOLDOWN_MS;
   return getDb().prepare('SELECT * FROM mint_cooldowns WHERE last_entry_ms > ? ORDER BY last_entry_ms DESC').all(cutoff);
+}
+
+export function clearExpiredCooldowns() {
+  const cutoff = Date.now() - COOLDOWN_MS;
+  const result = getDb()
+    .prepare('DELETE FROM mint_cooldowns WHERE last_entry_ms < ?')
+    .run(cutoff);
+  if (result.changes > 0) {
+    console.log(`[COOLDOWN] Cleared ${result.changes} expired cooldowns`);
+  }
 }

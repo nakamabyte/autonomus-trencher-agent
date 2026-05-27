@@ -16,7 +16,7 @@ import { setDegenHandler } from '../signals/trending.js';
 import { setCandidateHandler } from '../signals/feeClaim.js';
 import { short } from '../format.js';
 import { escapeHtml } from '../format.js';
-import { isOnCooldown, setCooldown } from '../utils/mintCooldown.js';
+import { isOnCooldown, setCooldown, getCooldownRemaining } from '../utils/mintCooldown.js';
 
 export const seenSignalCandidates = new Map();
 
@@ -34,7 +34,8 @@ export async function processCandidateFromSignals(signals) {
 
   // Skip if mint is on cooldown
   if (isOnCooldown(signals.mint)) {
-    console.log(`[agent] cooldown active for ${signals.mint.slice(0, 8)}..., skipping rebuy`);
+    const remaining = getCooldownRemaining(signals.mint);
+    console.log(`[COOLDOWN] SKIP ${signals.mint.slice(0, 8)}... — ${remaining}m left`);
     return;
   }
 

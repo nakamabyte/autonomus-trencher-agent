@@ -7,6 +7,7 @@ import { monitorPositions } from './execution/positions.js';
 import { processCandidateFromSignals, maybeProcessDegenCandidate } from './pipeline/orchestrator.js';
 import { sendTelegram } from './telegram/send.js';
 import { makeFailureTracker } from './utils.js';
+import { clearExpiredCooldowns } from './utils/mintCooldown.js';
 
 setDefaultResultOrder('ipv4first');
 validateConfig();
@@ -103,4 +104,7 @@ export async function startTrencherAgent() {
   // Position monitoring runs in both modes
   const trackPositions = makeFailureTracker('position monitor', (msg) => sendTelegram(msg));
   setInterval(() => trackPositions(() => monitorPositions()), POSITION_CHECK_MS);
+
+  // Clear expired mint cooldowns every hour
+  setInterval(() => clearExpiredCooldowns(), 60 * 60 * 1000);
 }
