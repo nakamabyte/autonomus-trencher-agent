@@ -182,7 +182,6 @@ export async function handleApprovedBuy(selectedRow, decision, batchId, rows = [
       guardrails: { maxOpenPositions: numSetting('max_open_positions', 3), openPositions: openPositionCount() },
       execution: { positionId },
     });
-    setCooldown(freshSelectedRow.candidate.token.mint, freshSelectedRow.candidate.token.symbol, decision.strategy);
     await sendPositionOpen(positionId);
     return;
   }

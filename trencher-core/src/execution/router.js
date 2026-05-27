@@ -43,7 +43,6 @@ export async function executeLiveBuy(selectedRow, decision, batchId, rows = [], 
     guardrails: { balanceLamports: balance, amountLamports, minReserveLamports: LIVE_MIN_SOL_RESERVE_LAMPORTS },
     execution: { positionId, swap },
   });
-  setCooldown(selectedRow.candidate.token.mint, selectedRow.candidate.token.symbol, decision.strategy);
   await sendPositionOpen(positionId);
 }
 
@@ -107,7 +106,6 @@ export async function executeConfirmedIntent(chatId, intentId) {
       guardrails: { balanceLamports: balance, amountLamports, intentId },
       execution: { positionId, swap },
     });
-    setCooldown(freshRow.candidate.token.mint, freshRow.candidate.token.symbol, decision.strategy);
     return sendPositionOpen(positionId);
   } catch (err) {
     db.prepare('UPDATE trade_intents SET status = ?, updated_at_ms = ? WHERE id = ?').run('execution_failed', now(), intentId);
