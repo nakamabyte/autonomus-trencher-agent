@@ -66,7 +66,7 @@ export const LLM_MODEL = process.env.LLM_MODEL || 'claude-3-haiku-20240307';
 export const LLM_T1_BASE_URL = process.env.LLM_T1_BASE_URL || 'https://api.deepseek.com/v1';
 export const LLM_T1_API_KEY = process.env.LLM_T1_API_KEY || process.env.DEEPSEEK_API_KEY || '';
 export const LLM_T1_MODEL = process.env.LLM_T1_MODEL || 'deepseek-chat';
-export const LLM_T1_CONFIDENCE_PASS = Number(process.env.LLM_T1_CONFIDENCE_PASS || 0.55);
+export const LLM_T1_CONFIDENCE_PASS = Number(process.env.LLM_T1_CONFIDENCE_PASS || 0.75);
 export const LLM_T1_CONFIDENCE_BUY = Number(process.env.LLM_T1_CONFIDENCE_BUY || 0.80);
 
 export const LLM_T2_BASE_URL = process.env.LLM_T2_BASE_URL || 'https://api.x.ai/v1';
