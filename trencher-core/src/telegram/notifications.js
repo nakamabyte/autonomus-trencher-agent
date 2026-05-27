@@ -51,10 +51,10 @@ export function formatOpenPosition(position, decision = {}) {
   const mode = position.execution_mode || position.mode || 'live';
   const strategy = position.strategy_id || position.strategy || 'sniper';
   const tx = position.entry_signature 
-    ? `${position.entry_signature.slice(0, 6)}...${position.entry_signature.slice(-4)}` 
+    ? `<a href="https://solscan.io/tx/${position.entry_signature}">${position.entry_signature.slice(0, 6)}...${position.entry_signature.slice(-4)}</a>` 
     : 'N/A';
   const token = position.mint 
-    ? `${position.mint.slice(0, 6)}...${position.mint.slice(-4)}` 
+    ? `<a href="https://gmgn.ai/sol/token/${position.mint}">${position.mint.slice(0, 6)}...${position.mint.slice(-4)}</a>` 
     : 'N/A';
 
   return `
@@ -75,10 +75,10 @@ export function formatClosePosition(position) {
   const mode = position.execution_mode || position.mode || 'live';
   const strategy = position.strategy_id || position.strategy || 'sniper';
   const tx = position.entry_signature 
-    ? `${position.entry_signature.slice(0, 6)}...${position.entry_signature.slice(-4)}` 
+    ? `<a href="https://solscan.io/tx/${position.entry_signature}">${position.entry_signature.slice(0, 6)}...${position.entry_signature.slice(-4)}</a>` 
     : 'N/A';
   const token = position.mint 
-    ? `${position.mint.slice(0, 6)}...${position.mint.slice(-4)}` 
+    ? `<a href="https://gmgn.ai/sol/token/${position.mint}">${position.mint.slice(0, 6)}...${position.mint.slice(-4)}</a>` 
     : 'N/A';
   const exitReason = position.exit_reason || 'MANUAL';
 
