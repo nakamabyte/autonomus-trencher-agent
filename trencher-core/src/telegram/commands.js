@@ -205,8 +205,8 @@ export async function handleMessage(msg) {
       `• Daily: <b>${dailySt}</b>\n` +
       `• Screening: <b>${screenSt}</b>\n\n` +
       `<b>Cara mengubah:</b>\n` +
-      `/twitter <on|off>\n` +
-      `/twitter <open|close|daily|screening> <on|off>`, { parse_mode: 'HTML' });
+      `/twitter &lt;on|off&gt;\n` +
+      `/twitter &lt;open|close|daily|screening&gt; &lt;on|off&gt;`, { parse_mode: 'HTML' });
   }
   if (text.startsWith('/cooldown_clear')) {
     const mint = text.split(/\s+/)[1];
