@@ -15,6 +15,31 @@ export function Hero({ onOpenPlatform }: HeroProps) {
     <section id="hero">
       <svg id="hero-canvas" />
       <div className="hero-inner">
+        <div
+          className="inline-flex items-center mb-10 w-fit border rounded-full transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+          style={{
+            background: 'rgba(255, 255, 255, 0.08)',
+            borderColor: 'rgba(255, 255, 255, 0.2)',
+            padding: '7px',
+            marginBottom: '10px'
+          }}
+        >
+          <a
+            href="https://pump.fun/coin/BuFWUxhWGJWsCCp5wEtww9YLazfUHMUJkQsuje1gpump"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-3 font-mono text-white"
+            style={{
+              textDecoration: 'none',
+              fontSize: '14px',
+              fontWeight: 500,
+              letterSpacing: '0.05em'
+            }}
+          >
+            <span style={{ color: 'rgba(255,255,255,0.6)' }}>CA:</span>
+            BuFWUxhWGJWsCCp5wEtww9YLazfUHMUJkQsuje1gpump
+          </a>
+        </div>
         <div className="hero-tag">Solana · Pump.fun · LLM-Powered · 19 Agents</div>
         <h1 className="hero-h1">
           AUTONOMOUS<br />TRENCHER<br /><span>AGENT</span>
