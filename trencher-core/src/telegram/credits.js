@@ -85,8 +85,36 @@ export async function sendCreditsInfo(chatId) {
       report += `<b>Grok (Critic):</b> ⚠️ Error (${err.response?.status || err.message})\n`;
     }
   }
+  report += '\n';
 
-  report += '\n<i>Catatan: Claude dan Grok tidak memiliki endpoint API untuk mengecek nominal saldo secara langsung, sehingga bot hanya melakukan uji (ping) untuk memastikan kunci API masih hidup dan memiliki kuota.</i>';
+  // 4. Check X Developer / Twitter API
+  try {
+    const twAppKey = process.env.TWITTER_APP_KEY;
+    const twToken = process.env.TWITTER_ACCESS_TOKEN;
+    if (!twAppKey || !twToken) {
+      report += '<b>X (Twitter) API:</b> ➖ Not Configured\n';
+    } else {
+      const { TwitterApi } = await import('twitter-api-v2');
+      const client = new TwitterApi({
+        appKey:        process.env.TWITTER_APP_KEY,
+        appSecret:     process.env.TWITTER_APP_SECRET,
+        accessToken:   process.env.TWITTER_ACCESS_TOKEN,
+        accessSecret:  process.env.TWITTER_ACCESS_SECRET,
+      });
+      await client.v2.me();
+      report += `<b>X (Twitter) API:</b> ✅ Active (API Key Valid)\n`;
+    }
+  } catch (err) {
+    if (err.code === 429) {
+      report += `<b>X (Twitter) API:</b> ❌ Rate Limited / Quota Exceeded\n`;
+    } else if (err.code === 401 || err.code === 403) {
+      report += `<b>X (Twitter) API:</b> ❌ Invalid Key or Suspended\n`;
+    } else {
+      report += `<b>X (Twitter) API:</b> ⚠️ Error (${err.code || err.message})\n`;
+    }
+  }
+
+  report += '\n<i>Catatan: Claude, Grok, dan X (Twitter) API tidak memiliki endpoint untuk mengecek sisa kuota (angka pasti) secara langsung, sehingga bot hanya melakukan "ping" untuk memastikan API key valid dan belum kena limit (Rate Limited).</i>';
 
   await bot.editMessageText(report, {
     chat_id: chatId,
