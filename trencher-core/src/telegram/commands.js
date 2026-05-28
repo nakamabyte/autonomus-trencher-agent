@@ -163,6 +163,47 @@ export async function handleMessage(msg) {
   }
   if (text.startsWith('/history')) return sendHistory(chatId);
   if (text.startsWith('/credits')) return sendCreditsInfo(chatId);
+  if (text.startsWith('/twitter')) {
+    const args = text.split(/\s+/);
+    if (args.length === 2 && (args[1] === 'on' || args[1] === 'off')) {
+      const val = args[1] === 'on' ? 'true' : 'false';
+      setSetting('twitter_bot_enabled', val);
+      return bot.sendMessage(chatId, val === 'true' ? '✅ Auto-posting Twitter Master dihidupkan.' : '❌ Auto-posting Twitter Master dimatikan.');
+    }
+    
+    if (args.length === 3) {
+      const type = args[1];
+      const state = args[2];
+      
+      const validTypes = {
+        open: 'twitter_open',
+        close: 'twitter_close',
+        daily: 'twitter_daily',
+        screening: 'twitter_screening'
+      };
+      
+      if (validTypes[type] && (state === 'on' || state === 'off')) {
+        setSetting(validTypes[type], state === 'on' ? 'true' : 'false');
+        return bot.sendMessage(chatId, `✅ Twitter post untuk <b>${type}</b> diatur ke <b>${state.toUpperCase()}</b>.`, { parse_mode: 'HTML' });
+      }
+    }
+    
+    const master = boolSetting('twitter_bot_enabled', true) ? 'ON' : 'OFF';
+    const openSt = boolSetting('twitter_open', process.env.TWEET_ON_OPEN === 'true') ? 'ON' : 'OFF';
+    const closeSt = boolSetting('twitter_close', process.env.TWEET_ON_CLOSE === 'true') ? 'ON' : 'OFF';
+    const dailySt = boolSetting('twitter_daily', process.env.TWEET_ON_DAILY_SUMMARY === 'true') ? 'ON' : 'OFF';
+    const screenSt = boolSetting('twitter_screening', process.env.TWEET_ON_SCREENING === 'true') ? 'ON' : 'OFF';
+    
+    return bot.sendMessage(chatId, `🛠 <b>Twitter Settings</b>\n\n` +
+      `Master Toggle: <b>${master}</b>\n` +
+      `• Open Pos: <b>${openSt}</b>\n` +
+      `• Close Pos: <b>${closeSt}</b>\n` +
+      `• Daily: <b>${dailySt}</b>\n` +
+      `• Screening: <b>${screenSt}</b>\n\n` +
+      `<b>Cara mengubah:</b>\n` +
+      `/twitter <on|off>\n` +
+      `/twitter <open|close|daily|screening> <on|off>`, { parse_mode: 'HTML' });
+  }
   if (text.startsWith('/cooldown_clear')) {
     const mint = text.split(/\s+/)[1];
     if (!mint) return bot.sendMessage(chatId, 'Usage: /cooldown_clear <mint address>');
@@ -424,6 +465,7 @@ export function setupTelegram() {
     { command: 'balance', description: 'Check live wallet balance' },
     { command: 'history', description: 'Show last 10 trades' },
     { command: 'exportdb', description: 'Download sqlite database' },
+    { command: 'twitter', description: 'Enable/disable auto Twitter post' },
   ]).catch(err => console.log(`[telegram] commands ${err.message}`));
 
   bot.on('callback_query', query => handleCallback(query).catch(err => console.log(`[callback] ${err.message}`)));

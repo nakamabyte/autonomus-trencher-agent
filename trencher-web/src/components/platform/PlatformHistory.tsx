@@ -341,8 +341,8 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
                           target="_blank" 
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          style={{ opacity: 0.5, fontFamily: 'var(--fm)', fontSize: '8px', color: 'inherit', textDecoration: 'none' }}
-                          className="hover:underline"
+                          style={{ fontFamily: 'var(--fm)', fontSize: '8px', color: 'inherit', textDecoration: 'none' }}
+                          className="opacity-50 hover:opacity-100 hover:text-[var(--c-accent)] hover:underline transition-all duration-300"
                         >
                           {pos.mint.slice(0, 4)}...{pos.mint.slice(-4)}
                         </a>
@@ -358,15 +358,17 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
                       <span style={{ color: colorClass }}>{sign}{pos.pnl_sol.toFixed(4)} SOL</span>
                     </div>
                     {pos.exit_signature && (
-                      <div className="pv-ast" style={{ marginTop: '4px' }}>
+                      <div className="pv-ast" style={{ marginTop: '4px', display: 'flex' }}>
+                        <span style={{ color: 'var(--c-accent)', marginRight: '4px' }}>Tx:</span>
                         <a
                           href={`https://solscan.io/tx/${pos.exit_signature}`}
                           target="_blank"
                           rel="noreferrer"
-                          style={{ color: 'var(--c-accent)' }}
+                          style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}
                           onClick={e => e.stopPropagation()}
+                          className="text-[var(--c-accent)] hover:text-white hover:underline transition-all duration-300"
                         >
-                          Tx: {pos.exit_signature.slice(0, 8)}...
+                          {pos.exit_signature}
                         </a>
                       </div>
                     )}

@@ -1,5 +1,6 @@
 import { TwitterApi } from 'twitter-api-v2'
 import { batchRevealSummary } from '../telegram/format.js'
+import { boolSetting } from '../db/settings.js'
 
 // ─── Init client ───────────────────────────────────────────────────
 let client = null
@@ -25,12 +26,18 @@ function formatMcap(mcap) {
 }
 
 function isEnabled() {
-  return process.env.TWITTER_ENABLED === 'true'
+  if (process.env.TWITTER_ENABLED !== 'true') return false;
+  return boolSetting('twitter_bot_enabled', true);
+}
+
+function isTypeEnabled(key, envVal) {
+  if (!isEnabled()) return false;
+  return boolSetting(key, envVal === 'true');
 }
 
 // ─── TWEET: OPEN POSITION ──────────────────────────────────────────
 export async function tweetOpenPosition(position, decision = {}) {
-  if (!isEnabled() || process.env.TWEET_ON_OPEN !== 'true') return
+  if (!isTypeEnabled('twitter_open', process.env.TWEET_ON_OPEN)) return
   
   // Only tweet high confidence positions
   const minConf = parseFloat(process.env.TWEET_MIN_CONFIDENCE || '0.78')
@@ -70,7 +77,7 @@ export async function tweetOpenPosition(position, decision = {}) {
 
 // ─── TWEET: CLOSE POSITION ─────────────────────────────────────────
 export async function tweetClosePosition(position) {
-  if (!isEnabled() || process.env.TWEET_ON_CLOSE !== 'true') return
+  if (!isTypeEnabled('twitter_close', process.env.TWEET_ON_CLOSE)) return
 
   // Only tweet wins atau loss yang significant
   const isWin = position.pnl_percent > 0
@@ -111,7 +118,7 @@ export async function tweetClosePosition(position) {
 
 // ─── TWEET: DAILY SUMMARY ──────────────────────────────────────────
 export async function tweetDailySummary(stats) {
-  if (!isEnabled() || process.env.TWEET_ON_DAILY_SUMMARY !== 'true') return
+  if (!isTypeEnabled('twitter_daily', process.env.TWEET_ON_DAILY_SUMMARY)) return
 
   try {
     const isProfit = stats.total_pnl_sol >= 0
@@ -142,7 +149,7 @@ export async function tweetDailySummary(stats) {
 
 // ─── TWEET: BATCH REVEAL ───────────────────────────────────────────
 export async function tweetBatchReveal(batchId, rows, decision, triggerCandidateId) {
-  if (!isEnabled() || process.env.TWEET_ON_SCREENING !== 'true') return
+  if (!isTypeEnabled('twitter_screening', process.env.TWEET_ON_SCREENING)) return
 
   try {
     // Generate the summary using the same formatter as Telegram

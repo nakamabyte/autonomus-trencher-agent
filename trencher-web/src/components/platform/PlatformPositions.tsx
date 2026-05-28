@@ -46,10 +46,13 @@ export function PlatformPositions({ metrics, logHeight }: PlatformPositionsProps
                         title={pos.mint}
                         onClick={e => e.stopPropagation()}
                         style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', position: 'relative', zIndex: 30 }}
-                        className="hover:underline"
+                        className="group"
                       >
-                        <span>{pos.symbol}</span>
-                        <span style={{ opacity: 0.5, fontFamily: 'var(--fm)', fontSize: '8px' }}>
+                        <span className="group-hover:text-[var(--c-accent)] transition-colors duration-300">{pos.symbol}</span>
+                        <span 
+                          style={{ fontFamily: 'var(--fm)', fontSize: '8px' }}
+                          className="opacity-50 group-hover:opacity-100 group-hover:text-white transition-all duration-300"
+                        >
                           {pos.mint.slice(0, 4)}...{pos.mint.slice(-4)}
                         </span>
                       </a>
@@ -64,16 +67,17 @@ export function PlatformPositions({ metrics, logHeight }: PlatformPositionsProps
                       <span style={{ color: colorClass }}>{sign}{pos.pnl_sol.toFixed(4)} SOL</span>
                     </div>
                     {pos.entry_signature && (
-                      <div className="pv-ast" style={{ marginTop: '4px' }}>
+                      <div className="pv-ast" style={{ marginTop: '4px', display: 'flex' }}>
+                        <span style={{ color: 'var(--c-accent)', marginRight: '4px' }}>Tx:</span>
                         <a 
                           href={`https://solscan.io/tx/${pos.entry_signature}`} 
                           target="_blank" 
                           rel="noreferrer" 
                           onClick={e => e.stopPropagation()}
-                          style={{ color: 'var(--c-accent)', position: 'relative', zIndex: 30 }}
-                          className="hover:underline"
+                          style={{ position: 'relative', zIndex: 30, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}
+                          className="text-[var(--c-accent)] hover:text-white hover:underline transition-all duration-300"
                         >
-                          Tx: {pos.entry_signature.slice(0, 8)}...
+                          {pos.entry_signature}
                         </a>
                       </div>
                     )}
