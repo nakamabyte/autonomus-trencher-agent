@@ -107,4 +107,9 @@ export async function startTrencherAgent() {
 
   // Clear expired mint cooldowns every hour
   setInterval(() => clearExpiredCooldowns(), 60 * 60 * 1000);
+
+  // Periodically clean up old DB records to prevent unbounded growth
+  const { cleanupDatabase } = await import('./db/cleanup.js');
+  setInterval(() => cleanupDatabase(), 12 * 60 * 60 * 1000);
+  cleanupDatabase(); // Run once on startup
 }
