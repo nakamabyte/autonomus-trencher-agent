@@ -57,6 +57,7 @@ export async function handleMessage(msg) {
 
 <b>Settings & Strategies:</b>
 /strategy - Ganti dan atur strategi trading
+/stratset &lt;id&gt; &lt;key&gt; &lt;value&gt; - Ubah konfigurasi strategi spesifik
 /filters - Lihat pengaturan filter saat ini
 /setfilter &lt;key&gt; &lt;value&gt; - Ubah pengaturan secara manual
 
@@ -70,8 +71,11 @@ export async function handleMessage(msg) {
 /candidate &lt;mint&gt; - Tampilkan info spesifik koin
 /history - Lihat 10 riwayat transaksi terakhir
 /pnl - Ringkasan profit & loss
-/credits - Cek status kuota & saldo API (Claude, Grok, DeepSeek)
+/credits - Cek status kuota & saldo API (Claude, Grok, DeepSeek, X)
 /exportdb - Download file database lengkap
+
+<b>Social Media & Integrations:</b>
+/twitter - Cek status & atur auto-posting X (Twitter)
 
 <b>Cooldown Anti-Rebuy:</b>
 /cooldowns - Lihat daftar token yang sedang cooldown
