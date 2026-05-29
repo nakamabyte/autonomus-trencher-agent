@@ -1,0 +1,16 @@
+name: Check Holders Cron
+
+on:
+  schedule:
+    # Berjalan setiap 30 menit
+    - cron: '*/30 * * * *'
+  # Memungkinkan kita memicu script secara manual dari tombol di GitHub
+  workflow_dispatch:
+
+jobs:
+  ping_api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call API Check Holders
+        run: |
+          curl -X GET "https://autonomustrencheragent.tech/api/cron/check-holders?secret=${{ secrets.CRON_SECRET }}"
