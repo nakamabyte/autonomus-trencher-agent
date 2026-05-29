@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import './globals.css';
+import Providers from '@/components/platform/Providers';
 
 export const metadata: Metadata = {
   title: 'Trencher Agent — AI-Powered Solana Trench Orchestrator',
@@ -26,7 +27,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"
           strategy="beforeInteractive"
         />
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );
