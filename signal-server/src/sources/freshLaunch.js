@@ -15,7 +15,6 @@ function connect() {
 
   ws.on('open', () => {
     console.log('[fresh-launch] connected to pump.fun new token feed');
-    // Subscribe to new token creation events
     ws.send(JSON.stringify({ method: 'subscribeNewToken' }));
   });
 
