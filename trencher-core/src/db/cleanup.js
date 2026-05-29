@@ -1,31 +1,26 @@
+import fs from 'fs';
 import { db } from './connection.js';
+import { DB_PATH } from '../config.js';
 
-export function cleanupDatabase() {
-  const fiveDaysMs = 5 * 24 * 60 * 60 * 1000;
-  const cutoffMs = Date.now() - fiveDaysMs;
-
-  console.log(`[db] Starting database cleanup for records older than 5 days...`);
+export async function cleanupDatabase() {
+  console.log(`[db] Checking disk space usage (old cleanup disabled)...`);
 
   try {
-    const res1 = db.prepare('DELETE FROM signal_events WHERE at_ms < ?').run(cutoffMs);
-    const res2 = db.prepare('DELETE FROM candidates WHERE created_at_ms < ?').run(cutoffMs);
-    const res3 = db.prepare('DELETE FROM decision_logs WHERE at_ms < ?').run(cutoffMs);
-    const res4 = db.prepare('DELETE FROM llm_decisions WHERE created_at_ms < ?').run(cutoffMs);
-    const res5 = db.prepare('DELETE FROM llm_batches WHERE created_at_ms < ?').run(cutoffMs);
-    const res6 = db.prepare('DELETE FROM trade_intents WHERE created_at_ms < ?').run(cutoffMs);
-
-    console.log(`[db] Cleanup complete. Removed:`);
-    console.log(`  - ${res1.changes} signal_events`);
-    console.log(`  - ${res2.changes} candidates`);
-    console.log(`  - ${res3.changes} decision_logs`);
-    console.log(`  - ${res4.changes} llm_decisions`);
-    console.log(`  - ${res5.changes} llm_batches`);
-    console.log(`  - ${res6.changes} trade_intents`);
+    const stat = fs.statfsSync(DB_PATH);
+    const pct = (stat.blocks - stat.bavail) / stat.blocks * 100;
     
-    // We optionally vacuum if there were significant deletions to reclaim disk space,
-    // but SQLite's WAL mode usually reuses the empty pages gracefully.
-    // If the database starts growing unbounded again, a scheduled VACUUM could be added here.
+    if (pct > 83) {
+      console.warn(`[db] Disk usage is ${pct.toFixed(2)}% — sending Telegram alert!`);
+      const { sendTelegram } = await import('../telegram/send.js');
+      await sendTelegram(
+        `⚠️ <b>DATABASE DISK WARNING</b>\n\n` +
+        `Disk usage is currently at <b>${pct.toFixed(2)}%</b> (Threshold: 83%).\n` +
+        `Database auto-cleanup has been disabled. Please manually free up space or increase disk size.`
+      );
+    } else {
+      console.log(`[db] Disk usage is safe at ${pct.toFixed(2)}%`);
+    }
   } catch (err) {
-    console.error(`[db] Cleanup failed: ${err.message}`);
+    console.error(`[db] Disk usage check failed: ${err.message}`);
   }
 }

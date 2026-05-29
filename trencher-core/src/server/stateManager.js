@@ -1,4 +1,5 @@
 import { broadcast } from './wsServer.js';
+import { setting, setSetting } from '../db/settings.js';
 
 let logIdCounter = 0;
 
@@ -21,8 +22,26 @@ AGENT_IDS.forEach(id => {
   statuses[id] = { st: 'idle', load: 0 };
 });
 
+let initialStartTimeMs = 0;
+
 export function getMetrics() {
-  metrics.uptime = Math.floor(process.uptime());
+  if (!initialStartTimeMs) {
+    try {
+      const stored = setting('initial_start_time_ms', '');
+      if (stored) {
+        initialStartTimeMs = parseInt(stored, 10);
+      } else {
+        initialStartTimeMs = Date.now();
+        setSetting('initial_start_time_ms', initialStartTimeMs.toString());
+      }
+    } catch (e) {
+      // Fallback to process.uptime if DB is not ready yet
+      metrics.uptime = Math.floor(process.uptime());
+      return metrics;
+    }
+  }
+
+  metrics.uptime = Math.floor((Date.now() - initialStartTimeMs) / 1000);
   return metrics;
 }
 
