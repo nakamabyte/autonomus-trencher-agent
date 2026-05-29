@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]/route';
 import { Connection, PublicKey } from '@solana/web3.js';
 import bs58 from 'bs58';
 import nacl from 'tweetnacl';
@@ -10,7 +11,7 @@ const GITHUB_REPO = 'zero520-dot/autonomus-trencher-agent';
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session || !(session.user as any)?.login) {
       return NextResponse.json({ error: 'Not authenticated with GitHub' }, { status: 401 });
     }
