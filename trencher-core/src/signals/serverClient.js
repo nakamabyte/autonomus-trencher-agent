@@ -49,6 +49,23 @@ export async function fetchServerSignals() {
     let triggered = 0;
     let dipAlerts = 0;
 
+    const freshLaunches = res.data?.fresh_launch || [];
+
+    // Process Fresh Launches first (only if strategy is enabled)
+    if (strat.id === 'fresh_launch') {
+      for (const freshToken of freshLaunches) {
+        const mint = freshToken.mint;
+        if (!mint) continue;
+        const key = `signal_fresh:${mint}`;
+        if (seenSignals.has(key)) { processed++; continue; }
+        seenSignals.set(key, now());
+        
+        await triggerCandidate({ mint, freshToken, route: 'fresh_launch' });
+        triggered++;
+        processed++;
+      }
+    }
+
     for (const signal of signals) {
       const mint = signal.mint;
       if (!mint) continue;

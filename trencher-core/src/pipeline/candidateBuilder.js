@@ -115,8 +115,27 @@ export function filterCandidate(candidate) {
   return { passed: failures.length === 0, failures, strategy: strat.id };
 }
 
-export async function buildCandidate({ mint, fee = null, signature = null, graduatedCoin = null, trendingToken = null, route }) {
+export async function buildCandidate({ mint, fee = null, signature = null, graduatedCoin = null, trendingToken = null, freshToken = null, route }) {
   const strat = activeStrategy();
+  let freshEnrichmentData = null;
+  
+  if (freshToken && strat.id === 'fresh_launch') {
+    const { enrichFreshLaunch } = await import('../enrichment/freshEnrichment.js');
+    const { passesFreshLaunchGate } = await import('../filters/freshLaunchGate.js');
+    
+    freshEnrichmentData = await enrichFreshLaunch(freshToken);
+    const gateResult = await passesFreshLaunchGate(freshToken, freshEnrichmentData);
+    
+    if (!gateResult.pass) {
+      return {
+        token: { mint, symbol: freshToken.symbol, name: freshToken.name },
+        filters: { passed: false, failures: [`fresh gate: ${gateResult.reason}`], strategy: strat.id },
+        freshToken,
+        createdAtMs: now()
+      };
+    }
+  }
+
   const gmgn = await fetchGmgnTokenInfo(mint);
   const jupiterAsset = await fetchJupiterAsset(mint);
   const holders = await fetchJupiterHolders(mint);
@@ -131,11 +150,13 @@ export async function buildCandidate({ mint, fee = null, signature = null, gradu
     trendingToken?.market_cap,
     graduatedCoin?.marketCap,
     graduatedCoin?.usd_market_cap,
+    freshEnrichmentData?.mcap_usd
   );
   const signalRoute = route || [
     fee ? 'fee' : null,
     graduatedCoin ? 'graduated' : null,
     trendingToken ? 'trending' : null,
+    freshToken ? 'fresh_launch' : null,
   ].filter(Boolean).join('_');
 
   const candidate = {
@@ -184,6 +205,8 @@ export async function buildCandidate({ mint, fee = null, signature = null, gradu
     chart,
     savedWalletExposure,
     twitterNarrative,
+    freshToken,
+    freshEnrichment: freshEnrichmentData,
     createdAtMs: now(),
   };
   candidate.filters = filterCandidate(candidate);

@@ -5,6 +5,9 @@ export async function enrichFreshLaunch(token) {
   // NOTE: Some of these underlying fetch functions (like getDevHoldingPercent)
   // are placeholders or would need to be implemented via external APIs.
   return {
+    // Basic market cap proxy (assuming 1 SOL = ~$150 for pre-filter)
+    mcap_usd: (token.market_cap_sol || 0) * 150,
+
     // Dev wallet analysis
     dev_holding_pct: await getDevHoldingPercent(token.mint, token.creator).catch(() => 0),
     dev_rug_count: (await getDevRugCount(token.creator).catch(() => ({ rug_count: 0 }))).rug_count,
