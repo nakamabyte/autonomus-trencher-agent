@@ -274,6 +274,7 @@ export const NAV_LINKS: { href: string; label: string }[] = [
   { href: '#modes',      label: 'Modes'      },
   { href: '#strategies', label: 'Strategies' },
   { href: '#config',     label: 'Docs'       },
+  { href: '/verify',     label: 'Verify Holder' },
 ];
 
 export const FOOTER_LINKS: { href: string; label: string; onClick?: boolean }[] = [
