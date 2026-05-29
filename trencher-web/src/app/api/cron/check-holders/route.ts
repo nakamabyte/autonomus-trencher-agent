@@ -11,9 +11,12 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const secret = searchParams.get('secret');
 
+    console.log('Received secret:', secret);
+    console.log('Env CRON_SECRET:', process.env.CRON_SECRET);
+
     // Secure the cron endpoint using a secret token
     if (secret !== process.env.CRON_SECRET) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized', received: secret, expected: process.env.CRON_SECRET }, { status: 401 });
     }
 
     // 1. Fetch all registered users from Supabase
