@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { startScraping, getSignals } = require('./scraper');
+const { startFreshLaunchListener } = require('./sources/freshLaunch');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -24,12 +25,30 @@ const requireAuth = (req, res, next) => {
 app.get('/api/signals', requireAuth, (req, res) => {
   const limit = parseInt(req.query.limit) || 100;
   const minSources = parseInt(req.query.minSources) || 1;
-  res.json({ signals: getSignals(limit, minSources) });
+  res.json({
+    signals: getSignals(limit, minSources),
+    fresh_launch: freshLaunchBuffer
+  });
 });
 
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime() });
+});
+
+const freshLaunchBuffer = [];
+const FRESH_TTL_MS = 10 * 60 * 1000; // keep fresh tokens 10 min max
+
+startFreshLaunchListener((token) => {
+  // Add to buffer with timestamp
+  freshLaunchBuffer.push(token);
+  console.log(`[fresh-launch] new token: ${token.symbol} (${token.mint})`);
+
+  // Cleanup old entries
+  const cutoff = Date.now() - FRESH_TTL_MS;
+  while (freshLaunchBuffer.length && freshLaunchBuffer[0].created_at_ms < cutoff) {
+    freshLaunchBuffer.shift();
+  }
 });
 
 startScraping().then(() => {

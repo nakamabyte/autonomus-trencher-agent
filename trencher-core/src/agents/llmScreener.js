@@ -176,12 +176,48 @@ Negative:
 - holders < 100: -0.04
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 5 — STRATEGY MINIMUMS
+STEP 5 — FRESH LAUNCH STRATEGY (strategy = "fresh_launch")
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+This is the highest-risk strategy. Token is still on the bonding curve,
+not yet graduated. Apply maximum scrutiny.
+
+REQUIRE confidence >= 0.82 for BUY. No exceptions.
+
+INSTANT SKIP for fresh launches if ANY of these:
+- mcap_usd < 5000 or > 30000
+- dev_holding_pct > 15
+- bundler_rate > 0.10
+- dev wallet has 2+ prior rugs (check dev_rug_count field)
+- NO runner signal AND NO smart money overlap AND buy_count_5m < 10
+
+ONLY consider BUY for fresh launch if at least ONE:
+- runner_signal is present (reply runner or tech narrative)
+- smart_money_overlap >= 1 (tracked wallet bought in first minutes)
+- buy_count_5m >= 10 (organic early volume)
+
+Fresh launch scoring:
+- runner signal on fresh launch: this is the highest alpha scenario, +0.15
+- smart money entered in first 5 min: +0.12
+- strong early organic volume (buy_count_5m > 20): +0.08
+- dev holding under 5%: +0.05
+- creator wallet has prior successful launches: +0.06
+
+Fresh launch penalties:
+- mcap under 10k (very early, illiquid): -0.05
+- only 1 signal source: -0.04
+- no social narrative at all: -0.08
+
+Remember: 95% of fresh launches are noise. Default to SKIP.
+Only the ones with a genuine reason to pump should pass.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 6 — STRATEGY MINIMUMS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 sniper:      0.78 minimum
 dip_buy:     0.75 minimum
 smart_money: 0.80 minimum
 degen:       0.75 minimum
+fresh_launch:0.82 minimum
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 OUTPUT FORMAT

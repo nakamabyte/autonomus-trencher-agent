@@ -383,6 +383,20 @@ export function initDb() {
     use_llm: false,
     llm_min_confidence: 50,
   }), ts);
+
+  stratInsert.run('fresh_launch', 'Fresh Launch', 0, JSON.stringify({
+    tp_percent: 120,
+    sl_percent: -18,
+    trailing_enabled: true,
+    trailing_percent: 35,
+    trailing_arm_percent: 40,
+    max_hold_ms: 1800000,
+    max_open_positions: 2,
+    llm_min_confidence: 82,
+    min_mcap_usd: 5000,
+    max_mcap_usd: 30000,
+    position_size_sol: 0.05
+  }), ts);
 }
 
 export function ensureColumn(table, column, ddl) {

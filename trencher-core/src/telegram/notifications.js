@@ -50,6 +50,9 @@ function formatStrategy(strategy) {
 export function formatOpenPosition(position, decision = {}) {
   const mode = position.execution_mode || position.mode || 'live';
   const strategy = position.strategy_id || position.strategy || 'sniper';
+  const freshTag = strategy === 'fresh_launch'
+    ? '\n⚠️ FRESH LAUNCH — high risk, pre-graduation'
+    : '';
   const tx = position.entry_signature 
     ? `<a href="https://solscan.io/tx/${position.entry_signature}">${position.entry_signature.slice(0, 6)}...${position.entry_signature.slice(-4)}</a>` 
     : 'N/A';
@@ -58,7 +61,7 @@ export function formatOpenPosition(position, decision = {}) {
     : 'N/A';
 
   return `
-✅ Live buy executed
+✅ Live buy executed${freshTag}
 
 📍 ${position.symbol || 'UNKNOWN'} #${position.id || 'N/A'}
 Token: ${token}
