@@ -49,10 +49,15 @@ export async function executeLiveBuy(selectedRow, decision, batchId, rows = [], 
 export async function executeLiveSell(position, reason) {
   const amount = position.token_amount_raw || position.token_amount_est;
   if (!amount || Number(amount) <= 0) throw new Error('Live position has no token amount to sell.');
+  
+  const isCopyTrade = position.strategy_id === 'copytrade';
+  
   return executeJupiterSwap({
     inputMint: position.mint,
     outputMint: WSOL_MINT,
     amount,
+    useJito: isCopyTrade ? process.env.COPYTRADE_USE_JITO !== 'false' : undefined,
+    priorityFee: isCopyTrade ? (process.env.COPYTRADE_PRIORITY_FEE || 'VeryHigh') : undefined,
   });
 }
 

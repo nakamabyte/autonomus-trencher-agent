@@ -145,7 +145,18 @@ export async function refreshPosition(position, { autoExit = true, jupiterPnl = 
 
   // Max hold time check
   const strat = strategyById(position.strategy_id);
-  if (strat?.max_hold_ms > 0 && (now() - position.opened_at_ms) >= strat.max_hold_ms) {
+  
+  if (position.strategy_id === 'copytrade') {
+    const holdMin = (now() - position.opened_at_ms) / 60000;
+    const maxHoldMs = Number(process.env.COPYTRADE_MAX_HOLD_MS || 7200000);
+    if (holdMin > (maxHoldMs / 60000)) {
+      exitReason = 'MAX_HOLD';
+      console.log(`[copytrade] MAX HOLD on ${position.mint}`);
+    } else if (pnlPercent <= Number(process.env.COPYTRADE_SAFETY_SL || -25)) {
+      exitReason = 'SL_SAFETY_NET';
+      console.log(`[copytrade] SAFETY SL hit on ${position.mint} at ${pnlPercent}%`);
+    }
+  } else if (strat?.max_hold_ms > 0 && (now() - position.opened_at_ms) >= strat.max_hold_ms) {
     exitReason = 'MAX_HOLD';
   }
 
@@ -254,7 +265,31 @@ export async function refreshPosition(position, { autoExit = true, jupiterPnl = 
     `).run(position.id, position.mint, now(), price, mcap, position.size_sol, position.token_amount_est, exitReason, json({ pnlPercent, pnlSol }));
     closed = true;
   }
-  if (closed) setCooldown(position.mint, exitReason);
+  if (closed) {
+    setCooldown(position.mint, exitReason);
+    // Update copytrade winrate if applicable
+    if (position.strategy_id === 'copytrade' && position.copied_from) {
+      const isWin = finalPnlPercent > 0;
+      // db is already imported at the top of the file.
+      
+      db.prepare(`
+        UPDATE tracked_wallets
+        SET total_copied = total_copied + 1,
+            total_wins = total_wins + ?,
+            win_rate = CAST(total_wins + ? AS REAL) / (total_copied + 1)
+        WHERE address = ?
+      `).run(isWin ? 1 : 0, isWin ? 1 : 0, position.copied_from);
+      
+      const wallet = db.prepare('SELECT * FROM tracked_wallets WHERE address = ?').get(position.copied_from);
+      if (wallet && wallet.total_copied >= 10 && wallet.win_rate < 0.30) {
+        db.prepare('UPDATE tracked_wallets SET enabled = 0 WHERE address = ?').run(position.copied_from);
+        console.log(`[copytrade] Wallet ${position.copied_from} auto-disabled due to low winrate: ${(wallet.win_rate*100).toFixed(0)}%`);
+        import('../telegram/copytrade.js').then(({ notifyWalletDisabled }) => {
+          notifyWalletDisabled(wallet.label, wallet.address, wallet.win_rate);
+        }).catch(err => console.error(err));
+      }
+    }
+  }
   return {
     ...position,
     status: closed ? 'closed' : position.status,

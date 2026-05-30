@@ -88,14 +88,16 @@ export async function liveWalletBalanceLamports() {
   });
 }
 
-async function jupiterOrder({ inputMint, outputMint, amount }) {
+async function jupiterOrder({ inputMint, outputMint, amount, priorityFee, useJito, slippageBps }) {
   requireLiveExecution();
   const url = new URL(`${JUPITER_SWAP_BASE_URL.replace(/\/$/, '')}/order`);
   url.searchParams.set('inputMint', inputMint);
   url.searchParams.set('outputMint', outputMint);
   url.searchParams.set('amount', String(amount));
   url.searchParams.set('taker', liveWallet.publicKey.toBase58());
-  url.searchParams.set('slippageBps', String(JUPITER_SLIPPAGE_BPS));
+  url.searchParams.set('slippageBps', String(slippageBps || JUPITER_SLIPPAGE_BPS));
+  if (priorityFee) url.searchParams.set('priorityFee', String(priorityFee));
+  if (useJito) url.searchParams.set('useJito', 'true');
   const res = await axios.get(url.toString(), {
     timeout: 20_000,
     headers: { ...JSON_HEADERS, 'x-api-key': JUPITER_API_KEY },
@@ -130,8 +132,8 @@ async function jupiterExecute(order, signedTransaction) {
   return res.data;
 }
 
-export async function executeJupiterSwap({ inputMint, outputMint, amount }) {
-  const order = await jupiterOrder({ inputMint, outputMint, amount });
+export async function executeJupiterSwap({ inputMint, outputMint, amount, priorityFee, useJito, slippageBps }) {
+  const order = await jupiterOrder({ inputMint, outputMint, amount, priorityFee, useJito, slippageBps });
   const transaction = orderTransactionBase64(order);
   if (!transaction) throw new Error('Jupiter order did not include a transaction.');
   const signedTransaction = signTransactionBase64(transaction);

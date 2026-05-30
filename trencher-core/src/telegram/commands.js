@@ -61,10 +61,12 @@ export async function handleMessage(msg) {
 /filters - Lihat pengaturan filter saat ini
 /setfilter &lt;key&gt; &lt;value&gt; - Ubah pengaturan secara manual
 
-<b>Wallet Management:</b>
-/walletadd &lt;name&gt; &lt;address&gt; - Tambah target (mata-mata)
-/walletremove &lt;name&gt; - Hapus target
-/setwallet &lt;private_key&gt; - Masukkan Private Key eksekusi (Aman: Pesan dihapus otomatis)
+<b>Wallet Management & Copy Trade:</b>
+/walletadd &lt;label&gt; &lt;address&gt; [--copy &lt;size&gt;] - Tambah dompet (tambah flag --copy untuk Auto-Copy)
+/walletremove &lt;label&gt; - Hapus dompet dari pantauan & Copy Trade
+/wallets - Menu dompet
+/wallets copy - Lihat status & winrate dompet copy trade
+/setwallet &lt;private_key&gt; - Masukkan Private Key eksekusi
 /balance - Cek dompet aktif & saldo SOL
 
 <b>Information & History:</b>
@@ -286,21 +288,57 @@ export async function handleMessage(msg) {
     return bot.sendMessage(chatId, '✅ Wallet Private Key successfully updated and loaded into Live Executor.\n\n(Your message containing the key was automatically deleted for security).');
   }
   if (text.startsWith('/walletadd')) {
-    const [, label, address] = text.split(/\s+/);
-    if (!label || !address) return bot.sendMessage(chatId, 'Usage: /walletadd <label> <address>');
+    const args = text.split(/\s+/).slice(1);
+    const label = args[0];
+    const address = args[1];
+    if (!label || !address) return bot.sendMessage(chatId, 'Usage: /walletadd <label> <address> [--copy <size>]');
+    
+    // Save to saved_wallets (passive)
     db.prepare(`
       INSERT INTO saved_wallets (label, address, created_at_ms) VALUES (?, ?, ?)
       ON CONFLICT(label) DO UPDATE SET address = excluded.address
     `).run(label, address, now());
-    return bot.sendMessage(chatId, `Saved wallet ${label}.`);
+    
+    let msg = `✅ Tersimpan dompet <b>${label}</b> untuk pantauan (Pasif).`;
+    
+    // Check for --copy flag
+    const copyIndex = args.indexOf('--copy');
+    if (copyIndex !== -1) {
+      const size = parseFloat(args[copyIndex + 1]) || 0.1;
+      import('../copytrade/walletRegistry.js').then(({ addWallet }) => addWallet(address, label, size));
+      msg += `\n⚡ <b>Mode Copy Trade AKTIF!</b> Akan menyalin transaksi dengan ukuran <b>${size} SOL</b>.`;
+    }
+    
+    return bot.sendMessage(chatId, msg, { parse_mode: 'HTML' });
   }
+  
   if (text.startsWith('/walletremove')) {
-    const label = text.split(/\s+/)[1];
-    if (!label) return bot.sendMessage(chatId, 'Usage: /walletremove <label>');
-    db.prepare('DELETE FROM saved_wallets WHERE label = ?').run(label);
-    return bot.sendMessage(chatId, `Removed ${label}.`);
+    const target = text.split(/\s+/)[1];
+    if (!target) return bot.sendMessage(chatId, 'Usage: /walletremove <label_or_address>');
+    
+    const saved = db.prepare('SELECT address FROM saved_wallets WHERE label = ? OR address = ?').get(target, target);
+    const tracked = db.prepare('SELECT address FROM tracked_wallets WHERE label = ? OR address = ?').get(target, target);
+    
+    const addressToDisable = saved?.address || tracked?.address || target;
+    
+    import('../copytrade/walletRegistry.js').then(({ disableWallet }) => disableWallet(addressToDisable));
+    db.prepare('DELETE FROM saved_wallets WHERE label = ? OR address = ?').run(target, target);
+    
+    return bot.sendMessage(chatId, `🗑 Dompet <b>${target}</b> telah dihapus dari pantauan dan Copy Trade.`, { parse_mode: 'HTML' });
   }
-  if (text.startsWith('/wallets')) return handleCallback({ id: 'manual', data: 'menu:wallets', message: { chat: { id: chatId } } });
+  if (text.startsWith('/wallets')) {
+    if (text.trim() === '/wallets copy') {
+      import('../copytrade/walletRegistry.js').then(({ getEnabledWallets }) => {
+        const wallets = getEnabledWallets();
+        const msg = wallets.map(w => 
+          `${w.label || w.address.slice(0,8)} | ${w.total_copied} copies | ${(w.win_rate*100).toFixed(0)}% WR | ${w.copy_size_sol} SOL`
+        ).join('\n');
+        bot.sendMessage(chatId, msg || 'No copy wallets tracked');
+      });
+      return;
+    }
+    return handleCallback({ id: 'manual', data: 'menu:wallets', message: { chat: { id: chatId } } });
+  }
   if (text.startsWith('/setfilter')) {
     const { key, value } = parseSetFilter(text);
     const valid = new Set([

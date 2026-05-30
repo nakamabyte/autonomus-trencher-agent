@@ -15,6 +15,17 @@ export function initDb() {
       address TEXT NOT NULL UNIQUE,
       created_at_ms INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS tracked_wallets (
+      address TEXT PRIMARY KEY,
+      label TEXT,
+      added_at_ms INTEGER NOT NULL,
+      enabled INTEGER DEFAULT 1,
+      win_rate REAL DEFAULT 0,
+      total_copied INTEGER DEFAULT 0,
+      total_wins INTEGER DEFAULT 0,
+      copy_size_sol REAL DEFAULT 0.1,
+      priority INTEGER DEFAULT 1
+    );
     CREATE TABLE IF NOT EXISTS candidates (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       mint TEXT NOT NULL,
@@ -214,6 +225,8 @@ export function initDb() {
   ensureColumn('dry_run_positions', 'token_amount_raw', 'TEXT');
   ensureColumn('dry_run_positions', 'strategy_id', "TEXT DEFAULT 'sniper'");
   ensureColumn('dry_run_positions', 'partial_tp_done', 'INTEGER DEFAULT 0');
+  ensureColumn('dry_run_positions', 'copied_from', 'TEXT');
+  ensureColumn('dry_run_positions', 'mirror_exit', 'INTEGER DEFAULT 0');
   ensureColumn('decision_logs', 'strategy_id', 'TEXT');
 
   const defaults = {
