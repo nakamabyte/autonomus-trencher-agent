@@ -127,7 +127,7 @@ export function agentText() {
     `Open positions: ${openPositionCount()}/${strat.max_open_positions || 'unlimited'}`,
     `Batch candidates: ${numSetting('llm_candidate_pick_count', 10)}`,
     `Candidate freshness: ${Math.round(numSetting('llm_candidate_max_age_ms', 600000) / 1000)}s`,
-    `Size: ${fmtSol(strat.position_size_sol)} SOL`,
+    `Size: ${strat.chain === 'base' ? (strat.position_size_eth || 0) + ' ETH' : fmtSol(strat.position_size_sol) + ' SOL'}`,
     `TP/SL: ${fmtPct(strat.tp_percent)} / ${fmtPct(strat.sl_percent)}`,
     `Trailing: ${strat.trailing_enabled ? fmtPct(strat.trailing_percent) : 'off'}`,
   ].join('\n');
@@ -200,10 +200,11 @@ export function strategyMenuText() {
     '🎯 <b>Strategy</b>',
     '',
     `Active: <b>${escapeHtml(strat.name)}</b>`,
-    `Entry: ${entryIcons[strat.entry_mode] || '?'} ${strat.entry_mode}`,
-    `Min sources: ${strat.min_source_count}`,
+    `Entry: ${entryIcons[strat.entry_mode] || '?'} ${strat.entry_mode || 'immediate'}`,
+    `Chain: ${strat.chain === 'base' ? '🔵 Base' : '🟣 Solana'}`,
+    `Min sources: ${strat.min_source_count || 0}`,
     `Fee required: ${strat.require_fee_claim ? 'yes' : 'no'}`,
-    `Size: ${fmtSol(strat.position_size_sol)} SOL`,
+    `Size: ${strat.chain === 'base' ? (strat.position_size_eth || 0) + ' ETH' : fmtSol(strat.position_size_sol) + ' SOL'}`,
     `TP/SL: ${fmtPct(strat.tp_percent)} / ${fmtPct(strat.sl_percent)}`,
     `Trailing: ${strat.trailing_enabled ? fmtPct(strat.trailing_percent) : 'off'}`,
     `Max positions: ${strat.max_open_positions}`,
@@ -230,7 +231,9 @@ export function strategyKeyboard() {
       { text: `SL ${strat.sl_percent}%`, callback_data: 'stratinput:sl_percent' },
     ],
     [
-      { text: `Size ${strat.position_size_sol} SOL`, callback_data: 'stratinput:position_size_sol' },
+      strat.chain === 'base'
+        ? { text: `Size ${strat.position_size_eth} ETH`, callback_data: 'stratinput:position_size_eth' }
+        : { text: `Size ${strat.position_size_sol} SOL`, callback_data: 'stratinput:position_size_sol' },
       { text: `Max Pos ${strat.max_open_positions}`, callback_data: 'stratinput:max_open_positions' },
     ],
     [

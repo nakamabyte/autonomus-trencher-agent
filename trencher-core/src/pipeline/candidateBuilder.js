@@ -42,6 +42,12 @@ export function filterCandidate(candidate) {
   const trendingSwaps = Number(candidate.trending?.swaps ?? 0);
   const rugRatio = Number(candidate.trending?.rug_ratio ?? 0);
   const bundlerRate = Number(candidate.trending?.bundler_rate ?? 0);
+  const candChain = candidate.chain || 'solana';
+  const stratChain = strat.chain || 'solana';
+
+  if (candChain !== stratChain) {
+    failures.push(`chain mismatch: candidate is ${candChain}, strategy is ${stratChain}`);
+  }
 
   // Fee claim check
   if (candidate.feeClaim) {
