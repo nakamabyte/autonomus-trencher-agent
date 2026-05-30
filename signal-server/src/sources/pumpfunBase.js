@@ -19,7 +19,11 @@ async function fetchPumpfunBaseGraduated() {
       created_timestamp: token.created_timestamp,
     }));
   } catch (error) {
-    console.error(`[base-graduated] Error fetching Base graduated tokens:`, error.message);
+    if (error.response && error.response.status === 530) {
+      // Mute Cloudflare 530 errors to prevent log spam
+    } else {
+      console.error(`[base-graduated] Error fetching Base graduated tokens:`, error.message);
+    }
     return [];
   }
 }
@@ -40,7 +44,11 @@ async function fetchPumpfunBaseTrending() {
       source: 'pumpfun_base_trending',
     }));
   } catch (error) {
-    console.error(`[base-trending] Error fetching Base trending tokens:`, error.message);
+    if (error.response && error.response.status === 530) {
+      // Mute Cloudflare 530 errors to prevent log spam
+    } else {
+      console.error(`[base-trending] Error fetching Base trending tokens:`, error.message);
+    }
     return [];
   }
 }
