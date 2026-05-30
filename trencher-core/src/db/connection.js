@@ -475,7 +475,7 @@ export function getDailyStats(dateStr = null) {
 // 2.5 Signal Events Auto-cleanup
 function cleanupOldSignals() {
   const cutoff = Date.now() - (7 * 24 * 60 * 60 * 1000);
-  const result = db.prepare('DELETE FROM signal_events WHERE created_at_ms < ?').run(cutoff);
+  const result = db.prepare('DELETE FROM signal_events WHERE at_ms < ?').run(cutoff);
   if (result.changes > 0) {
     console.log(`[db] cleaned ${result.changes} signal_events older than 7 days`);
   }
