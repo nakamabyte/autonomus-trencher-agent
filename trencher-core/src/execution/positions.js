@@ -289,6 +289,32 @@ export async function refreshPosition(position, { autoExit = true, jupiterPnl = 
         }).catch(err => console.error(err));
       }
     }
+    
+    // 2.8 Per-KOL Accuracy Tracking
+    if (position.snapshot_json) {
+      try {
+        const snapshot = JSON.parse(position.snapshot_json);
+        const decision = snapshot.decision;
+        const candidate = snapshot.candidate;
+        // Check if LLM flagged a KOL
+        const kol = decision?.runner_account || decision?.kol_signal;
+        if (kol && kol.startsWith('@')) {
+          const isWin = finalPnlPercent > 0;
+          db.prepare(`
+            INSERT INTO kol_accuracy (account, total_signals, winning_signals, win_rate, last_updated_ms)
+            VALUES (?, 1, ?, ?, ?)
+            ON CONFLICT(account) DO UPDATE SET
+              total_signals = total_signals + 1,
+              winning_signals = winning_signals + excluded.winning_signals,
+              win_rate = CAST(winning_signals + excluded.winning_signals AS REAL) / (total_signals + 1),
+              last_updated_ms = excluded.last_updated_ms
+          `).run(kol, isWin ? 1 : 0, isWin ? 1.0 : 0.0, now());
+          console.log(`[kol] updated accuracy for ${kol}: win=${isWin}`);
+        }
+      } catch (err) {
+        console.error('[kol] Error updating kol accuracy:', err.message);
+      }
+    }
   }
   return {
     ...position,

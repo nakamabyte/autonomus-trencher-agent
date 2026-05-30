@@ -20,11 +20,27 @@ import { isOnCooldown, setCooldown, getCooldownRemaining } from '../utils/mintCo
 
 export const seenSignalCandidates = new Map();
 
+// 2.6 Hourly Trading Scheduler
+const WITA_PAUSE_HOURS = [7, 8, 9, 10, 11, 12, 13, 14];
+// UTC = WITA - 8
+const UTC_PAUSE_HOURS = WITA_PAUSE_HOURS.map(h => (h - 8 + 24) % 24);
+
+function isActiveHour() {
+  const utcHour = new Date().getUTCHours();
+  return !UTC_PAUSE_HOURS.includes(utcHour);
+}
+
 setDegenHandler(maybeProcessDegenCandidate);
 setCandidateHandler(processCandidateFromSignals);
 
 export async function processCandidateFromSignals(signals) {
   try {
+  // Pause execution during dead zones
+  if (!isActiveHour()) {
+    console.log(`[scheduler] skipped processing ${signals.mint.slice(0, 8)}... (PAUSE HOUR)`);
+    return;
+  }
+
   // Skip if max positions reached — don't waste enrichment/LLM calls
   if (!canOpenMorePositions()) {
     const max = numSetting('max_open_positions', 3);

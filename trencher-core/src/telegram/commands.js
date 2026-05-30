@@ -68,6 +68,7 @@ export async function handleMessage(msg) {
 /wallets copy - Lihat status & winrate dompet copy trade
 /setwallet &lt;private_key&gt; - Masukkan Private Key eksekusi (Solana)
 /setbasekey &lt;0x_private_key&gt; - Masukkan Private Key eksekusi (Base EVM)
+/setearningwallet &lt;sol|base&gt; &lt;address&gt; - Set dompet penerima dana x402
 /balance - Cek dompet aktif & saldo SOL
 
 <b>Information & History:</b>
@@ -227,6 +228,39 @@ export async function handleMessage(msg) {
     });
     return bot.sendMessage(chatId, `⏳ <b>Cooldown Aktif (${list.length})</b>\n\n${lines.join('\n')}\n\nGunakan /cooldown_clear <mint> untuk menghapus.`, { parse_mode: 'HTML' });
   }
+  if (text.startsWith('/setearningwallet')) {
+    const parts = text.split(/\s+/);
+    if (parts.length < 3) {
+      return bot.sendMessage(chatId, 'Usage: /setearningwallet <sol|base> <address>');
+    }
+    const chain = parts[1].toLowerCase();
+    const address = parts[2];
+    const key = chain === 'base' ? 'BASE_AGENT_WALLET' : 'AGENT_WALLET_ADDRESS';
+    
+    // Update active process.env
+    process.env[key] = address;
+    
+    // Update .env file if it exists
+    import('fs').then(fs => {
+      import('path').then(path => {
+        ['.env', '../signal-server/.env'].forEach(envFile => {
+          const envPath = path.resolve(process.cwd(), envFile);
+          if (fs.existsSync(envPath)) {
+            let content = fs.readFileSync(envPath, 'utf8');
+            if (new RegExp(`^${key}=`, 'm').test(content)) {
+              content = content.replace(new RegExp(`^${key}=.*$`, 'm'), `${key}=${address}`);
+            } else {
+              content += `\n${key}=${address}\n`;
+            }
+            fs.writeFileSync(envPath, content);
+          }
+        });
+      });
+    }).catch(e => console.error('Failed to write .env', e));
+    
+    return bot.sendMessage(chatId, `✅ Wallet untuk <b>${chain.toUpperCase()} (x402 Micropayments)</b> berhasil diupdate menjadi:\n<code>${address}</code>`, { parse_mode: 'HTML' });
+  }
+
   if (text.startsWith('/menu')) return sendMenu(chatId);
   if (text.startsWith('/positions')) return sendPositions(chatId);
   if (text.startsWith('/filters')) return bot.sendMessage(chatId, filtersText(), { parse_mode: 'HTML' });
@@ -512,10 +546,11 @@ export function setupTelegram() {
     { command: 'setfilter', description: 'Set a filter value' },
     { command: 'walletadd', description: 'Save wallet for exposure/PnL' },
     { command: 'walletremove', description: 'Remove saved wallet' },
-    { command: 'wallets', description: 'List saved wallets' },
+    { command: 'wallets', description: 'Menu copy trade wallets' },
     { command: 'setwallet', description: 'Set live execution private key (Solana)' },
     { command: 'setbasekey', description: 'Set live execution private key (Base)' },
-    { command: 'balance', description: 'Check live wallet balance' },
+    { command: 'setearningwallet', description: 'Set treasury wallet for x402 payments' },
+    { command: 'balance', description: 'Check wallet balance' },
     { command: 'history', description: 'Show last 10 trades' },
     { command: 'exportdb', description: 'Download sqlite database' },
     { command: 'twitter', description: 'Enable/disable auto Twitter post' },

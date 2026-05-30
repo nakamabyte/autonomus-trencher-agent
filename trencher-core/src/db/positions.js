@@ -2,6 +2,14 @@ import { db } from './connection.js';
 import { now, json } from '../utils.js';
 import { numSetting, boolSetting, setting, activeStrategy } from './settings.js';
 
+function getPositionSize(confidence, baseSize) {
+  const normConf = confidence > 1 ? confidence / 100 : confidence;
+  if (normConf >= 0.92) return baseSize * 1.5;
+  if (normConf >= 0.85) return baseSize * 1.2;
+  if (normConf >= 0.80) return baseSize * 1.0;
+  return baseSize * 0.5;
+}
+
 export function openPositions() {
   return db.prepare('SELECT * FROM dry_run_positions WHERE status = ? ORDER BY opened_at_ms DESC').all('open');
 }
@@ -29,14 +37,8 @@ export function allPositions(limit = 10) {
 export function createDryRunPosition(candidateId, candidate, decision, reason = 'llm_buy') {
   const strat = activeStrategy();
   let sizeSol = strat.position_size_sol ?? numSetting('dry_run_buy_sol', 0.1);
-  if (decision && typeof decision.confidence === 'number' && candidate.filters?.sources) {
-    const confidence = decision.confidence;
-    const sourceCount = candidate.filters.sources.length || 1;
-    if (confidence >= 0.90 && sourceCount >= 3) {
-      sizeSol = sizeSol * 2.0;
-    } else if (confidence < 0.75) {
-      sizeSol = sizeSol * 0.5;
-    }
+  if (decision && typeof decision.confidence === 'number') {
+    sizeSol = getPositionSize(decision.confidence, sizeSol);
   }
   const entryPrice = Number(candidate.metrics.priceUsd || 0) || null;
   const entryMcap = Number(candidate.metrics.marketCapUsd || candidate.metrics.graduatedMarketCapUsd || 0) || null;
@@ -93,14 +95,8 @@ export function createDryRunPosition(candidateId, candidate, decision, reason = 
 export function createLivePosition(candidateId, candidate, decision, swap, reason = 'live_buy') {
   const strat = activeStrategy();
   let sizeSol = strat.position_size_sol ?? numSetting('dry_run_buy_sol', 0.1);
-  if (decision && typeof decision.confidence === 'number' && candidate.filters?.sources) {
-    const confidence = decision.confidence;
-    const sourceCount = candidate.filters.sources.length || 1;
-    if (confidence >= 0.90 && sourceCount >= 3) {
-      sizeSol = sizeSol * 2.0;
-    } else if (confidence < 0.75) {
-      sizeSol = sizeSol * 0.5;
-    }
+  if (decision && typeof decision.confidence === 'number') {
+    sizeSol = getPositionSize(decision.confidence, sizeSol);
   }
   const entryPrice = Number(candidate.metrics.priceUsd || 0) || null;
   const entryMcap = Number(candidate.metrics.marketCapUsd || candidate.metrics.graduatedMarketCapUsd || 0) || null;

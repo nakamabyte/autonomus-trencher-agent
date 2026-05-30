@@ -544,9 +544,28 @@ async function runTier1(candidates) {
   }
 }
 
-// ─── Tier 2: Grok KOL Validator ────────────────────────────────────
+import { db } from '../db/connection.js';
+
+// ─── Tier 2 (Grok/Anthropic) ───────────────────────────────────────
 async function runTier2(candidates, tier1Result) {
   try {
+    let dynamicPrompt = SYSTEM_PROMPT_T2;
+    try {
+      const kols = db.prepare('SELECT account, win_rate FROM kol_accuracy WHERE total_signals >= 2').all();
+      if (kols.length > 0) {
+         let kolText = '\n\nDYNAMIC KOL WEIGHTS (Overrides defaults):\n';
+         for (const kol of kols) {
+           let baseBoost = 0.15;
+           let multiplier = kol.win_rate / 0.5;
+           multiplier = Math.max(0.5, Math.min(2.0, multiplier));
+           let boost = (baseBoost * multiplier).toFixed(2);
+           kolText += `- ${kol.account} -> +${boost} (win_rate: ${(kol.win_rate*100).toFixed(0)}%)\n`;
+         }
+         dynamicPrompt += kolText;
+      }
+    } catch (e) {
+      console.error('[LLM-T2] failed to append KOL weights:', e.message);
+    }
     const enriched = candidates.map(c => ({
       ...c,
       tier1_confidence: tier1Result.confidence,
@@ -557,7 +576,7 @@ async function runTier2(candidates, tier1Result) {
       model: LLM_T2_MODEL,
       max_tokens: 500,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT_T2 },
+        { role: 'system', content: dynamicPrompt },
         { role: 'user', content: JSON.stringify(enriched) }
       ]
     });

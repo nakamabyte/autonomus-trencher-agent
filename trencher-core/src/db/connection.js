@@ -228,6 +228,15 @@ export function initDb() {
   ensureColumn('dry_run_positions', 'copied_from', 'TEXT');
   ensureColumn('dry_run_positions', 'mirror_exit', 'INTEGER DEFAULT 0');
   ensureColumn('decision_logs', 'strategy_id', 'TEXT');
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS kol_accuracy (
+      account TEXT PRIMARY KEY,
+      total_signals INTEGER DEFAULT 0,
+      winning_signals INTEGER DEFAULT 0,
+      win_rate REAL DEFAULT 0,
+      last_updated_ms INTEGER
+    );
+  `);
 
   const defaults = {
     agent_enabled: 'true',
@@ -290,13 +299,13 @@ export function initDb() {
     position_size_sol: 0.1,
     max_open_positions: 3,
     tp_percent: 50,
-    sl_percent: -25,
+    sl_percent: -15,
     trailing_enabled: true,
-    trailing_percent: 20,
+    trailing_percent: 30,
     partial_tp: true,
     partial_tp_at_percent: 50,
     partial_tp_sell_percent: 50,
-    max_hold_ms: 0,
+    max_hold_ms: 7200000,
     use_llm: true,
     llm_min_confidence: 75,
   }), ts);
@@ -384,9 +393,9 @@ export function initDb() {
     trending_max_rug_ratio: 0.3,
     trending_max_bundler_rate: 0.4,
     position_size_sol: 0.05,
-    max_open_positions: 10000,
+    max_open_positions: 3,
     tp_percent: 50,
-    sl_percent: -30,
+    sl_percent: -12,
     trailing_enabled: true,
     trailing_percent: 25,
     partial_tp: false,
@@ -462,3 +471,16 @@ export function getDailyStats(dateStr = null) {
 
   return { ...main, by_strategy: byStrategy }
 }
+
+// 2.5 Signal Events Auto-cleanup
+function cleanupOldSignals() {
+  const cutoff = Date.now() - (7 * 24 * 60 * 60 * 1000);
+  const result = db.prepare('DELETE FROM signal_events WHERE created_at_ms < ?').run(cutoff);
+  if (result.changes > 0) {
+    console.log(`[db] cleaned ${result.changes} signal_events older than 7 days`);
+  }
+}
+
+// Run cleanup immediately on startup, then every 24 hours
+cleanupOldSignals();
+setInterval(cleanupOldSignals, 24 * 60 * 60 * 1000);
