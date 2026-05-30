@@ -15,7 +15,7 @@ function getWalletFromEnv(key, defaultVal) {
     return process.env[key] || defaultVal;
   }
 }
-const { getSignals } = require('../scraper');
+
 
 function setupSignalPaywalls(app) {
   // 1. Solana Signal Paywall
