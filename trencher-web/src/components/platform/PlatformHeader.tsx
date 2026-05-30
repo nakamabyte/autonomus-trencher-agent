@@ -1,5 +1,4 @@
 import type { PlatformMetrics } from '@/types';
-import { ChainSwitcher } from './ChainSwitcher';
 
 function pad2(n: number) { return String(n).padStart(2, '0'); }
 function fmtUp(s: number) {
@@ -32,9 +31,6 @@ export function PlatformHeader({ metrics, onClosePlatform, activeChain, setActiv
       <button className="pv-back" onClick={onClosePlatform} type="button">
         ← Back to Landing
       </button>
-      <div className="flex items-center ml-4">
-        <ChainSwitcher activeChain={activeChain} onSwitch={setActiveChain} />
-      </div>
       <div className="pv-mx" id="pv-metrics">
         <MetricCell label="Mode" value={(metrics.mode || 'dry_run').toUpperCase()} />
         <MetricCell label="Strategy" value={(metrics.strategy || 'sniper').toUpperCase()} />

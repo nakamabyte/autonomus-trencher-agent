@@ -50,25 +50,34 @@ function formatStrategy(strategy) {
 export function formatOpenPosition(position, decision = {}) {
   const mode = position.execution_mode || position.mode || 'live';
   const strategy = position.strategy_id || position.strategy || 'sniper';
+  const isBase = strategy === 'base_sniper' || (position.snapshot_json && JSON.parse(position.snapshot_json).candidate?.chain === 'base');
+  
   const freshTag = strategy === 'fresh_launch'
     ? '\n⚠️ FRESH LAUNCH — high risk, pre-graduation'
     : '';
+  
+  const txUrl = isBase ? `https://basescan.org/tx/${position.entry_signature}` : `https://solscan.io/tx/${position.entry_signature}`;
   const tx = position.entry_signature 
-    ? `<a href="https://solscan.io/tx/${position.entry_signature}">${position.entry_signature.slice(0, 6)}...${position.entry_signature.slice(-4)}</a>` 
+    ? `<a href="${txUrl}">${position.entry_signature.slice(0, 6)}...${position.entry_signature.slice(-4)}</a>` 
     : 'N/A';
+    
+  const tokenUrl = isBase ? `https://dexscreener.com/base/${position.mint}` : `https://gmgn.ai/sol/token/${position.mint}`;
   const token = position.mint 
-    ? `<a href="https://gmgn.ai/sol/token/${position.mint}">${position.mint.slice(0, 6)}...${position.mint.slice(-4)}</a>` 
+    ? `<a href="${tokenUrl}">${position.mint.slice(0, 6)}...${position.mint.slice(-4)}</a>` 
     : 'N/A';
+
+  const chainBadge = isBase ? '🔵 Base' : '🟣 Solana';
+  const sizeText = isBase ? `${(position.size_sol || 0).toFixed(5)} ETH` : formatSol(position.size_sol);
 
   return `
 ✅ Live buy executed${freshTag}
 
-📍 ${position.symbol || 'UNKNOWN'} #${position.id || 'N/A'}
+📍 ${position.symbol || 'UNKNOWN'} #${position.id || 'N/A'} (${chainBadge})
 Token: ${token}
 Status: open · Mode: ${mode} · Strategy: ${strategy}
 Entry TX: ${tx}
 Entry mcap: ${formatMcap(position.entry_mcap)} · High: ${formatMcap(position.high_water_mcap || position.entry_mcap)}
-Size: ${formatSol(position.size_sol)} · PnL: ${(position.pnl_percent || 0).toFixed(1)}%
+Size: ${sizeText} · PnL: ${(position.pnl_percent || 0).toFixed(1)}%
 TP: ${position.tp_percent?.toFixed(1) || '0.0'}% · SL: ${position.sl_percent?.toFixed(1) || '0.0'}% · Trail: ${position.trailing_enabled ? position.trailing_percent?.toFixed(1) : '0.0'}%
 `.trim()
 }
@@ -77,23 +86,31 @@ TP: ${position.tp_percent?.toFixed(1) || '0.0'}% · SL: ${position.sl_percent?.t
 export function formatClosePosition(position) {
   const mode = position.execution_mode || position.mode || 'live';
   const strategy = position.strategy_id || position.strategy || 'sniper';
+  const isBase = strategy === 'base_sniper' || (position.snapshot_json && JSON.parse(position.snapshot_json).candidate?.chain === 'base');
+  
+  const txUrl = isBase ? `https://basescan.org/tx/${position.entry_signature}` : `https://solscan.io/tx/${position.entry_signature}`;
   const tx = position.entry_signature 
-    ? `<a href="https://solscan.io/tx/${position.entry_signature}">${position.entry_signature.slice(0, 6)}...${position.entry_signature.slice(-4)}</a>` 
+    ? `<a href="${txUrl}">${position.entry_signature.slice(0, 6)}...${position.entry_signature.slice(-4)}</a>` 
     : 'N/A';
+    
+  const tokenUrl = isBase ? `https://dexscreener.com/base/${position.mint}` : `https://gmgn.ai/sol/token/${position.mint}`;
   const token = position.mint 
-    ? `<a href="https://gmgn.ai/sol/token/${position.mint}">${position.mint.slice(0, 6)}...${position.mint.slice(-4)}</a>` 
+    ? `<a href="${tokenUrl}">${position.mint.slice(0, 6)}...${position.mint.slice(-4)}</a>` 
     : 'N/A';
+
   const exitReason = position.exit_reason || 'MANUAL';
+  const chainBadge = isBase ? '🔵 Base' : '🟣 Solana';
+  const sizeText = isBase ? `${(position.size_sol || 0).toFixed(5)} ETH` : formatSol(position.size_sol);
 
   return `
 🏁 Live exit: ${exitReason}
 
-📍 ${position.symbol || 'UNKNOWN'} #${position.id || 'N/A'}
+📍 ${position.symbol || 'UNKNOWN'} #${position.id || 'N/A'} (${chainBadge})
 Token: ${token}
 Status: closed · Mode: ${mode} · Strategy: ${strategy}
 Entry TX: ${tx}
 Entry mcap: ${formatMcap(position.entry_mcap)} · High: ${formatMcap(position.high_water_mcap)}
-Size: ${formatSol(position.size_sol)} · PnL: ${(position.pnl_percent || 0).toFixed(1)}%
+Size: ${sizeText} · PnL: ${(position.pnl_percent || 0).toFixed(1)}%
 TP: ${position.tp_percent?.toFixed(1) || '0.0'}% · SL: ${position.sl_percent?.toFixed(1) || '0.0'}% · Trail: ${position.trailing_enabled ? position.trailing_percent?.toFixed(1) : '0.0'}%
 Exit: ${exitReason} at ${formatMcap(position.exit_mcap)} (${(position.pnl_percent || 0).toFixed(1)}%)
 `.trim()

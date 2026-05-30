@@ -53,6 +53,9 @@ function PnlModal({ pos, onClose }: { pos: ClosedPos; onClose: () => void }) {
   const holdStr = pos.closed_at_ms && pos.opened_at_ms
     ? holdTime(pos.opened_at_ms, pos.closed_at_ms) : '—';
   const tLine = tagline(isWin, pos.exit_reason);
+  const isBase = pos.strategy === 'base_sniper';
+  const unit = isBase ? 'ETH' : 'SOL';
+  const coinIcon = isBase ? "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png" : "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png";
 
   const cardRef = useRef<HTMLDivElement>(null);
   const [sharing, setSharing] = useState(false);
@@ -248,7 +251,7 @@ function PnlModal({ pos, onClose }: { pos: ClosedPos; onClose: () => void }) {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
                   }}>
-                    <img src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" width="24" height="24" alt="SOL" crossOrigin="anonymous" style={{ objectFit: 'contain' }} />
+                    <img src={coinIcon} width="24" height="24" alt={unit} crossOrigin="anonymous" style={{ objectFit: 'contain' }} />
                   </div>
                   <div style={{ 
                     fontSize: '42px', fontWeight: 900, color: '#000', letterSpacing: '-0.04em', 
@@ -264,7 +267,7 @@ function PnlModal({ pos, onClose }: { pos: ClosedPos; onClose: () => void }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px' }}>
               {([
                 ['PNL %', `${sign}${pos.pnl_percent.toFixed(2)}%`, accentColor],
-                ['INVESTED', `${pos.size_sol.toFixed(3)} SOL`, '#9945FF'],
+                ['INVESTED', `${pos.size_sol.toFixed(3)} ${unit}`, '#9945FF'],
                 ['STRATEGY', (pos.strategy || 'SNIPER').toUpperCase(), '#fff'],
                 ['ENTRY MCAP', formatMcap(pos.entry_mcap), '#fff'],
                 ['HOLD / EXIT', `${holdStr} · ${exitLabel}`, '#fff'],
@@ -274,8 +277,8 @@ function PnlModal({ pos, onClose }: { pos: ClosedPos; onClose: () => void }) {
                   <span style={{ fontSize: '16px', color, fontWeight: 700 }}>
                     {label === 'INVESTED'
                       ? <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <img src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" width="14" height="14" alt="SOL" crossOrigin="anonymous" style={{ objectFit: 'contain' }} />
-                        {val.replace(' SOL', '')}
+                        <img src={coinIcon} width="14" height="14" alt={unit} crossOrigin="anonymous" style={{ objectFit: 'contain' }} />
+                        {val.replace(` ${unit}`, '')}
                       </span>
                       : val}
                   </span>
@@ -323,6 +326,8 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
               const isProfit = pos.pnl_percent >= 0;
               const colorClass = isProfit ? '#4ADE80' : '#F87171';
               const sign = isProfit ? '+' : '';
+              const isBase = pos.strategy === 'base_sniper';
+              const unit = isBase ? 'ETH' : 'SOL';
               return (
                 <div
                   key={pos.id}
@@ -337,7 +342,7 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span>{pos.symbol}</span>
                         <a 
-                          href={`https://gmgn.ai/sol/token/${pos.mint}`} 
+                          href={isBase ? `https://dexscreener.com/base/${pos.mint}` : `https://gmgn.ai/sol/token/${pos.mint}`} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
@@ -355,13 +360,13 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
                     <div className="pv-ast" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
                       <span>MODE: {pos.mode.toUpperCase()}</span>
                       <span suppressHydrationWarning>{new Date(pos.opened_at_ms).toLocaleString('en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                      <span style={{ color: colorClass }}>{sign}{pos.pnl_sol.toFixed(4)} SOL</span>
+                      <span style={{ color: colorClass }}>{sign}{pos.pnl_sol.toFixed(4)} {unit}</span>
                     </div>
                     {pos.exit_signature && (
                       <div className="pv-ast" style={{ marginTop: '4px', display: 'flex' }}>
                         <span style={{ color: 'var(--c-accent)', marginRight: '4px' }}>Tx:</span>
                         <a
-                          href={`https://solscan.io/tx/${pos.exit_signature}`}
+                          href={isBase ? `https://basescan.org/tx/${pos.exit_signature}` : `https://solscan.io/tx/${pos.exit_signature}`}
                           target="_blank"
                           rel="noreferrer"
                           style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}

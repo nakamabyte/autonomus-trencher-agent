@@ -66,8 +66,8 @@ export async function handleMessage(msg) {
 /walletremove &lt;label&gt; - Hapus dompet dari pantauan & Copy Trade
 /wallets - Menu dompet
 /wallets copy - Lihat status & winrate dompet copy trade
-/setwallet <private_key> - Masukkan Private Key eksekusi (Solana)
-/setbasekey <0x_private_key> - Masukkan Private Key eksekusi (Base EVM)
+/setwallet &lt;private_key&gt; - Masukkan Private Key eksekusi (Solana)
+/setbasekey &lt;0x_private_key&gt; - Masukkan Private Key eksekusi (Base EVM)
 /balance - Cek dompet aktif & saldo SOL
 
 <b>Information & History:</b>
@@ -93,13 +93,13 @@ export async function handleMessage(msg) {
     const { liveWalletPubkey, liveWalletBalanceLamports } = await import('../liveExecutor.js');
     const pubkey = liveWalletPubkey();
     if (!pubkey) {
-      return bot.sendMessage(chatId, '❌ Belum ada Wallet Eksekusi yang aktif.\\nGunakan /setwallet <private_key> untuk menambahkan.');
+      return bot.sendMessage(chatId, '❌ Belum ada Wallet Eksekusi yang aktif.\nGunakan /setwallet [private_key] untuk menambahkan.');
     }
     const msgInfo = await bot.sendMessage(chatId, '⏳ Mengecek saldo di Solana...');
     try {
       const lamports = await liveWalletBalanceLamports();
       const sol = (lamports / 1000000000).toFixed(4);
-      return bot.editMessageText(`💰 <b>Wallet Eksekusi Aktif:</b>\\n<code>${pubkey}</code>\\n\\n<b>Saldo:</b> ${sol} SOL`, { chat_id: chatId, message_id: msgInfo.message_id, parse_mode: 'HTML' });
+      return bot.editMessageText(`💰 <b>Wallet Eksekusi Aktif:</b>\n<code>${pubkey}</code>\n\n<b>Saldo:</b> ${sol} SOL`, { chat_id: chatId, message_id: msgInfo.message_id, parse_mode: 'HTML' });
     } catch (err) {
       return bot.editMessageText(`❌ Gagal mengecek saldo: ${err.message}`, { chat_id: chatId, message_id: msgInfo.message_id });
     }
@@ -430,9 +430,9 @@ export async function sendHistory(chatId) {
     const pnl = Number(r.pnl_percent || 0).toFixed(2);
     const sign = pnl > 0 ? '🟢' : (pnl < 0 ? '🔴' : '⚪');
     return `${sign} <b>${symbol}</b>: ${pnl > 0 ? '+' : ''}${pnl}% (${escapeHtml(r.exit_reason || 'closed')})`;
-  }).join('\\n');
+  }).join('\n');
   
-  await bot.sendMessage(chatId, `📜 <b>10 Riwayat Transaksi Terakhir:</b>\\n\\n${text}`, { parse_mode: 'HTML' });
+  await bot.sendMessage(chatId, `📜 <b>10 Riwayat Transaksi Terakhir:</b>\n\n${text}`, { parse_mode: 'HTML' });
 }
 
 export async function closePosition(chatId, id, reason) {

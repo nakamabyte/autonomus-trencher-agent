@@ -60,6 +60,8 @@ export interface PlatformMetrics {
     mode: string;
     opened_at_ms: number;
     entry_signature?: string | null;
+    strategy?: string | null;
+    size_sol?: number;
   }[];
   closed_positions?: {
     id: number;

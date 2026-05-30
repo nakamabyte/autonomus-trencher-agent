@@ -64,7 +64,7 @@ setInterval(async () => {
     const posQuery = db.prepare("SELECT COUNT(*) as count FROM dry_run_positions WHERE status = 'open'").get();
     const pnlQuery = db.prepare("SELECT SUM(pnl_sol) as total FROM dry_run_positions WHERE pnl_sol IS NOT NULL").get();
     const candsQuery = db.prepare("SELECT COUNT(*) as count FROM candidates").get();
-    const activePositions = db.prepare("SELECT id, mint, symbol, pnl_percent, pnl_sol, execution_mode, opened_at_ms, entry_signature FROM dry_run_positions WHERE status = 'open' ORDER BY id DESC").all();
+    const activePositions = db.prepare("SELECT id, mint, symbol, pnl_percent, pnl_sol, execution_mode, opened_at_ms, entry_signature, strategy_id as strategy, size_sol FROM dry_run_positions WHERE status = 'open' ORDER BY id DESC").all();
     const closedPositions = db.prepare("SELECT id, mint, symbol, pnl_percent, pnl_sol, execution_mode, opened_at_ms, closed_at_ms, entry_signature, exit_signature, size_sol, exit_reason, entry_mcap, strategy_id as strategy FROM dry_run_positions WHERE status = 'closed' ORDER BY closed_at_ms DESC LIMIT 50").all();
     
     const { activeStrategy, setting } = await import('../db/settings.js');
@@ -84,7 +84,9 @@ setInterval(async () => {
         pnl_sol: p.pnl_sol || 0,
         mode: p.execution_mode,
         opened_at_ms: p.opened_at_ms || 0,
-        entry_signature: p.entry_signature || null
+        entry_signature: p.entry_signature || null,
+        strategy: p.strategy || null,
+        size_sol: p.size_sol || 0
       })),
       closed_positions: closedPositions.map(p => ({
         id: p.id,

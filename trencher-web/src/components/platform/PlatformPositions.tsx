@@ -34,13 +34,15 @@ export function PlatformPositions({ metrics, logHeight }: PlatformPositionsProps
               const isProfit = pos.pnl_percent >= 0;
               const colorClass = isProfit ? '#4ADE80' : '#F87171'; // Matching pv-mv.pos / neg
               const sign = isProfit ? '+' : '';
+              const isBase = pos.strategy === 'base_sniper';
+              const unit = isBase ? 'ETH' : 'SOL';
               return (
                 <div key={pos.id} className="pv-ai">
                   <div className="pv-adot" style={{ background: colorClass }}></div>
                   <div className="pv-ainfo">
                     <div className="pv-aname" style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <a 
-                        href={`https://gmgn.ai/sol/token/${pos.mint}`} 
+                        href={isBase ? `https://dexscreener.com/base/${pos.mint}` : `https://gmgn.ai/sol/token/${pos.mint}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         title={pos.mint}
@@ -64,13 +66,13 @@ export function PlatformPositions({ metrics, logHeight }: PlatformPositionsProps
                     <div className="pv-ast" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
                       <span>MODE: {pos.mode.toUpperCase()}</span>
                       <span suppressHydrationWarning>{new Date(pos.opened_at_ms).toLocaleString('en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                      <span style={{ color: colorClass }}>{sign}{pos.pnl_sol.toFixed(4)} SOL</span>
+                      <span style={{ color: colorClass }}>{sign}{pos.pnl_sol.toFixed(4)} {unit}</span>
                     </div>
                     {pos.entry_signature && (
                       <div className="pv-ast" style={{ marginTop: '4px', display: 'flex' }}>
                         <span style={{ color: 'var(--c-accent)', marginRight: '4px' }}>Tx:</span>
                         <a 
-                          href={`https://solscan.io/tx/${pos.entry_signature}`} 
+                          href={isBase ? `https://basescan.org/tx/${pos.entry_signature}` : `https://solscan.io/tx/${pos.entry_signature}`} 
                           target="_blank" 
                           rel="noreferrer" 
                           onClick={e => e.stopPropagation()}
