@@ -66,7 +66,8 @@ export async function handleMessage(msg) {
 /walletremove &lt;label&gt; - Hapus dompet dari pantauan & Copy Trade
 /wallets - Menu dompet
 /wallets copy - Lihat status & winrate dompet copy trade
-/setwallet &lt;private_key&gt; - Masukkan Private Key eksekusi
+/setwallet <private_key> - Masukkan Private Key eksekusi (Solana)
+/setbasekey <0x_private_key> - Masukkan Private Key eksekusi (Base EVM)
 /balance - Cek dompet aktif & saldo SOL
 
 <b>Information & History:</b>
@@ -235,7 +236,8 @@ export async function handleMessage(msg) {
     if (!id) {
       return bot.sendMessage(chatId, strategyMenuText(), { parse_mode: 'HTML', ...strategyKeyboard() });
     }
-    const valid = ['sniper', 'dip_buy', 'smart_money', 'degen'];
+    const { allStrategies } = await import('../db/settings.js');
+    const valid = allStrategies().map(s => s.id);
     if (!valid.includes(id)) {
       return bot.sendMessage(chatId, `Unknown strategy. Valid: ${valid.join(', ')}`);
     }
@@ -285,7 +287,15 @@ export async function handleMessage(msg) {
     if (!pk) return bot.sendMessage(chatId, 'Usage: /setwallet <base58_private_key>\n\n(Your message was deleted for security)');
     setSetting('solana_private_key', pk);
     import('../liveExecutor.js').then(({ initLiveExecution }) => initLiveExecution());
-    return bot.sendMessage(chatId, '✅ Wallet Private Key successfully updated and loaded into Live Executor.\n\n(Your message containing the key was automatically deleted for security).');
+    return bot.sendMessage(chatId, '✅ Solana Wallet Private Key successfully updated and loaded into Live Executor.\n\n(Your message containing the key was automatically deleted for security).');
+  }
+  if (text.startsWith('/setbasekey')) {
+    const pk = text.split(/\s+/)[1];
+    bot.deleteMessage(chatId, msg.message_id).catch(() => {});
+    if (!pk || !pk.startsWith('0x')) return bot.sendMessage(chatId, 'Usage: /setbasekey <0x_private_key>\n\n(Your message was deleted for security)');
+    setSetting('base_private_key', pk);
+    import('../execution/baseExecutor.js').then(({ reloadBaseClients }) => reloadBaseClients());
+    return bot.sendMessage(chatId, '✅ Base Wallet Private Key successfully updated and loaded into Executor.\n\n(Your message containing the key was automatically deleted for security).');
   }
   if (text.startsWith('/walletadd')) {
     const args = text.split(/\s+/).slice(1);
@@ -503,7 +513,8 @@ export function setupTelegram() {
     { command: 'walletadd', description: 'Save wallet for exposure/PnL' },
     { command: 'walletremove', description: 'Remove saved wallet' },
     { command: 'wallets', description: 'List saved wallets' },
-    { command: 'setwallet', description: 'Set live execution private key' },
+    { command: 'setwallet', description: 'Set live execution private key (Solana)' },
+    { command: 'setbasekey', description: 'Set live execution private key (Base)' },
     { command: 'balance', description: 'Check live wallet balance' },
     { command: 'history', description: 'Show last 10 trades' },
     { command: 'exportdb', description: 'Download sqlite database' },

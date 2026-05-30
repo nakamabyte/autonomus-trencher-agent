@@ -4,6 +4,7 @@ import { fetchGmgnTokenInfo } from '../enrichment/gmgn.js';
 import { fetchJupiterAsset, fetchJupiterHolders, fetchJupiterChartContext } from '../enrichment/jupiter.js';
 import { fetchSavedWalletExposure } from '../enrichment/wallets.js';
 import { fetchTwitterNarrative } from '../enrichment/twitter.js';
+import { enrichBaseToken } from '../enrichment/baseEnrichment.js';
 import { gmgnLink } from '../format.js';
 
 export function buildFeeSnapshot(fee, signature) {
@@ -115,7 +116,7 @@ export function filterCandidate(candidate) {
   return { passed: failures.length === 0, failures, strategy: strat.id };
 }
 
-export async function buildCandidate({ mint, fee = null, signature = null, graduatedCoin = null, trendingToken = null, freshToken = null, route }) {
+export async function buildCandidate({ mint, fee = null, signature = null, graduatedCoin = null, trendingToken = null, freshToken = null, route, chain = 'solana' }) {
   const strat = activeStrategy();
   let freshEnrichmentData = null;
   
@@ -128,22 +129,29 @@ export async function buildCandidate({ mint, fee = null, signature = null, gradu
     
     if (!gateResult.pass) {
       return {
-        token: { mint, symbol: freshToken.symbol, name: freshToken.name },
+        token: { mint, symbol: freshToken.symbol, name: freshToken.name, chain },
         filters: { passed: false, failures: [`fresh gate: ${gateResult.reason}`], strategy: strat.id },
         freshToken,
+        chain,
         createdAtMs: now()
       };
     }
   }
 
-  const gmgn = await fetchGmgnTokenInfo(mint);
-  const jupiterAsset = await fetchJupiterAsset(mint);
-  const holders = await fetchJupiterHolders(mint);
-  const chart = await fetchJupiterChartContext(mint);
-  const savedWalletExposure = await fetchSavedWalletExposure(mint, holders);
-  const twitterNarrative = await fetchTwitterNarrative(graduatedCoin || jupiterAsset, gmgn);
-  const priceUsd = firstPositiveNumber(tokenPriceFromGmgn(gmgn), jupiterAsset?.usdPrice, trendingToken?.price);
-  const marketCapUsd = firstPositiveNumber(
+  let gmgn = null, jupiterAsset = null, holders = null, chart = null, savedWalletExposure = null, twitterNarrative = null, baseData = null;
+
+  if (chain === 'base') {
+    baseData = await enrichBaseToken(mint);
+  } else {
+    gmgn = await fetchGmgnTokenInfo(mint);
+    jupiterAsset = await fetchJupiterAsset(mint);
+    holders = await fetchJupiterHolders(mint);
+    chart = await fetchJupiterChartContext(mint);
+    savedWalletExposure = await fetchSavedWalletExposure(mint, holders);
+    twitterNarrative = await fetchTwitterNarrative(graduatedCoin || jupiterAsset, gmgn);
+  }
+  const priceUsd = chain === 'base' ? baseData?.price_usd : firstPositiveNumber(tokenPriceFromGmgn(gmgn), jupiterAsset?.usdPrice, trendingToken?.price);
+  const marketCapUsd = chain === 'base' ? baseData?.market_cap_usd : firstPositiveNumber(
     marketCapFromGmgn(gmgn),
     jupiterAsset?.mcap,
     jupiterAsset?.fdv,
@@ -160,10 +168,12 @@ export async function buildCandidate({ mint, fee = null, signature = null, gradu
   ].filter(Boolean).join('_');
 
   const candidate = {
+    chain,
     token: {
       mint,
-      name: gmgn?.name || jupiterAsset?.name || trendingToken?.name || graduatedCoin?.name || '',
-      symbol: gmgn?.symbol || jupiterAsset?.symbol || trendingToken?.symbol || graduatedCoin?.ticker || '',
+      name: baseData?.name || gmgn?.name || jupiterAsset?.name || trendingToken?.name || graduatedCoin?.name || '',
+      symbol: baseData?.symbol || gmgn?.symbol || jupiterAsset?.symbol || trendingToken?.symbol || graduatedCoin?.ticker || '',
+      chain,
       gmgnUrl: gmgn?.link?.gmgn || gmgnLink(mint),
       twitter: graduatedCoin?.twitter || jupiterAsset?.twitter || gmgn?.link?.twitter_username || trendingToken?.twitter || '',
       website: graduatedCoin?.website || jupiterAsset?.website || gmgn?.link?.website || '',
@@ -172,8 +182,8 @@ export async function buildCandidate({ mint, fee = null, signature = null, gradu
     metrics: {
       priceUsd,
       marketCapUsd,
-      liquidityUsd: Number(gmgn?.liquidity ?? jupiterAsset?.liquidity ?? trendingToken?.liquidity ?? 0),
-      holderCount: Number(gmgn?.holder_count ?? jupiterAsset?.holderCount ?? trendingToken?.holder_count ?? graduatedCoin?.numHolders ?? 0),
+      liquidityUsd: Number(baseData?.liquidity_usd ?? gmgn?.liquidity ?? jupiterAsset?.liquidity ?? trendingToken?.liquidity ?? 0),
+      holderCount: Number(baseData?.holder_count ?? gmgn?.holder_count ?? jupiterAsset?.holderCount ?? trendingToken?.holder_count ?? graduatedCoin?.numHolders ?? 0),
       gmgnTotalFeesSol: Number(gmgn?.total_fee ?? jupiterAsset?.fees ?? 0),
       gmgnTradeFeesSol: Number(gmgn?.trade_fee ?? 0),
       graduatedVolumeUsd: Number(graduatedCoin?.volume ?? 0),

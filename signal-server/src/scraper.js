@@ -1,5 +1,6 @@
 const axios = require('axios');
 require('dotenv').config();
+const { fetchPumpfunBaseGraduated, fetchPumpfunBaseTrending } = require('./sources/pumpfunBase');
 
 // Pump.fun program addresses
 const PUMP_PROGRAM = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P';
@@ -236,6 +237,30 @@ function getSignals(limit = 100, minSources = 1) {
   return results;
 }
 
+async function fetchBaseGraduated() {
+  const data = await fetchPumpfunBaseGraduated();
+  for (const token of data) {
+    upsertSignal(token.mint, {
+      name: token.name,
+      symbol: token.symbol,
+      marketCapUsd: Number(token.market_cap_usd || 0),
+      chain: 'base'
+    }, 'base_graduated');
+  }
+}
+
+async function fetchBaseTrending() {
+  const data = await fetchPumpfunBaseTrending();
+  for (const token of data) {
+    upsertSignal(token.mint, {
+      name: token.name,
+      symbol: token.symbol,
+      marketCapUsd: Number(token.market_cap_usd || 0),
+      chain: 'base'
+    }, 'base_trending');
+  }
+}
+
 async function startScraping() {
   const wssUrl = process.env.SOLANA_WSS_URL;
   if (!wssUrl) {
@@ -245,13 +270,15 @@ async function startScraping() {
   }
 
   // Initial fetch
-  await Promise.allSettled([fetchGraduated(), fetchTrending()]);
+  await Promise.allSettled([fetchGraduated(), fetchTrending(), fetchBaseGraduated(), fetchBaseTrending()]);
 
   // Polling loops
   setInterval(fetchGraduated, GRADUATED_POLL_MS);
   setInterval(fetchTrending, TRENDING_POLL_MS);
+  setInterval(fetchBaseGraduated, 30_000);
+  setInterval(fetchBaseTrending, 60_000);
 
-  console.log(`[scraper] running — graduated every ${GRADUATED_POLL_MS / 1000}s, trending every ${TRENDING_POLL_MS / 1000}s`);
+  console.log(`[scraper] running — graduated every ${GRADUATED_POLL_MS / 1000}s, trending every ${TRENDING_POLL_MS / 1000}s. Base chain enabled.`);
 }
 
 module.exports = { startScraping, getSignals };

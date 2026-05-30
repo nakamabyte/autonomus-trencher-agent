@@ -4,6 +4,7 @@ import { db } from '../db/connection.js';
 import { WSOL_MINT, LIVE_MIN_SOL_RESERVE_LAMPORTS } from '../config.js';
 import { escapeHtml, fmtSol } from '../format.js';
 import { executeJupiterSwap, liveWalletBalanceLamports, fetchLiveTokenBalance } from '../liveExecutor.js';
+import { executeBaseSwap } from './baseExecutor.js';
 import { activeStrategy } from '../db/settings.js';
 import { createLivePosition, canOpenMorePositions, openPositionCount } from '../db/positions.js';
 import { intentById } from '../db/intents.js';
@@ -18,16 +19,28 @@ import { setCooldown } from '../utils/mintCooldown.js';
 
 export async function executeLiveBuy(selectedRow, decision, batchId, rows = [], triggerCandidateId = null) {
   const strat = activeStrategy();
-  const amountLamports = Math.floor((strat.position_size_sol ?? numSetting('dry_run_buy_sol', 0.1)) * 1_000_000_000);
-  const balance = await liveWalletBalanceLamports();
-  if (balance < amountLamports + LIVE_MIN_SOL_RESERVE_LAMPORTS) {
-    throw new Error(`Insufficient SOL balance. Need ${fmtSol((amountLamports + LIVE_MIN_SOL_RESERVE_LAMPORTS) / 1_000_000_000)} SOL including reserve.`);
+  const chain = selectedRow.candidate.chain || 'solana';
+  let swap;
+
+  if (chain === 'base') {
+    const amountEth = strat.position_size_eth || 0.005;
+    swap = await executeBaseSwap({
+      tokenAddress: selectedRow.candidate.token.mint,
+      side: 'buy',
+      amount: amountEth
+    });
+  } else {
+    const amountLamports = Math.floor((strat.position_size_sol ?? numSetting('dry_run_buy_sol', 0.1)) * 1_000_000_000);
+    const balance = await liveWalletBalanceLamports();
+    if (balance < amountLamports + LIVE_MIN_SOL_RESERVE_LAMPORTS) {
+      throw new Error(`Insufficient SOL balance. Need ${fmtSol((amountLamports + LIVE_MIN_SOL_RESERVE_LAMPORTS) / 1_000_000_000)} SOL including reserve.`);
+    }
+    swap = await executeJupiterSwap({
+      inputMint: WSOL_MINT,
+      outputMint: selectedRow.candidate.token.mint,
+      amount: amountLamports,
+    });
   }
-  const swap = await executeJupiterSwap({
-    inputMint: WSOL_MINT,
-    outputMint: selectedRow.candidate.token.mint,
-    amount: amountLamports,
-  });
   if (!swap.outputAmount) {
     swap.outputAmount = await fetchLiveTokenBalance(selectedRow.candidate.token.mint) || swap.outputAmount;
   }
@@ -40,7 +53,7 @@ export async function executeLiveBuy(selectedRow, decision, batchId, rows = [], 
     decision,
     mode: 'live',
     action: 'live_entry_executed',
-    guardrails: { balanceLamports: balance, amountLamports, minReserveLamports: LIVE_MIN_SOL_RESERVE_LAMPORTS },
+    guardrails: { balanceLamports: chain === 'solana' ? await liveWalletBalanceLamports() : 0, amountLamports: chain === 'solana' ? Math.floor((strat.position_size_sol ?? 0.1) * 1_000_000_000) : 0, minReserveLamports: LIVE_MIN_SOL_RESERVE_LAMPORTS, chain },
     execution: { positionId, swap },
   });
   await sendPositionOpen(positionId);
@@ -51,14 +64,23 @@ export async function executeLiveSell(position, reason) {
   if (!amount || Number(amount) <= 0) throw new Error('Live position has no token amount to sell.');
   
   const isCopyTrade = position.strategy_id === 'copytrade';
+  const isBase = position.strategy_id === 'base_sniper' || (position.snapshot_json && JSON.parse(position.snapshot_json).candidate?.chain === 'base');
   
-  return executeJupiterSwap({
-    inputMint: position.mint,
-    outputMint: WSOL_MINT,
-    amount,
-    useJito: isCopyTrade ? process.env.COPYTRADE_USE_JITO !== 'false' : undefined,
-    priorityFee: isCopyTrade ? (process.env.COPYTRADE_PRIORITY_FEE || 'VeryHigh') : undefined,
-  });
+  if (isBase) {
+    return executeBaseSwap({
+      tokenAddress: position.mint,
+      side: 'sell',
+      amount
+    });
+  } else {
+    return executeJupiterSwap({
+      inputMint: position.mint,
+      outputMint: WSOL_MINT,
+      amount,
+      useJito: isCopyTrade ? process.env.COPYTRADE_USE_JITO !== 'false' : undefined,
+      priorityFee: isCopyTrade ? (process.env.COPYTRADE_PRIORITY_FEE || 'VeryHigh') : undefined,
+    });
+  }
 }
 
 export async function executeConfirmedIntent(chatId, intentId) {
@@ -84,17 +106,29 @@ export async function executeConfirmedIntent(chatId, intentId) {
       ].join('\n'), { parse_mode: 'HTML', disable_web_page_preview: true });
     }
     const strat = activeStrategy();
-    const amountLamports = Math.floor((strat.position_size_sol ?? numSetting('dry_run_buy_sol', 0.1)) * 1_000_000_000);
-    const balance = await liveWalletBalanceLamports();
-    if (balance < amountLamports + LIVE_MIN_SOL_RESERVE_LAMPORTS) {
-      db.prepare('UPDATE trade_intents SET status = ?, updated_at_ms = ? WHERE id = ?').run('rejected_insufficient_balance', now(), intentId);
-      return bot.sendMessage(chatId, `Insufficient SOL balance. Need ${fmtSol((amountLamports + LIVE_MIN_SOL_RESERVE_LAMPORTS) / 1_000_000_000)} SOL.`, { parse_mode: 'HTML' });
+    const chain = freshRow.candidate.chain || 'solana';
+    let swap;
+    
+    if (chain === 'base') {
+      const amountEth = strat.position_size_eth || 0.005;
+      swap = await executeBaseSwap({
+        tokenAddress: freshRow.candidate.token.mint,
+        side: 'buy',
+        amount: amountEth
+      });
+    } else {
+      const amountLamports = Math.floor((strat.position_size_sol ?? numSetting('dry_run_buy_sol', 0.1)) * 1_000_000_000);
+      const balance = await liveWalletBalanceLamports();
+      if (balance < amountLamports + LIVE_MIN_SOL_RESERVE_LAMPORTS) {
+        db.prepare('UPDATE trade_intents SET status = ?, updated_at_ms = ? WHERE id = ?').run('rejected_insufficient_balance', now(), intentId);
+        return bot.sendMessage(chatId, `Insufficient SOL balance. Need ${fmtSol((amountLamports + LIVE_MIN_SOL_RESERVE_LAMPORTS) / 1_000_000_000)} SOL.`, { parse_mode: 'HTML' });
+      }
+      swap = await executeJupiterSwap({
+        inputMint: WSOL_MINT,
+        outputMint: freshRow.candidate.token.mint,
+        amount: amountLamports,
+      });
     }
-    const swap = await executeJupiterSwap({
-      inputMint: WSOL_MINT,
-      outputMint: freshRow.candidate.token.mint,
-      amount: amountLamports,
-    });
     if (!swap.outputAmount) {
       swap.outputAmount = await fetchLiveTokenBalance(freshRow.candidate.token.mint) || swap.outputAmount;
     }

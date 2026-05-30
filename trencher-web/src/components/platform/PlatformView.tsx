@@ -21,6 +21,7 @@ export function PlatformView({ onClose }: PlatformViewProps) {
   const [agentModalId, setAgentModalId] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(240);
   const [logHeight, setLogHeight] = useState(120);
+  const [activeChain, setActiveChain] = useState('solana');
 
   const startSidebarDrag = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -114,7 +115,7 @@ export function PlatformView({ onClose }: PlatformViewProps) {
   return (
     <>
       <div className="pv-root" style={{ gridTemplateRows: `48px 1fr ${logHeight}px` }}>
-        <PlatformHeader metrics={metrics} onClosePlatform={onClose} />
+        <PlatformHeader metrics={metrics} onClosePlatform={onClose} activeChain={activeChain} setActiveChain={setActiveChain} />
         
         {/* Horizontal Drag Handle for Log Strip */}
         <div 

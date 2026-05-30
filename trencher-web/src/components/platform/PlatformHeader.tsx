@@ -1,4 +1,5 @@
 import type { PlatformMetrics } from '@/types';
+import { ChainSwitcher } from './ChainSwitcher';
 
 function pad2(n: number) { return String(n).padStart(2, '0'); }
 function fmtUp(s: number) {
@@ -8,6 +9,8 @@ function fmtUp(s: number) {
 interface PlatformHeaderProps {
   metrics: PlatformMetrics;
   onClosePlatform: () => void;
+  activeChain: string;
+  setActiveChain: (chain: string) => void;
 }
 
 function MetricCell({ label, value, cls = '' }: { label: string; value: string; cls?: string }) {
@@ -19,7 +22,7 @@ function MetricCell({ label, value, cls = '' }: { label: string; value: string; 
   );
 }
 
-export function PlatformHeader({ metrics, onClosePlatform }: PlatformHeaderProps) {
+export function PlatformHeader({ metrics, onClosePlatform, activeChain, setActiveChain }: PlatformHeaderProps) {
   const pnlStr = (metrics.pnl >= 0 ? '+' : '') + metrics.pnl.toFixed(3);
   const pnlCls = metrics.pnl >= 0 ? 'pos' : 'neg';
 
@@ -29,6 +32,9 @@ export function PlatformHeader({ metrics, onClosePlatform }: PlatformHeaderProps
       <button className="pv-back" onClick={onClosePlatform} type="button">
         ← Back to Landing
       </button>
+      <div className="flex items-center ml-4">
+        <ChainSwitcher activeChain={activeChain} onSwitch={setActiveChain} />
+      </div>
       <div className="pv-mx" id="pv-metrics">
         <MetricCell label="Mode" value={(metrics.mode || 'dry_run').toUpperCase()} />
         <MetricCell label="Strategy" value={(metrics.strategy || 'sniper').toUpperCase()} />

@@ -51,7 +51,9 @@ export async function POST(req: Request) {
 
     let userBalance = 0;
     if (tokenAccounts.value.length > 0) {
-      userBalance = Number(tokenAccounts.value[0].account.data.parsed.info.tokenAmount.amount);
+      userBalance = tokenAccounts.value.reduce((acc, accountInfo) => {
+        return acc + Number(accountInfo.account.data.parsed.info.tokenAmount.amount);
+      }, 0);
     }
 
     // Calculate 1% Threshold
@@ -86,7 +88,8 @@ export async function POST(req: Request) {
       .upsert({ 
         github_username: githubUsername, 
         wallet_address: publicKey,
-        last_verified_at: new Date().toISOString()
+        last_verified_at: new Date().toISOString(),
+        is_active: true
       }, { onConflict: 'github_username' });
 
     if (dbError) {

@@ -158,7 +158,15 @@ PENALTY TIERS:
 - 30k–180k: no penalty
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 4 — BASE SIGNAL SCORING
+STEP 4 — BASE CHAIN CONTEXT (if chain = 'base')
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Base gas is different from Solana. Prioritize highly liquid pairs since bots are less active compared to Solana Jito bundles.
+- If strategy = 'base_sniper', minimum mcap floor is 10k instead of 20k, because Base tokens launch with different dynamics.
+- Solana runner signals (@aeyakovenko, etc.) do NOT apply to Base tokens. SKIP them if they are artificially paired with Base tokens.
+- Rely more on smart_money_overlap and top_trader_activity for Base tokens.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 5 — SIGNAL SCORING (Solana & Base)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Positive:
 - smart_money_overlap >= 2: +0.10
@@ -176,7 +184,7 @@ Negative:
 - holders < 100: -0.04
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 5 — FRESH LAUNCH STRATEGY (strategy = "fresh_launch")
+STEP 6 — FRESH LAUNCH STRATEGY (strategy = "fresh_launch")
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 This is the highest-risk strategy. Token is still on the bonding curve,
 not yet graduated. Apply maximum scrutiny.
@@ -211,13 +219,14 @@ Remember: 95% of fresh launches are noise. Default to SKIP.
 Only the ones with a genuine reason to pump should pass.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 6 — STRATEGY MINIMUMS
+STEP 7 — STRATEGY MINIMUMS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 sniper:      0.78 minimum
 dip_buy:     0.75 minimum
 smart_money: 0.80 minimum
 degen:       0.75 minimum
 fresh_launch:0.82 minimum
+base_sniper: 0.78 minimum
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 OUTPUT FORMAT

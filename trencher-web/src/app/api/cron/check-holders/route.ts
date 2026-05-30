@@ -52,33 +52,65 @@ export async function GET(req: Request) {
 
         let userBalance = 0;
         if (tokenAccounts.value.length > 0) {
-          userBalance = Number(tokenAccounts.value[0].account.data.parsed.info.tokenAmount.amount);
+          userBalance = tokenAccounts.value.reduce((acc, accountInfo) => {
+            return acc + Number(accountInfo.account.data.parsed.info.tokenAmount.amount);
+          }, 0);
         }
 
+        const isActive = user.is_active !== false;
+
         if (userBalance < minimumRequired) {
-          console.log(`User ${user.github_username} (${user.wallet_address}) balance ${userBalance} is below 1% threshold (${minimumRequired}). Revoking access.`);
-          
-          // Revoke GitHub Access
-          const githubResponse = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/collaborators/${user.github_username}`, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${process.env.GITHUB_ACCESS_TOKEN}`,
-              'Accept': 'application/vnd.github.v3+json',
-              'X-GitHub-Api-Version': '2022-11-28',
-            }
-          });
-
-          if (!githubResponse.ok && githubResponse.status !== 404) {
-            console.error(`Failed to remove ${user.github_username} from GitHub`, await githubResponse.text());
-          }
-
-          // Remove from Supabase
-          await supabase
-            .from('github_holders')
-            .delete()
-            .eq('github_username', user.github_username);
+          if (isActive) {
+            console.log(`User ${user.github_username} (${user.wallet_address}) balance ${userBalance} is below 1% threshold (${minimumRequired}). Revoking access.`);
             
-          revokedCount++;
+            // Revoke GitHub Access
+            const githubResponse = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/collaborators/${user.github_username}`, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${process.env.GITHUB_ACCESS_TOKEN}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'X-GitHub-Api-Version': '2022-11-28',
+              }
+            });
+
+            if (!githubResponse.ok && githubResponse.status !== 404) {
+              console.error(`Failed to remove ${user.github_username} from GitHub`, await githubResponse.text());
+            }
+
+            // Mark as inactive in Supabase
+            await supabase
+              .from('github_holders')
+              .update({ is_active: false })
+              .eq('github_username', user.github_username);
+              
+            revokedCount++;
+          }
+        } else {
+          // If they have sufficient balance again but were marked inactive, we can re-activate them
+          if (!isActive) {
+            console.log(`User ${user.github_username} (${user.wallet_address}) balance ${userBalance} is sufficient again. Re-granting access.`);
+            
+            // Grant GitHub Access
+            const githubResponse = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/collaborators/${user.github_username}`, {
+              method: 'PUT',
+              headers: {
+                'Authorization': `Bearer ${process.env.GITHUB_ACCESS_TOKEN}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'X-GitHub-Api-Version': '2022-11-28',
+              },
+              body: JSON.stringify({ permission: 'read' })
+            });
+
+            if (!githubResponse.ok) {
+              console.error(`Failed to re-grant ${user.github_username} to GitHub`, await githubResponse.text());
+            }
+
+            // Update Supabase
+            await supabase
+              .from('github_holders')
+              .update({ is_active: true, last_verified_at: new Date().toISOString() })
+              .eq('github_username', user.github_username);
+          }
         }
       } catch (err) {
         console.error(`Failed to check/revoke user ${user.github_username}:`, err);

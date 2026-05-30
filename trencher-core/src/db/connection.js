@@ -410,6 +410,21 @@ export function initDb() {
     max_mcap_usd: 30000,
     position_size_sol: 0.05
   }), ts);
+
+  stratInsert.run('base_sniper', 'Base Sniper', 0, JSON.stringify({
+    chain: 'base',
+    tp_percent: 75,
+    sl_percent: -15,
+    trailing_enabled: true,
+    trailing_percent: 30,
+    max_hold_ms: 7200000,
+    max_open_positions: 3,
+    llm_min_confidence: 78,
+    min_mcap_usd: 10000,
+    max_mcap_usd: 300000,
+    position_size_eth: 0.005,
+    gas_priority: "medium"
+  }), ts);
 }
 
 export function ensureColumn(table, column, ddl) {
