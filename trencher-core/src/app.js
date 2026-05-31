@@ -14,6 +14,9 @@ validateConfig();
 
 export async function startTrencherAgent() {
   initDb();
+  // Seed Genesis agent if this is first run
+  const { ensureGenesisAgent } = await import('./db/agentDna.js');
+  ensureGenesisAgent();
   initLiveExecution();
   setupTelegram();
   

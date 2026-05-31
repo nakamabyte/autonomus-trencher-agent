@@ -1,5 +1,6 @@
 import { broadcast } from './wsServer.js';
 import { setting, setSetting } from '../db/settings.js';
+import { recalcGenesisPerformance } from '../db/performanceTracker.js';
 
 let logIdCounter = 0;
 
@@ -105,10 +106,25 @@ setInterval(async () => {
         strategy: p.strategy || null
       }))
     });
+    // ── Broadcast agent DNA list ──────────────────────────────────
+    try {
+      const { listBreeds } = await import('../db/agentDna.js');
+      const agents = listBreeds();
+      broadcast('AGENT_DNA_UPDATE', agents);
+    } catch (_e) {
+      // agentDna table might not exist yet
+    }
   } catch (err) {
     // DB might not be initialized yet
   }
 }, 5000);
+
+// ── Performance recalc — every 60 seconds ──────────────────────────
+setInterval(() => {
+  try {
+    recalcGenesisPerformance();
+  } catch (_) {}
+}, 60_000);
 
 export function pulseAgent(id, status = 'active', load = 0.8) {
   if (!statuses[id]) return;

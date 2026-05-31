@@ -216,6 +216,48 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_decision_logs_mint ON decision_logs(selected_mint);
     CREATE INDEX IF NOT EXISTS idx_signal_events_mint ON signal_events(mint);
     CREATE INDEX IF NOT EXISTS idx_learning_lessons_status ON learning_lessons(status, created_at_ms);
+
+    CREATE TABLE IF NOT EXISTS agent_dna (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      breed TEXT NOT NULL,
+      parent_a TEXT,
+      parent_b TEXT,
+      generation INTEGER DEFAULT 0,
+
+      -- DNA Traits (0-100)
+      speed INTEGER DEFAULT 50,
+      aggression INTEGER DEFAULT 50,
+      rug_defense INTEGER DEFAULT 50,
+      wallet_intelligence INTEGER DEFAULT 50,
+      momentum_sensitivity INTEGER DEFAULT 50,
+      social_signal_weight INTEGER DEFAULT 50,
+      liquidity_sensitivity INTEGER DEFAULT 50,
+      exit_discipline INTEGER DEFAULT 50,
+      stealth INTEGER DEFAULT 50,
+      mutation_rate INTEGER DEFAULT 10,
+      survival_score INTEGER DEFAULT 50,
+
+      -- Performance (updated live from positions)
+      total_trades INTEGER DEFAULT 0,
+      win_rate REAL DEFAULT 0,
+      total_pnl_sol REAL DEFAULT 0,
+      max_drawdown REAL DEFAULT 0,
+      avg_hold_min REAL DEFAULT 0,
+      rug_survival_rate REAL DEFAULT 1,
+
+      -- Marketplace
+      owner_address TEXT,
+      for_sale INTEGER DEFAULT 0,
+      sale_price_sol REAL,
+      royalty_pct REAL DEFAULT 0,
+      copies_minted INTEGER DEFAULT 0,
+      copies_limit INTEGER DEFAULT 100,
+
+      created_at_ms INTEGER NOT NULL,
+      updated_at_ms INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_agent_dna_breed ON agent_dna(breed);
   `);
   ensureColumn('candidates', 'signal_key', 'TEXT');
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_candidates_signal_key ON candidates(signal_key) WHERE signal_key IS NOT NULL');

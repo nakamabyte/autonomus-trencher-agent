@@ -134,3 +134,41 @@ export interface SidebarLayer {
   c: string;
   cnt: number;
 }
+
+// ─── Agent DNA / Breed Ecosystem ──────────────────────────────────
+export interface AgentDna {
+  id: string;
+  name: string;
+  breed: string;
+  parent_a: string | null;
+  parent_b: string | null;
+  generation: number;
+  // DNA Traits (0-100)
+  speed: number;
+  aggression: number;
+  rug_defense: number;
+  wallet_intelligence: number;
+  momentum_sensitivity: number;
+  social_signal_weight: number;
+  liquidity_sensitivity: number;
+  exit_discipline: number;
+  stealth: number;
+  mutation_rate: number;
+  survival_score: number;
+  // Performance
+  total_trades: number;
+  win_rate: number;
+  total_pnl_sol: number;
+  max_drawdown: number;
+  avg_hold_min: number;
+  rug_survival_rate: number;
+  // Marketplace
+  owner_address: string | null;
+  for_sale: number;
+  sale_price_sol: number | null;
+  royalty_pct: number;
+  copies_minted: number;
+  copies_limit: number;
+  created_at_ms: number;
+  updated_at_ms: number;
+}

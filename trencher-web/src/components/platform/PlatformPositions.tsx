@@ -12,8 +12,8 @@ export function PlatformPositions({ metrics, logHeight }: PlatformPositionsProps
 
   return (
     <div 
-      className="absolute top-4 left-4 z-20 pointer-events-auto flex flex-col"
-      style={{ width: '240px', maxHeight: 'calc(100% - 32px)', background: '#111110', border: '1px solid rgba(255,255,255,.06)', borderRadius: '2px' }}
+      className="absolute top-10 left-4 z-20 pointer-events-auto flex flex-col"
+      style={{ width: '240px', maxHeight: 'calc(100% - 40px)', background: '#111110', border: '1px solid rgba(255,255,255,.06)', borderRadius: '2px' }}
     >
       <div className="pv-sec flex flex-col flex-1 min-h-0" style={{ borderBottom: 'none' }}>
         <div className="pv-sh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

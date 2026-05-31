@@ -51,6 +51,14 @@ export function startWsServer(port = 4001) {
     if (recentDecisions.length > 0) {
       ws.send(JSON.stringify({ type: 'CONSCIOUSNESS_HISTORY', payload: recentDecisions }));
     }
+
+    // Send agent DNA list on connect
+    import('../db/agentDna.js').then(({ listBreeds }) => {
+      try {
+        const agents = listBreeds();
+        ws.send(JSON.stringify({ type: 'AGENT_DNA_UPDATE', payload: agents }));
+      } catch (_) {}
+    }).catch(() => {});
   });
 
   // Forward consciousness stream decisions to all WS clients
