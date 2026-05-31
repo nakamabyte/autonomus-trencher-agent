@@ -348,30 +348,31 @@ footer{background:#080808;padding:36px 0;border-top:1px solid rgba(255,255,255,.
 }
 .modal-overlay.open{display:flex}
 .modal-box{
-  background:var(--sf);max-width:560px;width:100%;
+  background:#111110;max-width:560px;width:100%;
   max-height:82vh;overflow-y:auto;
-  border:1px solid var(--border);
+  border:1px solid rgba(255,255,255,.1);
+  color: #fff;
 }
 .modal-head{
   display:flex;align-items:center;justify-content:space-between;
-  padding:20px 24px;border-bottom:1px solid var(--border);
-  position:sticky;top:0;background:var(--sf);z-index:1;
+  padding:20px 24px;border-bottom:1px solid rgba(255,255,255,.1);
+  position:sticky;top:0;background:#111110;z-index:1;
 }
 .modal-title{font-family:var(--fc);font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
 .modal-close{
   background:none;border:none;cursor:pointer;
-  font-family:var(--fm);font-size:12px;color:var(--i3);
+  font-family:var(--fm);font-size:12px;color:rgba(255,255,255,.4);
   padding:4px 8px;transition:color .15s;
 }
-.modal-close:hover{color:var(--ink)}
+.modal-close:hover{color:#fff}
 .modal-body{padding:24px}
-.modal-body p{font-family:var(--fb);font-size:13px;color:var(--i2);line-height:1.7;margin-bottom:14px}
-.modal-body code{font-family:var(--fm);font-size:11px;background:var(--bg);padding:1px 6px;border-radius:1px}
-.modal-kv{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)}
+.modal-body p{font-family:var(--fb);font-size:13px;color:rgba(255,255,255,.6);line-height:1.7;margin-bottom:14px}
+.modal-body code{font-family:var(--fm);font-size:11px;background:#0A0A0A;padding:1px 6px;border-radius:1px;color:#fff}
+.modal-kv{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)}
 .modal-kv:last-child{border-bottom:none}
-.modal-k{font-family:var(--fm);font-size:9px;letter-spacing:.08em;color:var(--i3)}
-.modal-v{font-family:var(--fm);font-size:10px;font-weight:500;color:var(--ink)}
-.modal-sec-label{font-family:var(--fc);font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--i3);margin-top:20px;margin-bottom:10px}
+.modal-k{font-family:var(--fm);font-size:9px;letter-spacing:.08em;color:rgba(255,255,255,.4)}
+.modal-v{font-family:var(--fm);font-size:10px;font-weight:500;color:#fff}
+.modal-sec-label{font-family:var(--fc);font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-top:20px;margin-bottom:10px}
 
 /* ─── PLATFORM VIEW ── */
 .pv-root{

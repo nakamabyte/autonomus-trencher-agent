@@ -34,8 +34,15 @@ export default function AgentProfilePage() {
         borderBottom: '1px solid #1a1a24',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between'
+        gap: '24px'
       }}>
+        <button 
+          className="pv-back"
+          style={{ marginRight: 0 }}
+          onClick={() => router.push('/')}
+        >
+          ← BACK
+        </button>
         <div 
           onClick={() => router.push('/')} 
           style={{ 
@@ -52,7 +59,8 @@ export default function AgentProfilePage() {
         <div style={{ 
           fontSize: '12px', 
           fontFamily: "'JetBrains Mono', monospace", 
-          color: '#888' 
+          color: '#888',
+          marginLeft: 'auto'
         }}>
           PUBLIC PROFILE
         </div>
