@@ -12,17 +12,13 @@ export default function AgentProfilePage() {
   const router = useRouter();
   const id = params?.id as string;
 
-  const { agents, connected } = useAgentDna();
+  const { agents, connected, isLoaded } = useAgentDna();
 
   const agent = agents.find(a => a.id === id || a.id.startsWith(id));
 
   // Find strategy id based on breed for filtering
   let strategyFilter: string | undefined = undefined;
   if (agent) {
-    // In our setup, breed string is the strategy ID (e.g. 'fresh_launch', 'sniper')
-    // Wait, let's check constants/breeds.ts - actually breed is a BreedKey like 'scout', 'sniper'.
-    // And in ConsciousnessDecision, strategy is often the same or related. Let's just pass agent.breed.
-    // We will just pass agent.breed as strategyFilter.
     strategyFilter = agent.breed;
   }
 
@@ -74,7 +70,16 @@ export default function AgentProfilePage() {
           padding: '24px', 
           overflowY: 'auto' 
         }}>
-          {!connected && agents.length === 0 ? (
+          {!isLoaded ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', textAlign: 'center' }}>
+              <div style={{
+                width: '30px', height: '30px', border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#00C896', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '12px'
+              }} />
+              <div style={{ color: '#888', fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', letterSpacing: '0.1em' }}>
+                LOADING PROFILE...
+              </div>
+            </div>
+          ) : !connected && agents.length === 0 ? (
             <div style={{ color: '#555', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px' }}>
               Connecting to agent network...
             </div>

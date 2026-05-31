@@ -140,6 +140,41 @@ function EmptyState() {
   );
 }
 
+function LoadingState() {
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100%',
+      padding: '48px 24px',
+      textAlign: 'center',
+    }}>
+      <div style={{
+        width: '40px',
+        height: '40px',
+        border: '3px solid rgba(255,255,255,0.1)',
+        borderTopColor: '#00C896',
+        borderRadius: '50%',
+        animation: 'spin 1s linear infinite',
+        marginBottom: '16px',
+      }} />
+      <style>{`
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+      `}</style>
+      <div style={{
+        fontSize: '11px',
+        fontFamily: "'JetBrains Mono', monospace",
+        color: '#888',
+        letterSpacing: '0.1em',
+      }}>
+        LOADING DNA...
+      </div>
+    </div>
+  );
+}
+
 function BreedRoster() {
   const availableBreeds = BREED_LIST.filter(b => b.strategyId !== null);
   const futureBreeds = BREED_LIST.filter(b => b.strategyId === null);
@@ -216,7 +251,7 @@ interface TrenchyardProps {
 }
 
 export function Trenchyard({ onSelectAgent }: TrenchyardProps) {
-  const { agents } = useAgentDna();
+  const { agents, isLoaded } = useAgentDna();
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
 
   const uniqueBreeds = new Set(agents.map(a => a.breed));
@@ -258,7 +293,9 @@ export function Trenchyard({ onSelectAgent }: TrenchyardProps) {
         overflowY: 'auto',
         padding: '12px 16px',
       }}>
-        {agents.length === 0 ? (
+        {!isLoaded ? (
+          <LoadingState />
+        ) : agents.length === 0 ? (
           <EmptyState />
         ) : (
           <div style={{

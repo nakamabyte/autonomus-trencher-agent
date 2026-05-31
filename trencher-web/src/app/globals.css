@@ -348,7 +348,7 @@ footer{background:#080808;padding:36px 0;border-top:1px solid rgba(255,255,255,.
 }
 .modal-overlay.open{display:flex}
 .modal-box{
-  background:#111110;max-width:560px;width:100%;
+  background:#111110;max-width:720px;width:100%;
   max-height:82vh;overflow-y:auto;
   border:1px solid rgba(255,255,255,.1);
   color: #fff;

@@ -11,9 +11,10 @@ import type { AgentDna } from '@/types';
  *
  * Auto-reconnects with exponential backoff.
  */
-export function useAgentDna(): { agents: AgentDna[]; connected: boolean } {
+export function useAgentDna(): { agents: AgentDna[]; connected: boolean; isLoaded: boolean } {
   const [agents, setAgents] = useState<AgentDna[]>([]);
   const [connected, setConnected] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const isMountedRef = useRef(true);
@@ -44,6 +45,7 @@ export function useAgentDna(): { agents: AgentDna[]; connected: boolean } {
           const msg = JSON.parse(event.data as string);
           if (msg.type === 'AGENT_DNA_UPDATE' && Array.isArray(msg.payload)) {
             setAgents(msg.payload as AgentDna[]);
+            setIsLoaded(true);
           }
         } catch (_) {
           // Ignore malformed messages
@@ -79,5 +81,5 @@ export function useAgentDna(): { agents: AgentDna[]; connected: boolean } {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { agents, connected };
+  return { agents, connected, isLoaded };
 }

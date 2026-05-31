@@ -100,8 +100,9 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
               display: 'grid',
               gridTemplateColumns: 'repeat(2, 1fr)',
               gap: '8px',
-              maxHeight: '200px',
+              maxHeight: '220px',
               overflowY: 'auto',
+              overflowX: 'hidden',
               paddingRight: '4px'
             }}>
               {BREED_LIST.map(b => {
