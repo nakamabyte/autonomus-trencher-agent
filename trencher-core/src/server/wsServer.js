@@ -2,6 +2,7 @@ import { WebSocketServer } from 'ws';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
+import { consciousnessStream, getRecentDecisions } from '../consciousness/decisionLog.js';
 
 let wss;
 const clients = new Set();
@@ -44,6 +45,17 @@ export function startWsServer(port = 4001) {
       ws.send(JSON.stringify({ type: 'STATUS_UPDATE', payload: getStatuses() }));
       ws.send(JSON.stringify({ type: 'LOG_HISTORY', payload: getLogHistory() }));
     });
+
+    // Send recent consciousness decisions on connect
+    const recentDecisions = getRecentDecisions(10);
+    if (recentDecisions.length > 0) {
+      ws.send(JSON.stringify({ type: 'CONSCIOUSNESS_HISTORY', payload: recentDecisions }));
+    }
+  });
+
+  // Forward consciousness stream decisions to all WS clients
+  consciousnessStream.on('decision', (entry) => {
+    broadcast('CONSCIOUSNESS_DECISION', entry);
   });
 }
 

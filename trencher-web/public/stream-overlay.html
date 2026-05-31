@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trencher Agent — Live Decisions</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: transparent;
+      color: #eee;
+      font-family: 'Share Tech Mono', 'Courier New', monospace;
+      font-size: 12px;
+      padding: 12px;
+      overflow: hidden;
+      /* Set transparent background for OBS Browser Source */
+    }
+
+    /* ── Layout ─────────────────────────────────────────────────── */
+    #header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(0, 200, 150, 0.3);
+    }
+
+    #header-title {
+      color: #00C896;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    #status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #555;
+      display: inline-block;
+      margin-right: 6px;
+      transition: background .3s, box-shadow .3s;
+    }
+
+    #status-dot.live {
+      background: #00C896;
+      box-shadow: 0 0 8px #00C896;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.5; }
+    }
+
+    #status-text {
+      font-size: 9px;
+      color: #555;
+    }
+
+    #status-text.live { color: #00C896; }
+
+    /* ── Feed ───────────────────────────────────────────────────── */
+    #feed {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      max-height: calc(100vh - 50px);
+      overflow: hidden;
+    }
+
+    .decision {
+      padding: 4px 8px;
+      border-left: 2px solid #222;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px);
+      animation: slideIn .25s ease-out;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-8px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .decision.buy      { border-left-color: #00C896; background: rgba(0,200,150,0.06); }
+    .decision.escalate { border-left-color: #FFB347; background: rgba(255,179,71,0.05); }
+    .decision.skip     { border-left-color: #333; }
+
+    .row1 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .row2 {
+      font-size: 9px;
+      color: #555;
+      margin-top: 1px;
+    }
+
+    .row3 {
+      font-size: 9px;
+      color: #444;
+      margin-top: 1px;
+      font-style: italic;
+    }
+
+    /* ── Text styles ────────────────────────────────────────────── */
+    .dim      { color: #444; }
+    .symbol   { color: #fff; font-weight: bold; letter-spacing: .04em; }
+    .runner   { color: #00BBF9; font-size: 10px; }
+    .kol      { color: #CE93D8; font-size: 10px; }
+
+    .buy-txt      { color: #00C896; font-weight: bold; }
+    .escalate-txt { color: #FFB347; font-weight: bold; }
+    .skip-txt     { color: #FF6B6B; }
+
+    .conf-high { color: #00C896; }
+    .conf-mid  { color: #FFB347; }
+    .conf-low  { color: #888; }
+
+    .rug-high  { color: #FF6B6B; }
+    .rug-ok    { color: #555; }
+
+    .tier-t1 { color: #4FC3F7; font-size: 8px; border: 1px solid #4FC3F74d; padding: 0 3px; }
+    .tier-t2 { color: #CE93D8; font-size: 8px; border: 1px solid #CE93D84d; padding: 0 3px; }
+
+    .mcap { color: #00C896; }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div id="header">
+    <div id="header-title">Autonomous Trencher Agent — Live Decisions</div>
+    <div>
+      <span id="status-dot"></span>
+      <span id="status-text">OFFLINE</span>
+    </div>
+  </div>
+
+  <!-- Decision feed -->
+  <div id="feed"></div>
+
+  <script>
+    // ── Config ────────────────────────────────────────────────────
+    // Pass WS URL via query param: stream-overlay.html?ws=ws://YOUR_IP:4001
+    const params   = new URLSearchParams(window.location.search);
+    const WS_URL   = params.get('ws') || 'ws://localhost:4001';
+    const MAX_ROWS = 18;
+
+    // ── State ─────────────────────────────────────────────────────
+    const feed      = document.getElementById('feed');
+    const statusDot = document.getElementById('status-dot');
+    const statusTxt = document.getElementById('status-text');
+
+    function setStatus(live) {
+      statusDot.className = live ? 'live' : '';
+      statusTxt.className = live ? 'live' : '';
+      statusTxt.textContent = live ? 'LIVE' : 'OFFLINE';
+    }
+
+    // ── Render ────────────────────────────────────────────────────
+    function renderDecision(d) {
+      const verdictClass =
+        d.verdict === 'BUY'      ? 'buy' :
+        d.verdict === 'ESCALATE' ? 'escalate' : 'skip';
+
+      const verdictLabel =
+        d.verdict === 'BUY'      ? '● BUY' :
+        d.verdict === 'ESCALATE' ? '◐ ESCALATE' : '○ SKIP';
+
+      const verdictTextClass =
+        d.verdict === 'BUY'      ? 'buy-txt' :
+        d.verdict === 'ESCALATE' ? 'escalate-txt' : 'skip-txt';
+
+      const confClass =
+        d.confidence >= 0.80 ? 'conf-high' :
+        d.confidence >= 0.75 ? 'conf-mid'  : 'conf-low';
+
+      const rugClass = d.rug_probability > 20 ? 'rug-high' : 'rug-ok';
+
+      const el = document.createElement('div');
+      el.className = `decision ${verdictClass}`;
+
+      // Row 1
+      let row1 = `
+        <div class="row1">
+          <span class="dim">${d.timestamp}</span>
+          <span class="tier-${(d.tier||'T1').toLowerCase()}">${d.tier||'T1'}</span>
+          <span class="symbol">${d.symbol}</span>
+          ${d.runner_signal ? `<span class="runner">${d.runner_signal}</span>` : ''}
+          ${d.kol_signal    ? `<span class="kol">KOL:${d.kol_signal}</span>`   : ''}
+          <span class="${verdictTextClass}" style="margin-left:auto">${verdictLabel}</span>
+          ${d.verdict === 'BUY' && d.entry_mcap
+            ? `<span class="mcap">$${Math.round(d.entry_mcap/1000)}K</span>`
+            : ''}
+        </div>
+      `;
+
+      // Row 2: metrics
+      let smHtml = d.smart_money_overlap > 0
+        ? `<span style="color:#00C896">sm:${d.smart_money_overlap}</span> `
+        : '';
+      let row2 = `
+        <div class="row2">
+          conf:<span class="${confClass}">${d.confidence.toFixed(2)}</span>&nbsp;
+          rug:<span class="${rugClass}">${d.rug_probability}%</span>&nbsp;
+          ${smHtml}
+          ${d.strategy ? `<span class="dim">[${d.strategy}]</span>` : ''}
+        </div>
+      `;
+
+      // Row 3: reason for SKIP/ESCALATE
+      let row3 = '';
+      if ((d.verdict === 'SKIP' || d.verdict === 'ESCALATE') && d.reason) {
+        row3 = `<div class="row3">↳ ${d.reason}</div>`;
+      }
+
+      el.innerHTML = row1 + row2 + row3;
+      return el;
+    }
+
+    function prependDecision(d) {
+      const el = renderDecision(d);
+      feed.insertBefore(el, feed.firstChild);
+      // Trim max rows
+      while (feed.children.length > MAX_ROWS) {
+        feed.removeChild(feed.lastChild);
+      }
+    }
+
+    // ── WebSocket ─────────────────────────────────────────────────
+    let ws;
+    let retryCount = 0;
+
+    function connect() {
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        setStatus(true);
+        retryCount = 0;
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data);
+
+          if (msg.type === 'CONSCIOUSNESS_DECISION' && msg.payload) {
+            prependDecision(msg.payload);
+          }
+
+          if (msg.type === 'CONSCIOUSNESS_HISTORY' && Array.isArray(msg.payload)) {
+            // Clear and render history (newest first)
+            feed.innerHTML = '';
+            msg.payload.forEach(d => {
+              const el = renderDecision(d);
+              feed.appendChild(el);
+            });
+          }
+        } catch (_) {}
+      };
+
+      ws.onclose = () => {
+        setStatus(false);
+        // Exponential backoff: 2s → 4s → 8s … max 30s
+        const delay = Math.min(2000 * Math.pow(2, retryCount), 30000);
+        retryCount++;
+        setTimeout(connect, delay);
+      };
+
+      ws.onerror = () => {
+        setStatus(false);
+      };
+    }
+
+    connect();
+  </script>
+</body>
+</html>

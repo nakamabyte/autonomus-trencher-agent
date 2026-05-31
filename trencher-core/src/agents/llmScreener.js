@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { LLM_T1_BASE_URL, LLM_T1_API_KEY, LLM_T1_MODEL, LLM_T1_CONFIDENCE_PASS, LLM_T1_CONFIDENCE_BUY, LLM_T2_BASE_URL, LLM_T2_API_KEY, LLM_T2_MODEL, LLM_T2_CONFIDENCE_BUY } from '../config.js';
+import { logDecision } from '../consciousness/decisionLog.js';
 
 const t1Client = new OpenAI({
   baseURL: LLM_T1_BASE_URL,
@@ -619,8 +620,11 @@ export async function screenCandidates(candidates) {
     return { decision: 'SKIP', mint: null, confidence: 0.0, reasoning: 'Empty batch.' };
   }
 
-  // TIER 1 — DeepSeek fast pass
+  // ── TIER 1 — DeepSeek fast pass ───────────────────────────────────
   const tier1 = await runTier1(candidates);
+
+  // Log every candidate in the batch with its individual T1 verdict
+  _logAllCandidates(candidates, tier1, 'T1');
 
   // Hard BUY from Tier 1
   if (tier1.decision === 'BUY' && tier1.confidence >= LLM_T1_CONFIDENCE_BUY) {
@@ -634,9 +638,12 @@ export async function screenCandidates(candidates) {
     return { decision: 'SKIP', mint: null, confidence: 0.0, reasoning: tier1.reasoning };
   }
 
-  // TIER 2 — Grok deep validation
+  // ── TIER 2 — Grok deep validation ─────────────────────────────────
   console.log(`[LLM-T1] ESCALATE ${tier1.mint} → Grok (confidence=${tier1.confidence})`);
   const tier2 = await runTier2(candidates, tier1);
+
+  // Log escalated candidate with T2 verdict (overwrites T1 ESCALATE in stream)
+  _logAllCandidates(candidates, tier2, 'T2');
 
   if (tier2.decision === 'BUY' && tier2.confidence >= LLM_T2_CONFIDENCE_BUY) {
     console.log(`[LLM-T2] BUY ${tier2.mint} confidence=${tier2.confidence} kol=${tier2.kol_signal}`);
@@ -645,4 +652,63 @@ export async function screenCandidates(candidates) {
 
   console.log(`[LLM-T2] SKIP — ${tier2.reasoning}`);
   return { decision: 'SKIP', mint: null, confidence: 0.0, reasoning: tier2.reasoning };
+}
+
+// ─── Internal: Log all candidates in a batch ───────────────────────
+/**
+ * Loops through every candidate and logs it with the correct individual verdict.
+ * T1/T2 picks ONE winner (by mint) — all others are implicitly SKIP.
+ * For T2 (escalation), only logs the escalated candidate.
+ *
+ * @param {Array}  candidates - Array of candidate objects
+ * @param {object} llmResult  - T1 or T2 LLM response
+ * @param {'T1'|'T2'} tier
+ */
+function _logAllCandidates(candidates, llmResult, tier) {
+  const pickedMint = llmResult.mint || null;
+
+  for (const c of candidates) {
+    const mint = c.mint || c.token?.mint;
+    const isPicked = pickedMint && mint === pickedMint;
+
+    // For T2, only log the escalated candidate (others already logged by T1)
+    if (tier === 'T2' && !isPicked) continue;
+
+    let verdict, reason, confidence;
+
+    if (isPicked) {
+      if (llmResult.decision === 'BUY') {
+        verdict    = 'BUY';
+        confidence = llmResult.confidence ?? 0;
+        reason     = llmResult.reasoning  ?? 'Passed all filters';
+      } else if (llmResult.decision === 'ESCALATE') {
+        verdict    = 'ESCALATE';
+        confidence = llmResult.confidence ?? 0;
+        reason     = llmResult.reasoning  ?? 'Borderline — escalating to T2';
+      } else {
+        verdict    = 'SKIP';
+        confidence = llmResult.confidence ?? 0;
+        reason     = llmResult.reasoning  ?? 'Rejected by LLM';
+      }
+    } else {
+      // All non-picked candidates in this batch → SKIP
+      verdict    = 'SKIP';
+      confidence = 0;
+      reason     = `Not selected by ${tier} — batch winner: ${pickedMint ? pickedMint.slice(0, 8) + '...' : 'none'}`;
+    }
+
+    // Build analysis object from available candidate fields
+    const analysis = {
+      bundler_rate:        c.metrics?.bundler_rate        ?? c.bundler_rate,
+      smart_money_overlap: c.metrics?.smart_money_overlap ?? c.smart_money_overlap ?? 0,
+      holder_count:        c.metrics?.holders             ?? c.holders,
+      wallet_count:        c.metrics?.wallets_analyzed    ?? 0,
+      bundler_count:       c.metrics?.bundler_count       ?? 0,
+      market_cap_usd:      c.metrics?.mcap_usd            ?? c.mcap_usd,
+      runner_signal:       llmResult.runner_signal        ?? null,
+      kol_signal:          llmResult.kol_signal           ?? null,
+    };
+
+    logDecision(c, analysis, verdict, confidence, reason, tier);
+  }
 }

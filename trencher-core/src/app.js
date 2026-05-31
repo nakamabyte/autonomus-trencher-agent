@@ -18,6 +18,8 @@ export async function startTrencherAgent() {
   setupTelegram();
   
   // Start WebSocket server and passive state manager
+  // NOTE: consciousness stream (CONSCIOUSNESS_DECISION) is broadcast
+  // through this same server — no separate port needed.
   const { startWsServer } = await import('./server/wsServer.js');
   startWsServer(process.env.PORT || 4001);
   await import('./server/stateManager.js');

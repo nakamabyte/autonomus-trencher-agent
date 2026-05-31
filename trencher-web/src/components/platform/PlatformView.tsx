@@ -8,13 +8,17 @@ import { PlatformGraph } from './PlatformGraph';
 import { PlatformLogStrip } from './PlatformLogStrip';
 import { PlatformPositions } from './PlatformPositions';
 import { PlatformHistory } from './PlatformHistory';
+import { ConsciousnessStream } from './ConsciousnessStream';
 import { Modal } from '@/components/ui/Modal';
 import { NODES, NODE_FULL, AGENT_DATA } from '@/constants/agents';
 import { LC } from '@/constants/layers';
 
+type MainView = 'graph' | 'consciousness';
+
 interface PlatformViewProps {
   onClose: () => void;
 }
+
 
 export function PlatformView({ onClose }: PlatformViewProps) {
   const { metrics, statuses, logs } = usePlatform();
@@ -22,6 +26,7 @@ export function PlatformView({ onClose }: PlatformViewProps) {
   const [sidebarWidth, setSidebarWidth] = useState(240);
   const [logHeight, setLogHeight] = useState(120);
   const [activeChain, setActiveChain] = useState('solana');
+  const [mainView, setMainView] = useState<MainView>('graph');
 
   const startSidebarDrag = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -124,9 +129,58 @@ export function PlatformView({ onClose }: PlatformViewProps) {
         />
 
         <div className="pv-main" style={{ gridTemplateColumns: `1fr ${sidebarWidth}px`, position: 'relative' }}>
+          {/* View toggle tabs */}
+          <div style={{
+            position: 'absolute', top: 0, left: 0, zIndex: 20,
+            display: 'flex', gap: '1px',
+          }}>
+            {(['graph', 'consciousness'] as MainView[]).map(view => (
+              <button
+                key={view}
+                id={`pv-tab-${view}`}
+                onClick={() => setMainView(view)}
+                style={{
+                  padding: '4px 12px',
+                  fontSize: '9px',
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontWeight: 700,
+                  letterSpacing: '.12em',
+                  textTransform: 'uppercase',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: mainView === view ? '#1a1a2e' : 'transparent',
+                  color: mainView === view
+                    ? (view === 'consciousness' ? '#00C896' : '#4FC3F7')
+                    : '#444',
+                  borderBottom: mainView === view
+                    ? `2px solid ${view === 'consciousness' ? '#00C896' : '#4FC3F7'}`
+                    : '2px solid transparent',
+                  transition: 'color .15s, border-color .15s',
+                }}
+              >
+                {view === 'graph' ? 'Agent Graph' : '⬡ Consciousness'}
+              </button>
+            ))}
+          </div>
+
           <PlatformPositions metrics={metrics} logHeight={logHeight} />
           <PlatformHistory metrics={metrics} rightOffset={sidebarWidth + 16} logHeight={logHeight} />
-          <PlatformGraph statuses={statuses} onOpenAgent={openAgent} />
+
+          {/* Main panel: Graph or Consciousness Feed */}
+          {mainView === 'graph' ? (
+            <PlatformGraph statuses={statuses} onOpenAgent={openAgent} />
+          ) : (
+            <div style={{
+              position: 'absolute',
+              top: 28, left: 0,
+              right: sidebarWidth,
+              bottom: 0,
+              overflow: 'hidden',
+              borderRight: '1px solid #1a1a24',
+            }}>
+              <ConsciousnessStream />
+            </div>
+          )}
           
           {/* Vertical Drag Handle for Sidebar */}
           <div 
