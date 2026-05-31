@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useCallback } from 'react';
 import { usePlatform } from '@/hooks/usePlatform';
 import { PlatformHeader } from './PlatformHeader';
@@ -392,6 +393,37 @@ export function PlatformView({ onClose }: PlatformViewProps) {
               {/* ID */}
               <div style={{ marginTop: '12px', fontSize: '8px', fontFamily: "'JetBrains Mono', monospace", color: '#333' }}>
                 ID: {selectedDnaAgent.id}
+              </div>
+
+              {/* Link to public profile */}
+              <div style={{ marginTop: '24px', textAlign: 'center' }}>
+                <Link href={`/agent/${selectedDnaAgent.id}`} style={{
+                  display: 'inline-block',
+                  width: '100%',
+                  padding: '12px',
+                  background: `${breed?.color || '#00C896'}15`,
+                  color: breed?.color || '#00C896',
+                  border: `1px solid ${breed?.color || '#00C896'}40`,
+                  borderRadius: '4px',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  transition: 'background 0.2s, border-color 0.2s',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.background = `${breed?.color || '#00C896'}25`;
+                  (e.currentTarget as HTMLElement).style.borderColor = `${breed?.color || '#00C896'}80`;
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.background = `${breed?.color || '#00C896'}15`;
+                  (e.currentTarget as HTMLElement).style.borderColor = `${breed?.color || '#00C896'}40`;
+                }}
+                >
+                  View Public Profile
+                </Link>
               </div>
             </>
           );

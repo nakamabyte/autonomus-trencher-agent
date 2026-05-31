@@ -132,8 +132,8 @@ function DecisionRow({ d }: { d: ConsciousnessDecision }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────
-export function ConsciousnessStream() {
-  const { decisions, connected, stats } = useConsciousnessStream({ maxDecisions: 30 });
+export function ConsciousnessStream({ strategyFilter }: { strategyFilter?: string } = {}) {
+  const { decisions, connected, stats } = useConsciousnessStream({ maxDecisions: strategyFilter ? 100 : 30 });
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to top (newest) on new decision
@@ -142,6 +142,10 @@ export function ConsciousnessStream() {
       scrollRef.current.scrollTop = 0;
     }
   }, [decisions.length]);
+
+  const displayDecisions = strategyFilter
+    ? decisions.filter(d => d.strategy === strategyFilter).slice(0, 30)
+    : decisions;
 
   return (
     <div style={{
@@ -173,7 +177,7 @@ export function ConsciousnessStream() {
         ref={scrollRef}
         style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}
       >
-        {decisions.length === 0 ? (
+        {displayDecisions.length === 0 ? (
           <div style={{
             padding: '24px 12px',
             color: '#333',
@@ -184,7 +188,7 @@ export function ConsciousnessStream() {
             {connected ? 'Waiting for agent decisions...' : 'Connecting to agent stream...'}
           </div>
         ) : (
-          decisions.map((d, i) => (
+          displayDecisions.map((d, i) => (
             <DecisionRow key={`${d.timestamp}-${d.mint}-${i}`} d={d} />
           ))
         )}

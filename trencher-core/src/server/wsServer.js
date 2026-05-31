@@ -9,6 +9,38 @@ const clients = new Set();
 
 export function startWsServer(port = 4001) {
   const server = http.createServer((req, res) => {
+    // CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    // Deploy Agent API
+    if (req.url === '/api/deploy' && req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', async () => {
+        try {
+          const payload = JSON.parse(body);
+          const { createDna, listBreeds } = await import('../db/agentDna.js');
+          const newAgent = createDna(payload);
+          broadcast('AGENT_DNA_UPDATE', listBreeds());
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, agent: newAgent }));
+        } catch (err) {
+          console.error('[deploy-api] Error:', err);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+      return;
+    }
+
     // Simple file server for exported DB ZIPs
     if (req.url.startsWith('/download/') && req.url.endsWith('.zip')) {
       const fileName = path.basename(req.url);

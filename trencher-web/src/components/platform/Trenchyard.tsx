@@ -2,12 +2,14 @@
 
 import { useAgentDna } from '@/hooks/useAgentDna';
 import { AgentProfileCard } from './AgentProfileCard';
+import { DeployAgentModal } from './DeployAgentModal';
 import { BREEDS, BREED_LIST } from '@/constants/breeds';
+import { useState } from 'react';
 import type { AgentDna } from '@/types';
 
 // ─── Sub-components ───────────────────────────────────────────────
 
-function TrenchyardHeader({ agentCount, breedCount }: { agentCount: number; breedCount: number }) {
+function TrenchyardHeader({ agentCount, breedCount, onDeployClick }: { agentCount: number; breedCount: number; onDeployClick: () => void }) {
   return (
     <div style={{
       padding: '12px 16px',
@@ -76,6 +78,30 @@ function TrenchyardHeader({ agentCount, breedCount }: { agentCount: number; bree
           </span>
           <span style={{ fontSize: '8px', color: '#444' }}>Breeds</span>
         </div>
+
+        <button
+          onClick={onDeployClick}
+          style={{
+            background: 'rgba(255,179,71,0.1)',
+            border: '1px solid rgba(255,179,71,0.4)',
+            color: '#FFB347',
+            padding: '0 16px',
+            borderRadius: '4px',
+            fontSize: '11px',
+            fontFamily: "'JetBrains Mono', monospace",
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.background = 'rgba(255,179,71,0.2)';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.background = 'rgba(255,179,71,0.1)';
+          }}
+        >
+          + DEPLOY AGENT
+        </button>
       </div>
     </div>
   );
@@ -191,8 +217,26 @@ interface TrenchyardProps {
 
 export function Trenchyard({ onSelectAgent }: TrenchyardProps) {
   const { agents } = useAgentDna();
+  const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
 
   const uniqueBreeds = new Set(agents.map(a => a.breed));
+
+  const handleDeployAgent = async (payload: any) => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
+      const res = await fetch(`${apiUrl}/api/deploy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error('Deployment failed');
+      const data = await res.json();
+      console.log('Deployed agent:', data.agent);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to deploy agent. Check console.');
+    }
+  };
 
   return (
     <div style={{
@@ -202,7 +246,11 @@ export function Trenchyard({ onSelectAgent }: TrenchyardProps) {
       background: '#0a0a0f',
       overflow: 'hidden',
     }}>
-      <TrenchyardHeader agentCount={agents.length} breedCount={uniqueBreeds.size} />
+      <TrenchyardHeader 
+        agentCount={agents.length} 
+        breedCount={uniqueBreeds.size} 
+        onDeployClick={() => setIsDeployModalOpen(true)}
+      />
 
       {/* Agent cards grid */}
       <div style={{
@@ -231,6 +279,12 @@ export function Trenchyard({ onSelectAgent }: TrenchyardProps) {
 
       {/* Breed roster */}
       <BreedRoster />
+
+      <DeployAgentModal 
+        isOpen={isDeployModalOpen}
+        onClose={() => setIsDeployModalOpen(false)}
+        onDeploy={handleDeployAgent}
+      />
     </div>
   );
 }
