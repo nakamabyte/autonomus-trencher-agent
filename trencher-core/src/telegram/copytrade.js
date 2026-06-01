@@ -47,9 +47,9 @@ export function notifyWalletDisabled(walletLabel, address, winRate) {
   const text = `
 ⚠️ *AUTO-DISABLE WALLET*
 
-Dompet ${walletLabel || address.slice(0,8)} dinonaktifkan otomatis.
-Alasan: Win Rate jatuh di bawah 30% (${(winRate*100).toFixed(0)}%).
-Anda bisa mengevaluasinya kembali dan menambahkannya ulang jika diperlukan.
+Wallet ${walletLabel || address.slice(0,8)} has been auto-disabled.
+Reason: Win Rate fell below 30% (${(winRate*100).toFixed(0)}%).
+You can evaluate it again and re-add it if needed.
 `.trim();
 
   bot.sendMessage(TELEGRAM_CHAT_ID, text, { parse_mode: 'Markdown' }).catch(() => {});

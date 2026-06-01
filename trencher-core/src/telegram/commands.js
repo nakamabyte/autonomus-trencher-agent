@@ -94,15 +94,15 @@ export async function handleMessage(msg) {
     const { liveWalletPubkey, liveWalletBalanceLamports } = await import('../liveExecutor.js');
     const pubkey = liveWalletPubkey();
     if (!pubkey) {
-      return bot.sendMessage(chatId, '❌ Belum ada Wallet Eksekusi yang aktif.\nGunakan /setwallet [private_key] untuk menambahkan.');
+      return bot.sendMessage(chatId, '❌ No active Execution Wallet found.\nUse /setwallet [private_key] to add one.');
     }
-    const msgInfo = await bot.sendMessage(chatId, '⏳ Mengecek saldo di Solana...');
+    const msgInfo = await bot.sendMessage(chatId, '⏳ Checking balance on Solana...');
     try {
       const lamports = await liveWalletBalanceLamports();
       const sol = (lamports / 1000000000).toFixed(4);
-      return bot.editMessageText(`💰 <b>Wallet Eksekusi Aktif:</b>\n<code>${pubkey}</code>\n\n<b>Saldo:</b> ${sol} SOL`, { chat_id: chatId, message_id: msgInfo.message_id, parse_mode: 'HTML' });
+      return bot.editMessageText(`💰 <b>Active Execution Wallet:</b>\n<code>${pubkey}</code>\n\n<b>Balance:</b> ${sol} SOL`, { chat_id: chatId, message_id: msgInfo.message_id, parse_mode: 'HTML' });
     } catch (err) {
-      return bot.editMessageText(`❌ Gagal mengecek saldo: ${err.message}`, { chat_id: chatId, message_id: msgInfo.message_id });
+      return bot.editMessageText(`❌ Failed to check balance: ${err.message}`, { chat_id: chatId, message_id: msgInfo.message_id });
     }
   }
   if (text.startsWith('/exportdb')) {
@@ -457,7 +457,7 @@ export async function sendPosition(chatId, id, query = null) {
 
 export async function sendHistory(chatId) {
   const rows = db.prepare("SELECT * FROM dry_run_positions WHERE status = 'closed' ORDER BY closed_at_ms DESC LIMIT 10").all();
-  if (!rows.length) return bot.sendMessage(chatId, 'Belum ada riwayat transaksi yang selesai.');
+  if (!rows.length) return bot.sendMessage(chatId, 'No completed transaction history yet.');
   
   const text = rows.map(r => {
     const symbol = r.mint.slice(0, 8);
@@ -466,7 +466,7 @@ export async function sendHistory(chatId) {
     return `${sign} <b>${symbol}</b>: ${pnl > 0 ? '+' : ''}${pnl}% (${escapeHtml(r.exit_reason || 'closed')})`;
   }).join('\n');
   
-  await bot.sendMessage(chatId, `📜 <b>10 Riwayat Transaksi Terakhir:</b>\n\n${text}`, { parse_mode: 'HTML' });
+  await bot.sendMessage(chatId, `📜 <b>Last 10 Transaction History:</b>\n\n${text}`, { parse_mode: 'HTML' });
 }
 
 export async function closePosition(chatId, id, reason) {

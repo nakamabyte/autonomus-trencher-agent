@@ -2,7 +2,7 @@ import axios from 'axios';
 import { bot } from './bot.js';
 
 export async function sendCreditsInfo(chatId) {
-  const msgInfo = await bot.sendMessage(chatId, '⏳ Memeriksa status dan saldo API keys...');
+  const msgInfo = await bot.sendMessage(chatId, '⏳ Checking API keys status and balances...');
   
   let report = '📊 <b>API Keys Status & Credits</b>\n\n';
 
@@ -18,9 +18,9 @@ export async function sendCreditsInfo(chatId) {
       });
       const balanceInfo = res.data?.balance_infos?.[0];
       if (balanceInfo) {
-        report += `<b>DeepSeek (Worker):</b> ✅ Active\n└ Saldo: $${balanceInfo.total_balance} ${balanceInfo.currency}\n`;
+        report += `<b>DeepSeek (Worker):</b> ✅ Active\n└ Balance: $${balanceInfo.total_balance} ${balanceInfo.currency}\n`;
       } else {
-        report += `<b>DeepSeek (Worker):</b> ✅ Active (Saldo tidak diketahui)\n`;
+        report += `<b>DeepSeek (Worker):</b> ✅ Active (Balance unknown)\n`;
       }
     }
   } catch (err) {
@@ -56,7 +56,7 @@ export async function sendCreditsInfo(chatId) {
   } catch (err) {
     const errorData = err.response?.data?.error;
     if (err.response?.status === 400 && errorData?.message?.toLowerCase().includes('credit balance is too low')) {
-      report += `<b>Claude (Conductor):</b> ❌ Out of Credits (Saldo Habis!)\n`;
+      report += `<b>Claude (Conductor):</b> ❌ Out of Credits\n`;
     } else if (err.response?.status === 403 || err.response?.status === 429) {
       report += `<b>Claude (Conductor):</b> ❌ Quota Exceeded / Out of Credits\n`;
     } else {
@@ -114,7 +114,7 @@ export async function sendCreditsInfo(chatId) {
     }
   }
 
-  report += '\n<i>Catatan: Claude, Grok, dan X (Twitter) API tidak memiliki endpoint untuk mengecek sisa kuota (angka pasti) secara langsung, sehingga bot hanya melakukan "ping" untuk memastikan API key valid dan belum kena limit (Rate Limited).</i>';
+  report += '\n<i>Note: Claude, Grok, and X (Twitter) API do not provide endpoints to retrieve exact remaining credits/quota directly. Thus, the bot performs a quick "ping" to verify if the API key is valid and not currently rate-limited.</i>';
 
   await bot.editMessageText(report, {
     chat_id: chatId,
