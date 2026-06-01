@@ -1,16 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import type { PlatformMetrics, AgentStatusInfo, LogEntry, AgentStatus } from '@/types';
 import { NODES } from '@/constants/agents';
-import { LOG_POOL } from '@/constants/platform';
 
-function pad2(n: number) { return String(n).padStart(2, '0'); }
-function nowTs() {
-  const d = new Date();
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
-}
 export function fmtUp(s: number) {
+  const pad2 = (n: number) => String(n).padStart(2, '0');
   return `${pad2(Math.floor(s / 3600))}:${pad2(Math.floor((s % 3600) / 60))}:${pad2(s % 60)}`;
 }
 
@@ -28,10 +23,6 @@ export function usePlatform() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
   useEffect(() => {
-    setMetrics(INITIAL_METRICS);
-    setStatuses(INITIAL_STATUSES);
-    setLogs([]);
-
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:4001';
     let ws: WebSocket | null = null;
     let isMounted = true;

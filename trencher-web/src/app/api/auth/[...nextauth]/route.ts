@@ -11,13 +11,13 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, profile }) {
       if (profile) {
-        token.login = (profile as any).login;
+        token.login = (profile as { login?: string }).login;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).login = token.login;
+        (session.user as { login?: unknown }).login = token.login;
       }
       return session;
     },

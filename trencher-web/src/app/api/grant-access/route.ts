@@ -12,11 +12,11 @@ const GITHUB_REPO = 'zero520-dot/autonomus-trencher-agent';
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !(session.user as any)?.login) {
+    if (!session || !(session.user as { login?: string })?.login) {
       return NextResponse.json({ error: 'Not authenticated with GitHub' }, { status: 401 });
     }
 
-    const githubUsername = (session.user as any).login;
+    const githubUsername = (session.user as { login?: string }).login;
 
     const body = await req.json();
     const { publicKey, signature, message } = body;
@@ -99,8 +99,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, message: 'Successfully granted GitHub access!' });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Grant Access Error:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
   }
 }

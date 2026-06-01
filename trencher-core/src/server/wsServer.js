@@ -41,6 +41,69 @@ export function startWsServer(port = 4001) {
       return;
     }
 
+    // Breed Agent API
+    if (req.url === '/api/breed' && req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', async () => {
+        try {
+          const payload = JSON.parse(body);
+          const { breedAgents, listBreeds } = await import('../db/agentDna.js');
+          const newAgent = breedAgents(payload.parentAId, payload.parentBId, payload.childName);
+          broadcast('AGENT_DNA_UPDATE', listBreeds());
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, agent: newAgent }));
+        } catch (err) {
+          console.error('[breed-api] Error:', err);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+      return;
+    }
+
+    // List Agent on Marketplace API
+    if (req.url === '/api/marketplace/list' && req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', async () => {
+        try {
+          const payload = JSON.parse(body);
+          const { listAgentOnMarket, listBreeds } = await import('../db/agentDna.js');
+          const updatedAgent = listAgentOnMarket(payload.id, payload.forSale, payload.salePriceSol, payload.royaltyPct);
+          broadcast('AGENT_DNA_UPDATE', listBreeds());
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, agent: updatedAgent }));
+        } catch (err) {
+          console.error('[marketplace-list-api] Error:', err);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+      return;
+    }
+
+    // Clone Agent (Purchase) API
+    if (req.url === '/api/marketplace/clone' && req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', async () => {
+        try {
+          const payload = JSON.parse(body);
+          const { cloneAgent, listBreeds } = await import('../db/agentDna.js');
+          const newAgent = cloneAgent(payload.parentDnaId, payload.cloneName, payload.ownerAddress);
+          broadcast('AGENT_DNA_UPDATE', listBreeds());
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, agent: newAgent }));
+        } catch (err) {
+          console.error('[marketplace-clone-api] Error:', err);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+      return;
+    }
+
     // Simple file server for exported DB ZIPs
     if (req.url.startsWith('/download/') && req.url.endsWith('.zip')) {
       const fileName = path.basename(req.url);

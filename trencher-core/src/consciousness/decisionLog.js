@@ -43,7 +43,7 @@ export function logDecision(candidate, analysis, verdict, confidence, reason, ti
     confidence:          typeof confidence === 'number' ? confidence : 0,
     verdict,   // 'BUY' | 'SKIP' | 'ESCALATE'
     reason,
-    strategy:            candidate?.strategy            ?? candidate?.route ?? null,
+    strategy:            candidate?.signals?.strategy   ?? candidate?.strategy            ?? candidate?.route ?? null,
     entry_mcap:          analysis?.market_cap_usd       ?? analysis?.metrics?.mcap_usd ?? null,
   };
 

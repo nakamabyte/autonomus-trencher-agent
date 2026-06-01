@@ -41,10 +41,8 @@ export const PlatformGraph = forwardRef<PlatformGraphHandle, PlatformGraphProps>
       if (!refsRef.current || !d3Ref.current) return;
       const d3 = d3Ref.current;
       const { nodeGs, edgeSel } = refsRef.current as {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        nodeGs: D3Type.Selection<SVGGElement, any, SVGGElement, unknown>;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        edgeSel: D3Type.Selection<SVGLineElement, any, SVGGElement, unknown>;
+        nodeGs: D3Type.Selection<SVGGElement, unknown, SVGGElement, unknown>;
+        edgeSel: D3Type.Selection<SVGLineElement, unknown, SVGGElement, unknown>;
       };
       const pvStatuses = statusesRef.current;
       const pvSelected = selectedRef.current;
@@ -142,9 +140,11 @@ export const PlatformGraph = forwardRef<PlatformGraphHandle, PlatformGraphProps>
 
         const zoom = d3.zoom()
           .scaleExtent([0.25, 4])
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .on('zoom', (event: any) => {
             gZoom.attr('transform', event.transform);
           });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         svg.call(zoom as any);
 
         svg.append('rect').attr('width', '100%').attr('height', '100%').attr('fill', '#000');

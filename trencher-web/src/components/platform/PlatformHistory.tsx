@@ -300,7 +300,10 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
   const [selectedPos, setSelectedPos] = useState<ClosedPos | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div

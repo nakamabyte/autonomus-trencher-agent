@@ -4,7 +4,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAgentDna } from '@/hooks/useAgentDna';
 import { AgentProfileCard } from '@/components/platform/AgentProfileCard';
 import { ConsciousnessStream } from '@/components/platform/ConsciousnessStream';
-import { Nav } from '@/components/layout/Nav';
 import { BREEDS } from '@/constants/breeds';
 
 export default function AgentProfilePage() {
@@ -19,7 +18,8 @@ export default function AgentProfilePage() {
   // Find strategy id based on breed for filtering
   let strategyFilter: string | undefined = undefined;
   if (agent) {
-    strategyFilter = agent.breed;
+    const breedConfig = BREEDS[agent.breed as keyof typeof BREEDS];
+    strategyFilter = breedConfig?.strategyId || undefined;
   }
 
   return (
@@ -35,7 +35,7 @@ export default function AgentProfilePage() {
         <button 
           className="pv-back"
           style={{ marginRight: 0 }}
-          onClick={() => router.push('/')}
+          onClick={() => router.push('/?platform=true')}
         >
           ← BACK
         </button>
@@ -72,9 +72,12 @@ export default function AgentProfilePage() {
         }}>
           {!isLoaded ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', textAlign: 'center' }}>
-              <div style={{
-                width: '30px', height: '30px', border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#00C896', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '12px'
-              }} />
+              <div 
+                className="animate-spin"
+                style={{
+                  width: '30px', height: '30px', border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#00C896', borderRadius: '50%', marginBottom: '12px'
+                }} 
+              />
               <div style={{ color: '#888', fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', letterSpacing: '0.1em' }}>
                 LOADING PROFILE...
               </div>

@@ -15,22 +15,31 @@ const RISK_MODIFIERS: Record<string, Partial<Record<string, number>>> = {
 interface DeployAgentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onDeploy: (payload: any) => Promise<void>;
+  onDeploy: (payload: Record<string, unknown>) => Promise<void>;
 }
 
 export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModalProps) {
   const [name, setName] = useState('');
   const [selectedBreed, setSelectedBreed] = useState<BreedKey>('scout');
   const [riskMode, setRiskMode] = useState<'conservative' | 'balanced' | 'aggressive' | 'degen'>('balanced');
+  const [entryPreference, setEntryPreference] = useState<'wait_for_dip' | 'immediate'>('wait_for_dip');
+  const [exitPreference, setExitPreference] = useState<'trailing_tp' | 'fixed_tp'>('trailing_tp');
+  const [rugFilter, setRugFilter] = useState<number>(0.20);
   const [isDeploying, setIsDeploying] = useState(false);
 
   // Reset state when opened
   useEffect(() => {
     if (isOpen) {
-      setName('');
-      setSelectedBreed('scout');
-      setRiskMode('balanced');
-      setIsDeploying(false);
+      const timer = setTimeout(() => {
+        setName('');
+        setSelectedBreed('scout');
+        setRiskMode('balanced');
+        setEntryPreference('wait_for_dip');
+        setExitPreference('trailing_tp');
+        setRugFilter(0.20);
+        setIsDeploying(false);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
@@ -53,6 +62,9 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
       name: name.trim(),
       breed: selectedBreed,
       traits: previewTraits,
+      entryPreference,
+      exitPreference,
+      rugFilter,
     };
 
     await onDeploy(payload);
@@ -186,6 +198,102 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
                 );
               })}
             </div>
+          </div>
+
+          {/* Entry Preference */}
+          <div>
+            <label style={{ display: 'block', fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>
+              Entry Preference
+            </label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {(['wait_for_dip', 'immediate'] as const).map(pref => {
+                const isSelected = entryPreference === pref;
+                const color = '#00C896';
+                return (
+                  <button
+                    key={pref}
+                    type="button"
+                    onClick={() => setEntryPreference(pref)}
+                    style={{
+                      flex: 1,
+                      background: isSelected ? `${color}15` : '#0d0d12',
+                      border: `1px solid ${isSelected ? color : '#1a1a28'}`,
+                      color: isSelected ? color : '#888',
+                      padding: '8px 0',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      textTransform: 'uppercase',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    {pref.replace(/_/g, ' ')}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Exit Preference */}
+          <div>
+            <label style={{ display: 'block', fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>
+              Exit Preference
+            </label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {(['trailing_tp', 'fixed_tp'] as const).map(pref => {
+                const isSelected = exitPreference === pref;
+                const color = '#FFB347';
+                return (
+                  <button
+                    key={pref}
+                    type="button"
+                    onClick={() => setExitPreference(pref)}
+                    style={{
+                      flex: 1,
+                      background: isSelected ? `${color}15` : '#0d0d12',
+                      border: `1px solid ${isSelected ? color : '#1a1a28'}`,
+                      color: isSelected ? color : '#888',
+                      padding: '8px 0',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      textTransform: 'uppercase',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    {pref.replace(/_/g, ' ')}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Rug Filter */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                Rug Filter Sensitivity
+              </label>
+              <span style={{ fontSize: '10px', color: '#FF6B6B', fontFamily: "'JetBrains Mono', monospace" }}>
+                {(rugFilter * 100).toFixed(0)}% Limit
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0.05"
+              max="0.50"
+              step="0.01"
+              value={rugFilter}
+              onChange={e => setRugFilter(parseFloat(e.target.value))}
+              style={{
+                width: '100%',
+                accentColor: '#FF6B6B',
+                cursor: 'pointer',
+                background: '#0d0d12',
+              }}
+            />
           </div>
 
         </div>

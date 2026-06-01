@@ -143,8 +143,9 @@ export function ConsciousnessStream({ strategyFilter }: { strategyFilter?: strin
     }
   }, [decisions.length]);
 
+  const filtered = strategyFilter ? decisions.filter(d => d.strategy === strategyFilter) : [];
   const displayDecisions = strategyFilter
-    ? decisions.filter(d => d.strategy === strategyFilter).slice(0, 30)
+    ? (filtered.length > 0 ? filtered.slice(0, 30) : decisions)
     : decisions;
 
   return (

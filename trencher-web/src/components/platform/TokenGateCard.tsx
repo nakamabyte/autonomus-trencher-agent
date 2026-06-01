@@ -57,9 +57,9 @@ export default function TokenGateCard() {
       }
 
       setMessage(data.message || 'Success! Check your GitHub email for the repository invitation.');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || 'An unknown error occurred.');
+      setError(err instanceof Error ? err.message : 'An unknown error occurred.');
     } finally {
       setLoading(false);
     }
@@ -93,7 +93,7 @@ export default function TokenGateCard() {
           <div style={{ marginBottom: '8px', fontSize: '14px', fontWeight: 'bold' }}>2. Connect GitHub</div>
           {status === 'authenticated' ? (
             <div style={{ padding: '10px', background: '#2ea043', borderRadius: '4px', textAlign: 'center' }}>
-              Connected as {(session?.user as any)?.login || session?.user?.name}
+              Connected as {(session?.user as { login?: string })?.login || session?.user?.name}
             </div>
           ) : (
             <button 

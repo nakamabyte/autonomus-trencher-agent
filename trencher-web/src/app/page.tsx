@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 // Layout
 import { Nav } from '@/components/layout/Nav';
@@ -46,6 +46,16 @@ export default function Home() {
     setIsPlatformOpen(true);
     document.body.style.overflow = 'hidden';
   }, []);
+
+  // Automatically open platform if coming back from profile page
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('platform') === 'true') {
+        setTimeout(openPlatform, 0);
+      }
+    }
+  }, [openPlatform]);
 
   const closePlatform = useCallback(() => {
     setIsPlatformOpen(false);

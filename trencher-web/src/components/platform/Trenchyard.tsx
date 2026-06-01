@@ -3,7 +3,7 @@
 import { useAgentDna } from '@/hooks/useAgentDna';
 import { AgentProfileCard } from './AgentProfileCard';
 import { DeployAgentModal } from './DeployAgentModal';
-import { BREEDS, BREED_LIST } from '@/constants/breeds';
+import { BREED_LIST } from '@/constants/breeds';
 import { useState } from 'react';
 import type { AgentDna } from '@/types';
 
@@ -256,7 +256,7 @@ export function Trenchyard({ onSelectAgent }: TrenchyardProps) {
 
   const uniqueBreeds = new Set(agents.map(a => a.breed));
 
-  const handleDeployAgent = async (payload: any) => {
+  const handleDeployAgent = async (payload: Record<string, unknown>) => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
       const res = await fetch(`${apiUrl}/api/deploy`, {

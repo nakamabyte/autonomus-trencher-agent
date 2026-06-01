@@ -206,6 +206,44 @@ export function AgentProfileCard({ agent, compact = false, onClick }: AgentProfi
         </div>
       )}
 
+      {/* Public profile link */}
+      {!compact && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            window.location.href = `/agent/${agent.id}`;
+          }}
+          style={{
+            display: 'block',
+            width: '100%',
+            padding: '6px',
+            background: 'rgba(255,255,255,0.03)',
+            color: breed.color,
+            border: `1px solid ${breed.color}30`,
+            borderRadius: '4px',
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: '9px',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '1px',
+            cursor: 'pointer',
+            textAlign: 'center',
+            transition: 'background 0.2s, border-color 0.2s',
+            marginTop: '8px'
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.background = `${breed.color}15`;
+            (e.currentTarget as HTMLElement).style.borderColor = `${breed.color}60`;
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)';
+            (e.currentTarget as HTMLElement).style.borderColor = `${breed.color}30`;
+          }}
+        >
+          View Profile
+        </button>
+      )}
+
       {/* Compact: horizontal mini bars */}
       {compact && (
         <div style={{ display: 'flex', gap: '3px' }}>

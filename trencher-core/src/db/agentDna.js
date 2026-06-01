@@ -1,5 +1,5 @@
 import { db } from './connection.js';
-import { randomUUID } from 'crypto';
+import { randomUUID, createHash } from 'crypto';
 
 // ─── Breed → Strategy mapping ──────────────────────────────────────
 // Maps existing strategy IDs to breed identities from the ecosystem spec
@@ -54,6 +54,18 @@ const BREED_DNA_DEFAULTS = {
   canary:      { speed: 80, aggression: 25, rug_defense: 90, wallet_intelligence: 80, momentum_sensitivity: 75, social_signal_weight: 70, liquidity_sensitivity: 85, exit_discipline: 60, stealth: 45, mutation_rate: 5, survival_score: 78 },
 };
 
+export function computeDnaHash(breed, traits, generation) {
+  const data = JSON.stringify({
+    breed,
+    traits: Object.keys(traits).sort().reduce((acc, k) => {
+      acc[k] = traits[k];
+      return acc;
+    }, {}),
+    generation
+  });
+  return createHash('sha256').update(data).digest('hex');
+}
+
 // ─── Prepare statements ───────────────────────────────────────────
 const stmtInsert = db.prepare(`
   INSERT OR IGNORE INTO agent_dna (
@@ -61,12 +73,14 @@ const stmtInsert = db.prepare(`
     speed, aggression, rug_defense, wallet_intelligence,
     momentum_sensitivity, social_signal_weight, liquidity_sensitivity,
     exit_discipline, stealth, mutation_rate, survival_score,
+    entry_preference, exit_preference, rug_filter, dna_hash, mutation_history,
     owner_address, created_at_ms, updated_at_ms
   ) VALUES (
     @id, @name, @breed, @parent_a, @parent_b, @generation,
     @speed, @aggression, @rug_defense, @wallet_intelligence,
     @momentum_sensitivity, @social_signal_weight, @liquidity_sensitivity,
     @exit_discipline, @stealth, @mutation_rate, @survival_score,
+    @entry_preference, @exit_preference, @rug_filter, @dna_hash, @mutation_history,
     @owner_address, @created_at_ms, @updated_at_ms
   )
 `);
@@ -79,6 +93,7 @@ const stmtListBreeds = db.prepare(`
     speed, aggression, rug_defense, wallet_intelligence,
     momentum_sensitivity, social_signal_weight, liquidity_sensitivity,
     exit_discipline, stealth, mutation_rate, survival_score,
+    entry_preference, exit_preference, rug_filter, dna_hash, mutation_history,
     total_trades, win_rate, total_pnl_sol, max_drawdown,
     avg_hold_min, rug_survival_rate,
     owner_address, for_sale, sale_price_sol, royalty_pct,
@@ -106,16 +121,25 @@ const stmtUpdatePerf = db.prepare(`
  * Create a new agent DNA record.
  * DNA traits are merged from breed defaults + any overrides passed in.
  */
-export function createDna({ name, breed, parentA = null, parentB = null, generation = 0, traits = {}, ownerAddress = null } = {}) {
+export function createDna({
+  name, breed, parentA = null, parentB = null, generation = 0, traits = {},
+  ownerAddress = null, entryPreference = 'wait_for_dip', exitPreference = 'trailing_tp', rugFilter = 0.20
+} = {}) {
   const defaults = BREED_DNA_DEFAULTS[breed] || BREED_DNA_DEFAULTS.scout;
   const merged = { ...defaults, ...traits };
   const now = Date.now();
   const id = randomUUID();
+  const dnaHash = computeDnaHash(breed, merged, generation);
 
   stmtInsert.run({
     id, name,
     breed, parent_a: parentA, parent_b: parentB, generation,
     ...merged,
+    entry_preference: entryPreference,
+    exit_preference: exitPreference,
+    rug_filter: rugFilter,
+    dna_hash: dnaHash,
+    mutation_history: JSON.stringify([]),
     owner_address: ownerAddress,
     created_at_ms: now, updated_at_ms: now,
   });
@@ -158,6 +182,57 @@ export function getBreedForStrategy(strategyId) {
 }
 
 /**
+ * Breed two parent agents to produce a child hybrid agent.
+ * Sifts parent traits with deviation based on mutation rate.
+ */
+export function breedAgents(parentAId, parentBId, childName) {
+  const parentA = getDna(parentAId);
+  const parentB = getDna(parentBId);
+  if (!parentA || !parentB) {
+    throw new Error('One or both parent agents not found');
+  }
+
+  const childGeneration = Math.max(parentA.generation, parentB.generation) + 1;
+  const childBreed = Math.random() > 0.5 ? parentA.breed : parentB.breed;
+
+  const traits = {};
+  const TRAIT_KEYS = [
+    'speed', 'aggression', 'rug_defense', 'wallet_intelligence',
+    'momentum_sensitivity', 'social_signal_weight', 'liquidity_sensitivity',
+    'exit_discipline', 'stealth', 'mutation_rate', 'survival_score'
+  ];
+
+  const avgMutationRate = ((parentA.mutation_rate || 10) + (parentB.mutation_rate || 10)) / 2;
+  const mutationRange = avgMutationRate / 100; // e.g. 0.15 for 15%
+
+  for (const key of TRAIT_KEYS) {
+    const parentAVal = parentA[key] ?? 50;
+    const parentBVal = parentB[key] ?? 50;
+    const avgVal = (parentAVal + parentBVal) / 2;
+    // Apply random mutation deviation
+    const deviation = avgVal * mutationRange * (Math.random() - 0.5);
+    traits[key] = Math.max(0, Math.min(100, Math.round(avgVal + deviation)));
+  }
+
+  // Combine preferences
+  const entryPreference = Math.random() > 0.5 ? parentA.entry_preference : parentB.entry_preference;
+  const exitPreference = Math.random() > 0.5 ? parentA.exit_preference : parentB.exit_preference;
+  const rugFilter = Math.round(((parentA.rug_filter || 0.20) + (parentB.rug_filter || 0.20)) / 2 * 100) / 100;
+
+  return createDna({
+    name: childName || `${childBreed.toUpperCase()} Hybrid #${Math.floor(100 + Math.random() * 900)}`,
+    breed: childBreed,
+    parentA: parentA.id,
+    parentB: parentB.id,
+    generation: childGeneration,
+    traits,
+    entryPreference,
+    exitPreference,
+    rugFilter
+  });
+}
+
+/**
  * Seed the Genesis agent on first startup if no agents exist yet.
  * This is the Phase I "Genesis Trencher" — foundation for everything.
  */
@@ -179,4 +254,62 @@ export function ensureGenesisAgent() {
   });
 
   console.log('[agent-dna] Genesis Trencher #001 seeded');
+}
+
+/**
+ * List an agent for sale/licensing on the marketplace.
+ */
+export function listAgentOnMarket(id, forSale, salePriceSol, royaltyPct) {
+  db.prepare(`
+    UPDATE agent_dna SET
+      for_sale = @for_sale,
+      sale_price_sol = @sale_price_sol,
+      royalty_pct = @royalty_pct,
+      updated_at_ms = @updated_at_ms
+    WHERE id = @id
+  `).run({
+    id,
+    for_sale: forSale ? 1 : 0,
+    sale_price_sol: salePriceSol ?? null,
+    royalty_pct: royaltyPct ?? 0,
+    updated_at_ms: Date.now()
+  });
+  return getDna(id);
+}
+
+/**
+ * Clone an agent DNA, incrementing copy count on parent.
+ */
+export function cloneAgent(parentDnaId, cloneName, ownerAddress) {
+  const parent = getDna(parentDnaId);
+  if (!parent) throw new Error('Parent agent not found');
+
+  if (parent.copies_minted >= parent.copies_limit) {
+    throw new Error('Clone copy limit reached for this agent DNA');
+  }
+
+  // Increment copies_minted on parent
+  db.prepare('UPDATE agent_dna SET copies_minted = copies_minted + 1 WHERE id = ?').run(parentDnaId);
+
+  // Extract traits
+  const traits = {
+    speed: parent.speed, aggression: parent.aggression, rug_defense: parent.rug_defense,
+    wallet_intelligence: parent.wallet_intelligence, momentum_sensitivity: parent.momentum_sensitivity,
+    social_signal_weight: parent.social_signal_weight, liquidity_sensitivity: parent.liquidity_sensitivity,
+    exit_discipline: parent.exit_discipline, stealth: parent.stealth,
+    mutation_rate: parent.mutation_rate, survival_score: parent.survival_score
+  };
+
+  return createDna({
+    name: cloneName || `${parent.name} (Clone)`,
+    breed: parent.breed,
+    parentA: parent.id,
+    parentB: null,
+    generation: parent.generation,
+    traits,
+    entryPreference: parent.entry_preference,
+    exitPreference: parent.exit_preference,
+    rugFilter: parent.rug_filter,
+    ownerAddress
+  });
 }

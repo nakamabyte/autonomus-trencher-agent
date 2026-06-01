@@ -254,6 +254,12 @@ export function initDb() {
       copies_minted INTEGER DEFAULT 0,
       copies_limit INTEGER DEFAULT 100,
 
+      entry_preference TEXT DEFAULT 'wait_for_dip',
+      exit_preference TEXT DEFAULT 'trailing_tp',
+      rug_filter REAL DEFAULT 0.20,
+      dna_hash TEXT,
+      mutation_history TEXT,
+
       created_at_ms INTEGER NOT NULL,
       updated_at_ms INTEGER NOT NULL
     );
@@ -270,6 +276,11 @@ export function initDb() {
   ensureColumn('dry_run_positions', 'copied_from', 'TEXT');
   ensureColumn('dry_run_positions', 'mirror_exit', 'INTEGER DEFAULT 0');
   ensureColumn('decision_logs', 'strategy_id', 'TEXT');
+  ensureColumn('agent_dna', 'entry_preference', "TEXT DEFAULT 'wait_for_dip'");
+  ensureColumn('agent_dna', 'exit_preference', "TEXT DEFAULT 'trailing_tp'");
+  ensureColumn('agent_dna', 'rug_filter', "REAL DEFAULT 0.20");
+  ensureColumn('agent_dna', 'dna_hash', 'TEXT');
+  ensureColumn('agent_dna', 'mutation_history', 'TEXT');
   db.exec(`
     CREATE TABLE IF NOT EXISTS kol_accuracy (
       account TEXT PRIMARY KEY,

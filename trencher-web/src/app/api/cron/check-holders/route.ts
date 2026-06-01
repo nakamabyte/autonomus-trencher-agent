@@ -120,8 +120,8 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ success: true, message: `Checked ${users.length} users. Revoked ${revokedCount} users.` });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Cron Check Error:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
   }
 }
