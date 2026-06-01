@@ -15,7 +15,8 @@ import { sendPositionExit } from '../telegram/send.js';
 import { setCooldown } from '../utils/mintCooldown.js';
 
 export async function freshEntryMarket(mint, candidate) {
-  const gmgn = await fetchGmgnTokenInfo(mint, false);
+  const chain = candidate?.chain || 'sol';
+  const gmgn = await fetchGmgnTokenInfo(mint, false, chain);
   const asset = await fetchJupiterAsset(mint, { useCache: false });
   const priceUsd = firstPositiveNumber(tokenPriceFromGmgn(gmgn), asset?.usdPrice, candidate.metrics?.priceUsd);
   const marketCapUsd = firstPositiveNumber(
@@ -31,7 +32,8 @@ export async function freshEntryMarket(mint, candidate) {
 export async function refreshCandidateForExecution(row) {
   const candidate = row.candidate;
   const mint = candidate.token.mint;
-  const gmgn = await fetchGmgnTokenInfo(mint, false);
+  const chain = candidate.chain || 'sol';
+  const gmgn = await fetchGmgnTokenInfo(mint, false, chain);
   const asset = await fetchJupiterAsset(mint, { useCache: false });
   const holders = await fetchJupiterHolders(mint);
   const chart = await fetchJupiterChartContext(mint);

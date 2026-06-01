@@ -142,7 +142,7 @@ function tokenPriceFromGmgn(info) {
   return Number.isFinite(price) ? price : null;
 }
 
-async function fetchGmgnTokenInfo(mint, useCache = true) {
+async function fetchGmgnTokenInfo(mint, useCache = true, chain = 'sol') {
   if (!GMGN_ENABLED) return null;
   const cached = gmgnCache.get(mint);
   if (useCache && cached && now() - cached.at < GMGN_CACHE_TTL_MS) return cached.data;
@@ -153,7 +153,7 @@ async function fetchGmgnTokenInfo(mint, useCache = true) {
 
   try {
     const payload = await gmgnFetch('/v1/token/info', {
-      params: { chain: 'sol', address: mint },
+      params: { chain, address: mint },
     });
     const data = payload?.data?.data || payload?.data || payload;
     gmgnCache.set(mint, { at: now(), data });

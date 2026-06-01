@@ -146,10 +146,14 @@ export async function buildCandidate({ mint, fee = null, signature = null, gradu
 
   let gmgn = null, jupiterAsset = null, holders = null, chart = null, savedWalletExposure = null, twitterNarrative = null, baseData = null;
 
+  if (chain === 'base' || chain === 'ethereum') {
+    gmgn = await fetchGmgnTokenInfo(mint, true, chain);
+  }
+
   if (chain === 'base') {
     baseData = await enrichBaseToken(mint);
-  } else {
-    gmgn = await fetchGmgnTokenInfo(mint);
+  } else if (chain !== 'ethereum') {
+    gmgn = await fetchGmgnTokenInfo(mint, true, chain);
     jupiterAsset = await fetchJupiterAsset(mint);
     holders = await fetchJupiterHolders(mint);
     chart = await fetchJupiterChartContext(mint);
