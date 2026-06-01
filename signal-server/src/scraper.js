@@ -1,6 +1,8 @@
 const axios = require('axios');
 require('dotenv').config();
 const { fetchDexscreenerBaseLatest } = require('./sources/dexscreenerBase');
+const { fetchDexscreenerEthLatest } = require('./sources/dexscreenerEth');
+const { fetchGmgnBaseLatest } = require('./sources/gmgnBase');
 
 // Pump.fun program addresses
 const PUMP_PROGRAM = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P';
@@ -247,6 +249,28 @@ async function fetchBaseTokens() {
       chain: 'base'
     }, token.source);
   }
+
+  const gmgnData = await fetchGmgnBaseLatest();
+  for (const token of gmgnData) {
+    upsertSignal(token.mint, {
+      name: token.name,
+      symbol: token.symbol,
+      marketCapUsd: Number(token.market_cap_usd || 0),
+      chain: 'base'
+    }, token.source);
+  }
+}
+
+async function fetchEthTokens() {
+  const data = await fetchDexscreenerEthLatest();
+  for (const token of data) {
+    upsertSignal(token.mint, {
+      name: token.name,
+      symbol: token.symbol,
+      marketCapUsd: Number(token.market_cap_usd || 0),
+      chain: 'ethereum'
+    }, token.source);
+  }
 }
 
 async function startScraping() {
@@ -258,14 +282,15 @@ async function startScraping() {
   }
 
   // Initial fetch
-  await Promise.allSettled([fetchGraduated(), fetchTrending(), fetchBaseTokens()]);
+  await Promise.allSettled([fetchGraduated(), fetchTrending(), fetchBaseTokens(), fetchEthTokens()]);
 
   // Polling loops
   setInterval(fetchGraduated, GRADUATED_POLL_MS);
   setInterval(fetchTrending, TRENDING_POLL_MS);
   setInterval(fetchBaseTokens, 45_000);
+  setInterval(fetchEthTokens, 45_000);
 
-  console.log(`[scraper] running — graduated every ${GRADUATED_POLL_MS / 1000}s, trending every ${TRENDING_POLL_MS / 1000}s. DexScreener Base chain enabled.`);
+  console.log(`[scraper] running — graduated every ${GRADUATED_POLL_MS / 1000}s, trending every ${TRENDING_POLL_MS / 1000}s. DexScreener Base & ETH chains enabled.`);
 }
 
 module.exports = { startScraping, getSignals };
