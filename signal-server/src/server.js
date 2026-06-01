@@ -5,6 +5,9 @@ const { startScraping, getSignals } = require('./scraper');
 const { startFreshLaunchListener } = require('./sources/freshLaunch');
 const { setupSignalPaywalls } = require('./x402/signalPaywall');
 const { setupSignalApi } = require('./api/signalEndpoint');
+const { setupMcpApiEndpoints } = require('./api/mcpEndpoints');
+const Database = require('better-sqlite3');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -43,6 +46,17 @@ setupSignalPaywalls(app);
 
 // Setup holder signal API endpoints
 setupSignalApi(app, getSignals);
+
+// Setup MCP API endpoints
+const dbPath = process.env.DB_PATH || path.join(__dirname, '../../trencher-core/trencher-agent.sqlite');
+let mcpDb;
+try {
+  mcpDb = new Database(dbPath, { readonly: true });
+  setupMcpApiEndpoints(app, mcpDb, getSignals, () => []);
+  console.log('[mcp] MCP endpoints initialized');
+} catch (err) {
+  console.warn('[mcp] Could not open db for MCP:', err.message);
+}
 
 const freshLaunchBuffer = [];
 const FRESH_TTL_MS = 10 * 60 * 1000; // keep fresh tokens 10 min max

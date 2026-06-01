@@ -1,0 +1,35 @@
+{
+  "name": "autonomustrench-mcp-server",
+  "version": "1.0.1",
+  "mcpName": "io.github.zero520-dot/trencher-agent",
+  "type": "module",
+  "description": "Autonomous Solana trading agent with 3-brain LLM cascade, runner detection, and real-time consciousness feed. First autonomous trading agent on MCP.",
+  "main": "dist/index.js",
+  "bin": {
+    "trencher-mcp": "dist/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zero520-dot/trencher-agent.git"
+  },
+  "keywords": [
+    "mcp",
+    "solana",
+    "trading",
+    "autonomous-agent",
+    "pump-fun",
+    "ai-agent"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.0.0"
+  }
+}
