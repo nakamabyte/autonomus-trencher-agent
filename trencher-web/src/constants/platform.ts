@@ -273,7 +273,7 @@ export const NAV_LINKS: { href: string; label: string }[] = [
   { href: '#features',   label: 'Features'   },
   { href: '#modes',      label: 'Modes'      },
   { href: '#strategies', label: 'Strategies' },
-  { href: '#config',     label: 'Docs'       },
+  { href: '/guide',      label: 'Docs'       },
   { href: '/verify',     label: 'Verify Holder' },
 ];
 

@@ -4,6 +4,7 @@ const cors = require('cors');
 const { startScraping, getSignals } = require('./scraper');
 const { startFreshLaunchListener } = require('./sources/freshLaunch');
 const { setupSignalPaywalls } = require('./x402/signalPaywall');
+const { setupSignalApi } = require('./api/signalEndpoint');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -39,6 +40,9 @@ app.get('/health', (req, res) => {
 
 // Setup x402 Paywalls
 setupSignalPaywalls(app);
+
+// Setup holder signal API endpoints
+setupSignalApi(app, getSignals);
 
 const freshLaunchBuffer = [];
 const FRESH_TTL_MS = 10 * 60 * 1000; // keep fresh tokens 10 min max
