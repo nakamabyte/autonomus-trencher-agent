@@ -7,12 +7,26 @@ export async function POST(req: Request) {
     const { signature, breed, dnaConfig } = await req.json()
     const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL || 'https://api.devnet.solana.com')
 
-    // 1. Confirm transaction first
-    const latestBlockhash = await connection.getLatestBlockhash()
-    await connection.confirmTransaction({
-      signature,
-      ...latestBlockhash
-    }, 'confirmed')
+    // 1. Wait for confirmation via signature status polling
+    let confirmed = false;
+    const start = Date.now();
+    while (Date.now() - start < 45000) { // 45 seconds timeout
+      const statusRes = await connection.getSignatureStatus(signature);
+      const status = statusRes?.value;
+      if (status && (status.confirmationStatus === 'confirmed' || status.confirmationStatus === 'finalized')) {
+        confirmed = true;
+        break;
+      }
+      if (status && status.err) {
+        console.error('Transaction error status:', status.err);
+        return Response.json({ error: `Transaction failed: ${JSON.stringify(status.err)}` }, { status: 400 })
+      }
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    if (!confirmed) {
+      return Response.json({ error: 'Transaction confirmation timeout. Please check your explorer.' }, { status: 408 })
+    }
 
     // 2. Verify transaction on-chain
     const tx = await connection.getTransaction(signature, {
