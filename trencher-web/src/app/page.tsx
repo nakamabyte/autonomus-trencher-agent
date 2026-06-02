@@ -16,6 +16,7 @@ import { Modes } from '@/components/sections/Modes';
 import { AgentsTable } from '@/components/sections/AgentsTable';
 import { Strategies } from '@/components/sections/Strategies';
 import { Config } from '@/components/sections/Config';
+import { Ecosystem } from '@/components/sections/Ecosystem';
 import { CTA } from '@/components/sections/CTA';
 
 // Platform
@@ -117,6 +118,7 @@ export default function Home() {
         <AgentsTable statuses={EMPTY_STATUSES} onOpenAgent={openAgentModal} />
         <Strategies />
         <Config onOpenPlatform={openPlatform} />
+        <Ecosystem />
         <CTA onOpenPlatform={openPlatform} />
         <Footer onOpenPlatform={openPlatform} />
       </div>
