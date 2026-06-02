@@ -92,6 +92,7 @@ Trencher Agent is an autonomous trading bot that uses multi-LLM (Grok, DeepSeek,
 <b>5. ECOSYSTEM & $AUTR TOKEN</b>
 /deploy - Guide to deploying new agents via Trenchyard and Fee Tier details (0.025 - 0.2 SOL)
 /burn - View info on the automated $AUTR Buyback & Burn cycle (25% of deploy fees)
+/setdeployconfig &lt;target&gt; &lt;value&gt; - Update Deploy/Burn config (mint, burn, burn_pk, reward, treasury, ops)
 
 <b>6. AI LEARNING & SOCIAL</b>
 /twitter - Check and configure auto-posting status to your X (Twitter) account
@@ -242,7 +243,7 @@ To deploy an agent, you need to pay SOL via the Trenchyard platform.
       `• Close Pos: <b>${closeSt}</b>\n` +
       `• Daily: <b>${dailySt}</b>\n` +
       `• Screening: <b>${screenSt}</b>\n\n` +
-      `<b>Cara mengubah:</b>\n` +
+      `<b>How to change:</b>\n` +
       `/twitter &lt;on|off&gt;\n` +
       `/twitter &lt;open|close|daily|screening&gt; &lt;on|off&gt;`, { parse_mode: 'HTML' });
   }
@@ -250,17 +251,17 @@ To deploy an agent, you need to pay SOL via the Trenchyard platform.
     const mint = text.split(/\s+/)[1];
     if (!mint) return bot.sendMessage(chatId, 'Usage: /cooldown_clear <mint address>');
     clearCooldown(mint);
-    return bot.sendMessage(chatId, `✅ Cooldown dihapus untuk ${mint.slice(0, 8)}...\nMint ini bisa dibeli lagi.`);
+    return bot.sendMessage(chatId, `✅ Cooldown cleared for ${mint.slice(0, 8)}...\nThis mint can be bought again.`);
   }
   if (text.startsWith('/cooldowns')) {
     const list = activeCooldowns();
-    if (!list.length) return bot.sendMessage(chatId, '✅ Tidak ada cooldown aktif.\nSemua token bisa dibeli.');
+    if (!list.length) return bot.sendMessage(chatId, '✅ No active cooldowns.\nAll tokens can be bought.');
     const lines = list.map(c => {
       const remaining = Math.max(0, c.cooldown_until_ms - now());
       const mins = Math.ceil(remaining / 60000);
-      return `• <code>${c.mint.slice(0, 8)}...</code> — ${c.exit_reason} — ${mins}m tersisa`;
+      return `• <code>${c.mint.slice(0, 8)}...</code> — ${c.exit_reason} — ${mins}m remaining`;
     });
-    return bot.sendMessage(chatId, `⏳ <b>Cooldown Aktif (${list.length})</b>\n\n${lines.join('\n')}\n\nGunakan /cooldown_clear <mint> untuk menghapus.`, { parse_mode: 'HTML' });
+    return bot.sendMessage(chatId, `⏳ <b>Active Cooldowns (${list.length})</b>\n\n${lines.join('\n')}\n\nUse /cooldown_clear <mint> to clear.`, { parse_mode: 'HTML' });
   }
   if (text.startsWith('/setearningwallet')) {
     const parts = text.split(/\s+/);
@@ -292,7 +293,54 @@ To deploy an agent, you need to pay SOL via the Trenchyard platform.
       });
     }).catch(e => console.error('Failed to write .env', e));
     
-    return bot.sendMessage(chatId, `✅ Wallet untuk <b>${chain.toUpperCase()} (x402 Micropayments)</b> berhasil diupdate menjadi:\n<code>${address}</code>`, { parse_mode: 'HTML' });
+    return bot.sendMessage(chatId, `✅ Wallet for <b>${chain.toUpperCase()} (x402 Micropayments)</b> successfully updated to:\n<code>${address}</code>`, { parse_mode: 'HTML' });
+  }
+
+  if (text.startsWith('/setdeployconfig')) {
+    const parts = text.split(/\s+/);
+    const target = parts[1];
+    const value = parts.slice(2).join(' ');
+    
+    if (!target || !value) {
+      return bot.sendMessage(chatId, 'Usage: /setdeployconfig <target> <value>\n\nValid targets:\n- mint (AUTR_MINT_ADDRESS)\n- burn (BURN_WALLET_ADDRESS)\n- burn_pk (BURN_WALLET_PRIVATE_KEY)\n- reward (REWARD_POOL_ADDRESS)\n- treasury (AGENT_TREASURY_ADDRESS)\n- ops (OPS_WALLET_ADDRESS)');
+    }
+
+    const targetMap = {
+      'mint': 'AUTR_MINT_ADDRESS',
+      'burn': 'BURN_WALLET_ADDRESS',
+      'burn_pk': 'BURN_WALLET_PRIVATE_KEY',
+      'reward': 'REWARD_POOL_ADDRESS',
+      'treasury': 'AGENT_TREASURY_ADDRESS',
+      'ops': 'OPS_WALLET_ADDRESS'
+    };
+
+    const key = targetMap[target.toLowerCase()];
+
+    if (!key) {
+      return bot.sendMessage(chatId, `❌ Invalid target. Valid targets: mint, burn, burn_pk, reward, treasury, ops`);
+    }
+    
+    // Delete user message for security (especially for PRIVATE_KEY)
+    bot.deleteMessage(chatId, msg.message_id).catch(() => {});
+    
+    process.env[key] = value;
+    
+    import('fs').then(fs => {
+      import('path').then(path => {
+        const envPath = path.resolve(process.cwd(), '.env');
+        if (fs.existsSync(envPath)) {
+          let content = fs.readFileSync(envPath, 'utf8');
+          if (new RegExp(`^${key}=`, 'm').test(content)) {
+            content = content.replace(new RegExp(`^${key}=.*$`, 'm'), `${key}=${value}`);
+          } else {
+            content += `\n${key}=${value}\n`;
+          }
+          fs.writeFileSync(envPath, content);
+        }
+      });
+    }).catch(e => console.error('Failed to write .env', e));
+    
+    return bot.sendMessage(chatId, `✅ <b>${target.toUpperCase()}</b> configuration successfully updated!\n\n<i>(Your message was automatically deleted for security)</i>`, { parse_mode: 'HTML' });
   }
 
   if (text.startsWith('/menu')) return sendMenu(chatId);
@@ -377,14 +425,14 @@ To deploy an agent, you need to pay SOL via the Trenchyard platform.
       ON CONFLICT(label) DO UPDATE SET address = excluded.address
     `).run(label, address, now());
     
-    let msg = `✅ Tersimpan dompet <b>${label}</b> untuk pantauan (Pasif).`;
+    let msg = `✅ Wallet <b>${label}</b> saved for monitoring (Passive).`;
     
     // Check for --copy flag
     const copyIndex = args.indexOf('--copy');
     if (copyIndex !== -1) {
       const size = parseFloat(args[copyIndex + 1]) || 0.1;
       import('../copytrade/walletRegistry.js').then(({ addWallet }) => addWallet(address, label, size));
-      msg += `\n⚡ <b>Mode Copy Trade AKTIF!</b> Akan menyalin transaksi dengan ukuran <b>${size} SOL</b>.`;
+      msg += `\n⚡ <b>Copy Trade Mode ACTIVE!</b> Will copy trades with size <b>${size} SOL</b>.`;
     }
     
     return bot.sendMessage(chatId, msg, { parse_mode: 'HTML' });
@@ -402,7 +450,7 @@ To deploy an agent, you need to pay SOL via the Trenchyard platform.
     import('../copytrade/walletRegistry.js').then(({ disableWallet }) => disableWallet(addressToDisable));
     db.prepare('DELETE FROM saved_wallets WHERE label = ? OR address = ?').run(target, target);
     
-    return bot.sendMessage(chatId, `🗑 Dompet <b>${target}</b> telah dihapus dari pantauan dan Copy Trade.`, { parse_mode: 'HTML' });
+    return bot.sendMessage(chatId, `🗑 Wallet <b>${target}</b> has been removed from monitoring and Copy Trade.`, { parse_mode: 'HTML' });
   }
   if (text.startsWith('/wallets')) {
     if (text.trim() === '/wallets copy') {
@@ -584,6 +632,7 @@ export function setupTelegram() {
     { command: 'setwallet', description: 'Set live execution private key (Solana)' },
     { command: 'setbasekey', description: 'Set live execution private key (Base)' },
     { command: 'setearningwallet', description: 'Set treasury wallet for x402 payments' },
+    { command: 'setdeployconfig', description: 'Update deploy and burn wallet addresses' },
     { command: 'balance', description: 'Check wallet balance' },
     { command: 'history', description: 'Show last 10 trades' },
     { command: 'exportdb', description: 'Download sqlite database' },
