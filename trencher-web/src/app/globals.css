@@ -353,6 +353,10 @@ footer{background:#080808;padding:36px 0;border-top:1px solid rgba(255,255,255,.
   border:1px solid rgba(255,255,255,.1);
   color: #fff;
 }
+#alert-modal .modal-box,
+#confirm-deploy-modal .modal-box {
+  max-width: 420px;
+}
 .modal-head{
   display:flex;align-items:center;justify-content:space-between;
   padding:20px 24px;border-bottom:1px solid rgba(255,255,255,.1);
