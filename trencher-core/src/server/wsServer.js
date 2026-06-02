@@ -41,6 +41,46 @@ export function startWsServer(port = 4001) {
       return;
     }
 
+    // Delete Agent API
+    if (req.url === '/api/deploy/delete' && req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', async () => {
+        try {
+          const payload = JSON.parse(body);
+          const { id, secretKey } = payload;
+          if (!id) throw new Error('Agent ID is required');
+
+          const configuredSecret = process.env.DELETE_SECRET_KEY;
+          if (!configuredSecret) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Delete API security is not configured on server (DELETE_SECRET_KEY env is missing)' }));
+            return;
+          }
+
+          if (secretKey !== configuredSecret) {
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Forbidden: Invalid secret key' }));
+            return;
+          }
+
+          const { db } = await import('../db/connection.js');
+          const { listBreeds } = await import('../db/agentDna.js');
+          
+          db.prepare('DELETE FROM agent_dna WHERE id = ?').run(id);
+          broadcast('AGENT_DNA_UPDATE', listBreeds());
+          
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, message: 'Agent deleted successfully' }));
+        } catch (err) {
+          console.error('[delete-api] Error:', err);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+      return;
+    }
+
     // Breed Agent API
     if (req.url === '/api/breed' && req.method === 'POST') {
       let body = '';
