@@ -258,7 +258,8 @@ export function Trenchyard({ onSelectAgent }: TrenchyardProps) {
 
   const handleDeployAgent = async (payload: Record<string, unknown>) => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
+      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:4001';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || wsUrl.replace(/^ws/, 'http');
       const res = await fetch(`${apiUrl}/api/deploy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
