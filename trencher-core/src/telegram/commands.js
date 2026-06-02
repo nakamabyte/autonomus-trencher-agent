@@ -50,84 +50,84 @@ export async function handleMessage(msg) {
   if (text.startsWith('/start')) {
     const startText = `🤖 <b>TRENCHER AGENT</b>
     
-Selamat datang! Saya adalah autonomous trading bot untuk Solana & Base.
+Welcome! I am an autonomous trading bot for Solana & Base.
 
-Gunakan /menu untuk membuka navigasi interaktif.
-Ketik /help untuk membaca dokumentasi lengkap mengenai seluruh perintah dan fitur bot.`;
+Use /menu to open the interactive navigation menu.
+Type /help to read the complete documentation on all bot commands and features.`;
     return bot.sendMessage(chatId, startText, { parse_mode: 'HTML' });
   }
 
   if (text.startsWith('/help')) {
     const helpText = `🤖 <b>TRENCHER AGENT — COMPLETE DOCUMENTATION</b>
 
-Trencher Agent adalah autonomous trading bot yang menggunakan multi-LLM (Grok, DeepSeek, Claude) untuk screening dan eksekusi pada Solana & Base.
+Trencher Agent is an autonomous trading bot that uses multi-LLM (Grok, DeepSeek, Claude) for screening and execution on Solana & Base.
 
-<b>1. INTERACTIVE MENUS (Rekomendasi)</b>
-/menu - Membuka menu navigasi utama interaktif (Dashboard, Posisi, Wallet)
-/positions - Menampilkan semua posisi trading yang sedang aktif (bisa Sell manual dari sini)
-/wallets - Manajemen dompet Smart Money / KOL untuk fitur Copy Trade
+<b>1. INTERACTIVE MENUS (Recommended)</b>
+/menu - Open the interactive main navigation menu (Dashboard, Positions, Wallets)
+/positions - Display all currently active trading positions (allows manual Sell)
+/wallets - Manage Smart Money / KOL wallets for Copy Trade features
 
 <b>2. STRATEGIES & FILTERS</b>
-/strategy - Memilih atau melihat strategi trading aktif (Sniper, Dip Buy, Degen, dll)
-/stratset &lt;id&gt; &lt;key&gt; &lt;value&gt; - Mengubah parameter spesifik (misal: /stratset sniper tp_percent 100)
-/filters - Melihat daftar filter keamanan saat ini (Rug check, min holder, dll)
-/setfilter &lt;key&gt; &lt;value&gt; - Mengubah nilai filter keamanan (misal: /setfilter min_mcap_usd 50000)
+/strategy - Select or view the active trading strategy (Sniper, Dip Buy, Degen, etc.)
+/stratset &lt;id&gt; &lt;key&gt; &lt;value&gt; - Modify a specific parameter (e.g., /stratset sniper tp_percent 100)
+/filters - View the current list of safety filters (Rug check, min holders, etc.)
+/setfilter &lt;key&gt; &lt;value&gt; - Modify a safety filter value (e.g., /setfilter min_mcap_usd 50000)
 
 <b>3. WALLET MANAGEMENT & COPY TRADE</b>
-/walletadd &lt;label&gt; &lt;address&gt; [--copy &lt;size&gt;] - Memantau dompet baru. Gunakan --copy untuk auto-copy trade
-/walletremove &lt;label&gt; - Berhenti memantau dan menghapus dompet
-/wallets copy - Melihat daftar dompet yang sedang di-copy beserta rasio kemenangannya (Winrate)
-/setwallet &lt;private_key&gt; - Mengatur Private Key dompet eksekusi (Solana)
-/setbasekey &lt;0x_key&gt; - Mengatur Private Key dompet eksekusi (Base EVM)
-/setearningwallet &lt;sol|base&gt; &lt;address&gt; - Menentukan dompet tujuan klaim dana x402
-/balance - Mengecek dompet eksekusi aktif dan saldonya
+/walletadd &lt;label&gt; &lt;address&gt; [--copy &lt;size&gt;] - Monitor a new wallet. Use --copy for auto-copy trade
+/walletremove &lt;label&gt; - Stop monitoring and remove a wallet
+/wallets copy - View the list of currently copied wallets and their Winrate
+/setwallet &lt;private_key&gt; - Set your Execution Wallet Private Key (Solana)
+/setbasekey &lt;0x_key&gt; - Set your Execution Wallet Private Key (Base EVM)
+/setearningwallet &lt;sol|base&gt; &lt;address&gt; - Set the target wallet for claiming x402 funds
+/balance - Check the active execution wallet and its balance
 
 <b>4. INFO, HISTORY & EXPORT</b>
-/candidate &lt;mint&gt; - Menganalisis token tertentu menggunakan data GMGN & AI secara instan
-/history - Melihat riwayat 10 transaksi (Buy/Sell) terakhir
-/pnl - Menampilkan rangkuman keseluruhan Profit & Loss (PnL)
-/credits - Mengecek status dan kuota API (Claude, Grok, DeepSeek)
-/exportdb - Mendownload file database SQLite untuk backup atau analisis lokal
+/candidate &lt;mint&gt; - Instantly analyze a specific token using GMGN & AI data
+/history - View the last 10 transaction history (Buy/Sell)
+/pnl - Display the overall Profit & Loss (PnL) summary
+/credits - Check API status and quotas (Claude, Grok, DeepSeek)
+/exportdb - Download the SQLite database file for backup or local analysis
 
 <b>5. ECOSYSTEM & $AUTR TOKEN</b>
-/deploy - Panduan mendeploy agent baru via Trenchyard dan rincian Tier Biaya (0.025 - 0.2 SOL)
-/burn - Melihat informasi seputar siklus Buyback & Burn $AUTR otomatis (25% dari biaya deploy)
+/deploy - Guide to deploying new agents via Trenchyard and Fee Tier details (0.025 - 0.2 SOL)
+/burn - View info on the automated $AUTR Buyback & Burn cycle (25% of deploy fees)
 
 <b>6. AI LEARNING & SOCIAL</b>
-/twitter - Mengecek dan mengatur status auto-posting ke akun X (Twitter)
-/learn &lt;window&gt; - Menyuruh Grok menganalisis trade (misal: /learn 24h) untuk adaptasi strategi
-/lessons - Melihat rule atau pelajaran yang telah dipelajari AI dari history masa lalu
+/twitter - Check and configure auto-posting status to your X (Twitter) account
+/learn &lt;window&gt; - Instruct Grok to analyze recent trades (e.g., /learn 24h) for strategy adaptation
+/lessons - View rules or lessons the AI has learned from past trading history
 
 <b>7. ANTI-REBUY COOLDOWN</b>
-/cooldowns - Melihat token yang sedang diblokir sementara (cooldown) setelah terkena SL/TP
-/cooldown_clear &lt;mint&gt; - Menghapus cooldown agar bot bisa membeli ulang token tersebut
+/cooldowns - View tokens currently on temporary hold (cooldown) after hitting SL/TP
+/cooldown_clear &lt;mint&gt; - Remove the cooldown so the bot can rebuy the token
 
-<i>💡 Tip: Gunakan /menu untuk pengalaman terbaik menggunakan UI interaktif Telegram!</i>`;
+<i>💡 Tip: Use /menu for the best experience with the Telegram interactive UI!</i>`;
     return bot.sendMessage(chatId, helpText, { parse_mode: 'HTML' });
   }
 
   if (text.startsWith('/deploy')) {
     const deployText = `🤖 <b>Deploy Trencher Agent</b>
     
-Untuk mendeploy agent, Anda perlu membayar SOL melalui platform Trenchyard.
-<b>Tier Biaya (Breeds):</b>
+To deploy an agent, you need to pay SOL via the Trenchyard platform.
+<b>Fee Tiers (Breeds):</b>
 - Tier 1 (Scout, Degen, Canary): 0.025 SOL
-- Tier 2 (Sniper, Bunker, dll): 0.05 SOL
-- Tier 3 (Mole, Berserker, dll): 0.1 SOL
+- Tier 2 (Sniper, Bunker, etc.): 0.05 SOL
+- Tier 3 (Mole, Berserker, etc.): 0.1 SOL
 - Commander: 0.2 SOL
 
-<i>25% dari biaya ini secara otomatis digunakan untuk buyback & burn token $AUTR setiap 6 jam.</i>`;
+<i>25% of this fee is automatically used for buyback & burn of the $AUTR token every 6 hours.</i>`;
     return bot.sendMessage(chatId, deployText, { parse_mode: 'HTML' });
   }
 
   if (text.startsWith('/burn')) {
     const burnText = `🔥 <b>$AUTR Burn Stats</b>
     
-Sistem secara otomatis mengumpulkan 25% biaya dari setiap deployment agent untuk melakukan <b>Buyback & Burn</b> token $AUTR via Jupiter. 
-Siklus burn berjalan otomatis setiap 6 jam.
+The system automatically collects 25% of the fees from every agent deployment to perform a <b>Buyback & Burn</b> of the $AUTR token via Jupiter. 
+The burn cycle runs automatically every 6 hours.
 
-Pantau metrik langsung melalui Dashboard Trenchyard:
-<a href="https://autonomustrencheragent.tech/burn">Lihat Burn History</a>`;
+Monitor live metrics via the Trenchyard Dashboard:
+<a href="https://autonomustrencheragent.tech/burn">View Burn History</a>`;
     return bot.sendMessage(chatId, burnText, { parse_mode: 'HTML', disable_web_page_preview: true });
   }
   if (text.startsWith('/balance')) {
@@ -147,7 +147,7 @@ Pantau metrik langsung melalui Dashboard Trenchyard:
   }
   if (text.startsWith('/exportdb')) {
     const { DB_PATH } = await import('../config.js');
-    const statusMsg = await bot.sendMessage(chatId, '⏳ Menyiapkan export database...');
+    const statusMsg = await bot.sendMessage(chatId, '⏳ Preparing database export...');
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const tmpSqlite = path.resolve(`./export-tmp-${timestamp}.sqlite`);
     const tmpZip = path.resolve(`./export-tmp-${timestamp}.zip`);
@@ -172,15 +172,15 @@ Pantau metrik langsung melalui Dashboard Trenchyard:
       const zipStat = fs.statSync(tmpZip);
       sizeMB = (zipStat.size / 1024 / 1024).toFixed(2);
 
-      await bot.editMessageText(`⏳ Mengirim file (${sizeMB} MB)...`, {
+      await bot.editMessageText(`⏳ Sending file (${sizeMB} MB)...`, {
         chat_id: chatId, message_id: statusMsg.message_id,
       });
 
       await bot.sendDocument(chatId, tmpZip, {
-        caption: `📦 trencher-agent.sqlite — ${timestamp}\nUkuran: ${sizeMB} MB\nBuka menggunakan DB Browser for SQLite atau DBeaver.`,
+        caption: `📦 trencher-agent.sqlite — ${timestamp}\nSize: ${sizeMB} MB\nOpen using DB Browser for SQLite or DBeaver.`,
       });
 
-      await bot.editMessageText(`✅ Database berhasil dikirim (${sizeMB} MB).`, {
+      await bot.editMessageText(`✅ Database successfully sent (${sizeMB} MB).`, {
         chat_id: chatId, message_id: statusMsg.message_id,
       });
     } catch (err) {
@@ -188,18 +188,18 @@ Pantau metrik langsung melalui Dashboard Trenchyard:
         const domain = process.env.RAILWAY_PUBLIC_DOMAIN || 'APP_URL';
         const downloadUrl = `https://${domain}/download/export-tmp-${timestamp}.zip`;
         
-        await bot.editMessageText(`⏳ File terlalu besar untuk Telegram (${sizeMB} MB).`, {
+        await bot.editMessageText(`⏳ File is too large for Telegram (${sizeMB} MB).`, {
           chat_id: chatId, message_id: statusMsg.message_id,
         }).catch(() => {});
         
-        await bot.sendMessage(chatId, `📦 <b>trencher-agent.sqlite</b> — ${timestamp}\nUkuran: ${sizeMB} MB\n\n⬇️ <b>Direct Download Link:</b>\n${downloadUrl}\n\n<i>Note: Ekstrak zip lalu buka file .sqlite menggunakan DB Browser for SQLite atau DBeaver.</i>`, { parse_mode: 'HTML' }).catch(() => {});
+        await bot.sendMessage(chatId, `📦 <b>trencher-agent.sqlite</b> — ${timestamp}\nSize: ${sizeMB} MB\n\n⬇️ <b>Direct Download Link:</b>\n${downloadUrl}\n\n<i>Note: Extract the zip and open the .sqlite file using DB Browser for SQLite or DBeaver.</i>`, { parse_mode: 'HTML' }).catch(() => {});
         
         // Only unlink the sqlite, KEEP the zip so it can be downloaded via HTTP
         fs.unlink(tmpSqlite, () => {});
         keepZip = true;
         return;
       } else {
-        await bot.editMessageText(`❌ Gagal export database: ${err.message}`, {
+        await bot.editMessageText(`❌ Failed to export database: ${err.message}`, {
           chat_id: chatId, message_id: statusMsg.message_id,
         }).catch(() => {});
       }
@@ -216,7 +216,7 @@ Pantau metrik langsung melalui Dashboard Trenchyard:
     if (args.length === 2 && (args[1] === 'on' || args[1] === 'off')) {
       const val = args[1] === 'on' ? 'true' : 'false';
       setSetting('twitter_bot_enabled', val);
-      return bot.sendMessage(chatId, val === 'true' ? '✅ Auto-posting Twitter Master dihidupkan.' : '❌ Auto-posting Twitter Master dimatikan.');
+      return bot.sendMessage(chatId, val === 'true' ? '✅ Master Twitter auto-posting enabled.' : '❌ Master Twitter auto-posting disabled.');
     }
     
     if (args.length === 3) {
@@ -232,7 +232,7 @@ Pantau metrik langsung melalui Dashboard Trenchyard:
       
       if (validTypes[type] && (state === 'on' || state === 'off')) {
         setSetting(validTypes[type], state === 'on' ? 'true' : 'false');
-        return bot.sendMessage(chatId, `✅ Twitter post untuk <b>${type}</b> diatur ke <b>${state.toUpperCase()}</b>.`, { parse_mode: 'HTML' });
+        return bot.sendMessage(chatId, `✅ Twitter post for <b>${type}</b> set to <b>${state.toUpperCase()}</b>.`, { parse_mode: 'HTML' });
       }
     }
     
