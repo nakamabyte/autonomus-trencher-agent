@@ -162,10 +162,9 @@ Breed: ${breed}
 Fee: ${fee} SOL
 
 Split:
-  Burn $AUTR: ${split.burn} SOL
-  Holder rewards: ${split.reward_pool} SOL
-  Agent treasury: ${split.agent_treasury} SOL
-  Operations: ${split.operations} SOL
+  Holder rewards (50%): ${split.reward_pool} SOL
+  Burn $AUTR (25%): ${split.burn} SOL
+  Agent treasury (25%): ${split.agent_treasury} SOL
 
 [tx](https://solscan.io/tx/${txHash})
 `.trim()

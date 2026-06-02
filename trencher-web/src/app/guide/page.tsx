@@ -615,7 +615,7 @@ console.log(data);`}
             />
             <FaqItem
               question="What happens to the deploy fees? ($AUTR Burn Mechanics)"
-              answer="We use a deflationary fee split mechanism: 25% is used to auto-buyback and burn $AUTR, 25% goes to a holder reward pool, 25% funds the agent treasury, and 25% funds operations/development. The auto-burn cycles run automatically every 6 hours."
+              answer="We use a deflationary fee split mechanism: 50% goes to a holder reward pool, 25% is used to auto-buyback and burn $AUTR, and 25% funds the agent treasury. The auto-burn cycles run automatically every 6 hours."
               isOpen={openFaqs.has(9)}
               onToggle={() => toggleFaq(9)}
             />

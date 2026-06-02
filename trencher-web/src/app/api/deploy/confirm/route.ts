@@ -7,12 +7,23 @@ export async function POST(req: Request) {
     const { signature, breed, dnaConfig } = await req.json()
     const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL || 'https://api.devnet.solana.com')
 
-    // 1. Verify transaction on-chain
+    // 1. Confirm transaction first
+    const latestBlockhash = await connection.getLatestBlockhash()
+    await connection.confirmTransaction({
+      signature,
+      ...latestBlockhash
+    }, 'confirmed')
+
+    // 2. Verify transaction on-chain
     const tx = await connection.getTransaction(signature, {
       commitment: 'confirmed',
+      maxSupportedTransactionVersion: 0,
     })
     
-    if (!tx) return Response.json({ error: 'transaction not found' }, { status: 400 })
+    if (!tx) {
+      console.error('Transaction not found on-chain:', signature);
+      return Response.json({ error: 'Transaction confirmation failed / transaction not found' }, { status: 400 })
+    }
 
     // 2. Verify correct amounts sent to correct wallets
     // ... verification logic ...

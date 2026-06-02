@@ -3,10 +3,19 @@ import {
   createBurnInstruction, getAssociatedTokenAddress
 } from '@solana/spl-token'
 
+import bs58 from 'bs58'
+
+function parsePrivateKey(pkStr) {
+  if (!pkStr) throw new Error('BURN_WALLET_PRIVATE_KEY is not set in .env')
+  pkStr = pkStr.trim()
+  if (pkStr.startsWith('[')) {
+    return Uint8Array.from(JSON.parse(pkStr))
+  }
+  return bs58.decode(pkStr)
+}
+
 const AUTR_MINT = new PublicKey(process.env.AUTR_MINT_ADDRESS)
-const BURN_KEYPAIR = Keypair.fromSecretKey(
-  Uint8Array.from(JSON.parse(process.env.BURN_WALLET_PRIVATE_KEY))
-)
+const BURN_KEYPAIR = Keypair.fromSecretKey(parsePrivateKey(process.env.BURN_WALLET_PRIVATE_KEY))
 
 export async function executeBuybackAndBurn(connection) {
   // Step 1: Check burn wallet SOL balance

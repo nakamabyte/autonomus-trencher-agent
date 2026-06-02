@@ -28,10 +28,9 @@ export function Ecosystem() {
               We use a deflationary fee split mechanism for every deployment:
             </p>
             <ul style={{ color: 'rgba(255,255,255,0.85)', lineHeight: 1.8, paddingLeft: '20px', marginBottom: '20px' }}>
+              <li><strong>50%</strong> goes to a holder reward pool</li>
               <li><strong>25%</strong> is used to auto-buyback and burn $AUTR via Jupiter</li>
-              <li><strong>25%</strong> goes to a holder reward pool</li>
               <li><strong>25%</strong> funds the agent treasury</li>
-              <li><strong>25%</strong> funds operations and development</li>
             </ul>
             <p style={{ color: 'rgba(255,255,255,0.65)', lineHeight: 1.6 }}>
               The auto-burn cycles run automatically every 6 hours, creating constant buy pressure and reducing total supply permanently.
