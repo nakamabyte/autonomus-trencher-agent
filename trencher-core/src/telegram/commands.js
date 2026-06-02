@@ -58,52 +58,55 @@ Type /help to read the complete documentation on all bot commands and features.`
   }
 
   if (text.startsWith('/help')) {
-    const helpText = `🤖 <b>TRENCHER AGENT — COMPLETE DOCUMENTATION</b>
+    const helpText = `🤖 <b>TRENCHER AGENT — BEGINNER'S GUIDE</b>
 
-Trencher Agent is an autonomous trading bot that uses multi-LLM (Grok, DeepSeek, Claude) for screening and execution on Solana & Base.
+Welcome! Trencher Agent is your personal AI robot that automatically finds and trades cryptocurrency coins for you. It does all the hard work using advanced AI brains (Grok, DeepSeek, Claude).
 
-<b>1. INTERACTIVE MENUS (Recommended)</b>
-/menu - Open the interactive main navigation menu (Dashboard, Positions, Wallets)
-/positions - Display all currently active trading positions (allows manual Sell)
-/wallets - Manage Smart Money / KOL wallets for Copy Trade features
+<b>1️⃣ THE BASICS (Start Here)</b>
+<b>/menu</b> — Open the main menu (Click buttons instead of typing!)
+<b>/positions</b> — See what coins the bot is currently holding (and sell them manually if you want)
 
-<b>2. STRATEGIES & FILTERS</b>
-/strategy - Select or view the active trading strategy (Sniper, Dip Buy, Degen, etc.)
-/stratset &lt;id&gt; &lt;key&gt; &lt;value&gt; - Modify a specific parameter (e.g., /stratset sniper tp_percent 100)
-/filters - View the current list of safety filters (Rug check, min holders, etc.)
-/setfilter &lt;key&gt; &lt;value&gt; - Modify a safety filter value (e.g., /setfilter min_mcap_usd 50000)
+<b>2️⃣ BOT SETTINGS & STRATEGIES</b>
+<b>/strategy</b> — Choose how the bot trades (e.g., safe, aggressive, sniper)
+<b>/stratset &lt;id&gt; &lt;key&gt; &lt;val&gt;</b> — Change a specific rule (like taking profit at 100%)
+  <i>Example: /stratset sniper tp_percent 100</i>
+<b>/filters</b> — See the bot's safety rules (to avoid scams)
+<b>/setfilter &lt;key&gt; &lt;val&gt;</b> — Change a safety rule
+  <i>Example: /setfilter min_mcap_usd 50000</i>
 
-<b>3. WALLET MANAGEMENT & COPY TRADE</b>
-/walletadd &lt;label&gt; &lt;address&gt; [--copy &lt;size&gt;] - Monitor a new wallet. Use --copy for auto-copy trade
-/walletremove &lt;label&gt; - Stop monitoring and remove a wallet
-/wallets copy - View the list of currently copied wallets and their Winrate
-/setwallet &lt;private_key&gt; - Set your Execution Wallet Private Key (Solana)
-/setbasekey &lt;0x_key&gt; - Set your Execution Wallet Private Key (Base EVM)
-/setearningwallet &lt;sol|base&gt; &lt;address&gt; - Set the target wallet for claiming x402 funds
-/balance - Check the active execution wallet and its balance
+<b>3️⃣ YOUR MONEY & WALLETS</b>
+<b>/balance</b> — Check how much money your bot has to trade
+<b>/setwallet &lt;private_key&gt;</b> — Connect the bot to your Solana wallet so it can trade
+  <i>Example: /setwallet [123,45,...] (Never share this key with anyone!)</i>
+<b>/setbasekey &lt;0x_key&gt;</b> — Connect the bot to your Base network wallet
+<b>/walletadd &lt;name&gt; &lt;address&gt; [--copy &lt;size&gt;]</b> — Follow or copy trades from a successful trader
+  <i>Example: /walletadd ProTrader 4sRAR... --copy 0.5</i>
+<b>/wallets copy</b> — Check how much money the traders you are copying have made
 
-<b>4. INFO, HISTORY & EXPORT</b>
-/candidate &lt;mint&gt; - Instantly analyze a specific token using GMGN & AI data
-/history - View the last 10 transaction history (Buy/Sell)
-/pnl - Display the overall Profit & Loss (PnL) summary
-/credits - Check API status and quotas (Claude, Grok, DeepSeek)
-/exportdb - Download the SQLite database file for backup or local analysis
+<b>4️⃣ PERFORMANCE & HISTORY</b>
+<b>/history</b> — See the last 10 trades the bot finished
+<b>/pnl</b> — See your total profit and loss (how much money you made or lost)
+<b>/candidate &lt;mint_address&gt;</b> — Ask the AI to analyze a specific coin
+  <i>Example: /candidate BuFWUx...</i>
 
-<b>5. ECOSYSTEM & $AUTR TOKEN</b>
-/deploy - Guide to deploying new agents via Trenchyard and Fee Tier details (0.025 - 0.2 SOL)
-/burn - View info on the automated $AUTR Buyback & Burn cycle (25% of deploy fees)
-/setdeployconfig &lt;target&gt; &lt;value&gt; - Update Deploy/Burn config (mint, burn, burn_pk, reward, treasury, ops)
+<b>5️⃣ TRENCHYARD & $AUTR TOKEN</b>
+<b>/deploy</b> — Learn how to create and rent out your own bot agents
+<b>/burn</b> — See how many $AUTR tokens have been burned (destroyed to increase value)
+<b>/setdeployconfig &lt;target&gt; &lt;address&gt;</b> — (Admin) Set up wallets for bot deployment fees
+  <i>Example: /setdeployconfig treasury 4sRAR...</i>
+  <i>Targets: mint, burn, burn_pk, reward, treasury, ops</i>
 
-<b>6. AI LEARNING & SOCIAL</b>
-/twitter - Check and configure auto-posting status to your X (Twitter) account
-/learn &lt;window&gt; - Instruct Grok to analyze recent trades (e.g., /learn 24h) for strategy adaptation
-/lessons - View rules or lessons the AI has learned from past trading history
+<b>6️⃣ AI LEARNING & TWITTER</b>
+<b>/twitter</b> — Let the bot automatically post its wins to your Twitter
+<b>/lessons</b> — Read what the AI has learned from its past mistakes and wins
+<b>/learn 24h</b> — Force the AI to study the last 24 hours of market data
 
-<b>7. ANTI-REBUY COOLDOWN</b>
-/cooldowns - View tokens currently on temporary hold (cooldown) after hitting SL/TP
-/cooldown_clear &lt;mint&gt; - Remove the cooldown so the bot can rebuy the token
+<b>7️⃣ SAFETY PAUSES (COOLDOWNS)</b>
+<b>/cooldowns</b> — See coins the bot is temporarily ignoring (because they crashed recently)
+<b>/cooldown_clear &lt;mint&gt;</b> — Tell the bot it's okay to buy a coin again
+  <i>Example: /cooldown_clear BuFWUx...</i>
 
-<i>💡 Tip: Use /menu for the best experience with the Telegram interactive UI!</i>`;
+<i>💡 <b>Pro Tip:</b> If you feel confused, just type <b>/menu</b> and use the clickable buttons!</i>`;
     return bot.sendMessage(chatId, helpText, { parse_mode: 'HTML' });
   }
 
