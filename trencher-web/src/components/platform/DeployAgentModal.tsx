@@ -42,7 +42,8 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
   const [rugFilter, setRugFilter] = useState<number>(0.20);
   const [isDeploying, setIsDeploying] = useState(false);
   const [confirmData, setConfirmData] = useState<{ txBase64: string; confirmedFee: number; split: any; payload: any } | null>(null);
-  const [alertData, setAlertData] = useState<{ title: string; message: string; type: 'error' | 'success'; onOk?: () => void } | null>(null);
+  const [alertData, setAlertData] = useState<{ title: string; message: string; type: 'error' | 'success'; txHash?: string; onOk?: () => void } | null>(null);
+  const [copied, setCopied] = useState(false);
   const { publicKey, sendTransaction } = useWallet();
 
   const fee = DEPLOY_FEES[selectedBreed] || 0.05;
@@ -164,6 +165,7 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
         title: 'SUCCESS', 
         message: `${selectedBreed} Trencher deployed successfully!`, 
         type: 'success',
+        txHash: sig,
         onOk: onClose
       });
     } catch (err: any) {
@@ -574,16 +576,67 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
           <div style={{ padding: '12px 8px', fontFamily: 'monospace', maxWidth: '360px' }}>
             <p style={{ 
               color: alertData.type === 'error' ? '#FF6B6B' : '#00C896', 
-              marginBottom: '24px', 
+              marginBottom: '20px', 
               lineHeight: 1.6,
               fontSize: '14px'
             }}>
               {alertData.message}
             </p>
+
+            {alertData.txHash && (
+              <div style={{
+                background: '#0d0d12',
+                border: '1px solid #1a1a28',
+                borderRadius: '4px',
+                padding: '10px',
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '8px'
+              }}>
+                <div style={{
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  fontSize: '11px',
+                  color: '#888',
+                  fontFamily: 'monospace',
+                  flex: 1
+                }}>
+                  TX: {alertData.txHash}
+                </div>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(alertData.txHash!);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  style={{
+                    background: copied ? 'rgba(0, 200, 150, 0.2)' : 'rgba(0, 200, 150, 0.1)',
+                    border: 'none',
+                    color: '#00C896',
+                    cursor: 'pointer',
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                    padding: '4px 8px',
+                    borderRadius: '2px',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    transition: 'all 0.2s',
+                    width: '65px',
+                    textAlign: 'center'
+                  }}
+                >
+                  {copied ? 'COPIED' : 'COPY'}
+                </button>
+              </div>
+            )}
+
             <button 
               onClick={() => {
                 const cb = alertData.onOk;
                 setAlertData(null);
+                setCopied(false);
                 if (cb) cb();
               }}
               style={{ 

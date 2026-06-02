@@ -73,30 +73,25 @@ export async function POST(req: Request) {
     const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC_URL || process.env.NEXT_PUBLIC_RPC_URL || 'https://api.devnet.solana.com')
     const tx = new Transaction()
 
-    // 25% to burn wallet
-    if (burnAmount > 0) {
-      tx.add(SystemProgram.transfer({
-        fromPubkey: userPubkey,
-        toPubkey: BURN_WALLET,
-        lamports: burnAmount,
-      }))
+    // Aggregate transfers by unique destination to avoid duplicate transfer instructions
+    // to the same address, which can trigger transaction security flags/blocks.
+    const uniqueTransfers: Record<string, number> = {}
+
+    const addTransfer = (recipient: PublicKey, amount: number) => {
+      if (amount <= 0) return
+      const key = recipient.toBase58()
+      uniqueTransfers[key] = (uniqueTransfers[key] || 0) + amount
     }
 
-    // 50% to holder reward pool
-    if (rewardAmount > 0) {
-      tx.add(SystemProgram.transfer({
-        fromPubkey: userPubkey,
-        toPubkey: REWARD_POOL,
-        lamports: rewardAmount,
-      }))
-    }
+    addTransfer(BURN_WALLET, burnAmount)
+    addTransfer(REWARD_POOL, rewardAmount)
+    addTransfer(AGENT_TREASURY, treasuryAmount)
 
-    // 25% to agent treasury
-    if (treasuryAmount > 0) {
+    for (const [recipientStr, amount] of Object.entries(uniqueTransfers)) {
       tx.add(SystemProgram.transfer({
         fromPubkey: userPubkey,
-        toPubkey: AGENT_TREASURY,
-        lamports: treasuryAmount,
+        toPubkey: new PublicKey(recipientStr),
+        lamports: amount,
       }))
     }
 
