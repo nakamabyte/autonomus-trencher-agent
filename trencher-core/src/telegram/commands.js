@@ -47,48 +47,88 @@ export async function handleMessage(msg) {
   const chatId = msg.chat.id;
   if (await consumeNumericFilterInput(chatId, text, msg.message_id)) return;
   if (!text.startsWith('/')) return;
-  if (text.startsWith('/start') || text.startsWith('/help')) {
-    const helpText = `🤖 <b>Trencher Agent - Command List</b>
+  if (text.startsWith('/start')) {
+    const startText = `🤖 <b>TRENCHER AGENT</b>
+    
+Selamat datang! Saya adalah autonomous trading bot untuk Solana & Base.
 
-<b>Interactive Menus:</b>
-/menu - Buka menu utama interaktif
-/positions - Lihat posisi trading aktif
-/wallets - Lihat daftar dompet target yang dipantau
+Gunakan /menu untuk membuka navigasi interaktif.
+Ketik /help untuk membaca dokumentasi lengkap mengenai seluruh perintah dan fitur bot.`;
+    return bot.sendMessage(chatId, startText, { parse_mode: 'HTML' });
+  }
 
-<b>Settings & Strategies:</b>
-/strategy - Ganti dan atur strategi trading
-/stratset &lt;id&gt; &lt;key&gt; &lt;value&gt; - Ubah konfigurasi strategi spesifik
-/filters - Lihat pengaturan filter saat ini
-/setfilter &lt;key&gt; &lt;value&gt; - Ubah pengaturan secara manual
+  if (text.startsWith('/help')) {
+    const helpText = `🤖 <b>TRENCHER AGENT — COMPLETE DOCUMENTATION</b>
 
-<b>Wallet Management & Copy Trade:</b>
-/walletadd &lt;label&gt; &lt;address&gt; [--copy &lt;size&gt;] - Tambah dompet (tambah flag --copy untuk Auto-Copy)
-/walletremove &lt;label&gt; - Hapus dompet dari pantauan & Copy Trade
-/wallets - Menu dompet
-/wallets copy - Lihat status & winrate dompet copy trade
-/setwallet &lt;private_key&gt; - Masukkan Private Key eksekusi (Solana)
-/setbasekey &lt;0x_private_key&gt; - Masukkan Private Key eksekusi (Base EVM)
-/setearningwallet &lt;sol|base&gt; &lt;address&gt; - Set dompet penerima dana x402
-/balance - Cek dompet aktif & saldo SOL
+Trencher Agent adalah autonomous trading bot yang menggunakan multi-LLM (Grok, DeepSeek, Claude) untuk screening dan eksekusi pada Solana & Base.
 
-<b>Information & History:</b>
-/candidate &lt;mint&gt; - Tampilkan info spesifik koin
-/history - Lihat 10 riwayat transaksi terakhir
-/pnl - Ringkasan profit & loss
-/credits - Cek status kuota & saldo API (Claude, Grok, DeepSeek, X)
-/exportdb - Download file database lengkap
+<b>1. INTERACTIVE MENUS (Rekomendasi)</b>
+/menu - Membuka menu navigasi utama interaktif (Dashboard, Posisi, Wallet)
+/positions - Menampilkan semua posisi trading yang sedang aktif (bisa Sell manual dari sini)
+/wallets - Manajemen dompet Smart Money / KOL untuk fitur Copy Trade
 
-<b>Social Media & Integrations:</b>
-/twitter - Cek status & atur auto-posting X (Twitter)
+<b>2. STRATEGIES & FILTERS</b>
+/strategy - Memilih atau melihat strategi trading aktif (Sniper, Dip Buy, Degen, dll)
+/stratset &lt;id&gt; &lt;key&gt; &lt;value&gt; - Mengubah parameter spesifik (misal: /stratset sniper tp_percent 100)
+/filters - Melihat daftar filter keamanan saat ini (Rug check, min holder, dll)
+/setfilter &lt;key&gt; &lt;value&gt; - Mengubah nilai filter keamanan (misal: /setfilter min_mcap_usd 50000)
 
-<b>Cooldown Anti-Rebuy:</b>
-/cooldowns - Lihat daftar token yang sedang cooldown
-/cooldown_clear &lt;mint&gt; - Hapus cooldown token tertentu
+<b>3. WALLET MANAGEMENT & COPY TRADE</b>
+/walletadd &lt;label&gt; &lt;address&gt; [--copy &lt;size&gt;] - Memantau dompet baru. Gunakan --copy untuk auto-copy trade
+/walletremove &lt;label&gt; - Berhenti memantau dan menghapus dompet
+/wallets copy - Melihat daftar dompet yang sedang di-copy beserta rasio kemenangannya (Winrate)
+/setwallet &lt;private_key&gt; - Mengatur Private Key dompet eksekusi (Solana)
+/setbasekey &lt;0x_key&gt; - Mengatur Private Key dompet eksekusi (Base EVM)
+/setearningwallet &lt;sol|base&gt; &lt;address&gt; - Menentukan dompet tujuan klaim dana x402
+/balance - Mengecek dompet eksekusi aktif dan saldonya
 
-<b>Learning:</b>
-/learn &lt;window&gt; - Analisis trade & buat pelajaran (misal: /learn 12h)
-/lessons - Lihat pelajaran aktif`;
+<b>4. INFO, HISTORY & EXPORT</b>
+/candidate &lt;mint&gt; - Menganalisis token tertentu menggunakan data GMGN & AI secara instan
+/history - Melihat riwayat 10 transaksi (Buy/Sell) terakhir
+/pnl - Menampilkan rangkuman keseluruhan Profit & Loss (PnL)
+/credits - Mengecek status dan kuota API (Claude, Grok, DeepSeek)
+/exportdb - Mendownload file database SQLite untuk backup atau analisis lokal
+
+<b>5. ECOSYSTEM & $AUTR TOKEN</b>
+/deploy - Panduan mendeploy agent baru via Trenchyard dan rincian Tier Biaya (0.025 - 0.2 SOL)
+/burn - Melihat informasi seputar siklus Buyback & Burn $AUTR otomatis (25% dari biaya deploy)
+
+<b>6. AI LEARNING & SOCIAL</b>
+/twitter - Mengecek dan mengatur status auto-posting ke akun X (Twitter)
+/learn &lt;window&gt; - Menyuruh Grok menganalisis trade (misal: /learn 24h) untuk adaptasi strategi
+/lessons - Melihat rule atau pelajaran yang telah dipelajari AI dari history masa lalu
+
+<b>7. ANTI-REBUY COOLDOWN</b>
+/cooldowns - Melihat token yang sedang diblokir sementara (cooldown) setelah terkena SL/TP
+/cooldown_clear &lt;mint&gt; - Menghapus cooldown agar bot bisa membeli ulang token tersebut
+
+<i>💡 Tip: Gunakan /menu untuk pengalaman terbaik menggunakan UI interaktif Telegram!</i>`;
     return bot.sendMessage(chatId, helpText, { parse_mode: 'HTML' });
+  }
+
+  if (text.startsWith('/deploy')) {
+    const deployText = `🤖 <b>Deploy Trencher Agent</b>
+    
+Untuk mendeploy agent, Anda perlu membayar SOL melalui platform Trenchyard.
+<b>Tier Biaya (Breeds):</b>
+- Tier 1 (Scout, Degen, Canary): 0.025 SOL
+- Tier 2 (Sniper, Bunker, dll): 0.05 SOL
+- Tier 3 (Mole, Berserker, dll): 0.1 SOL
+- Commander: 0.2 SOL
+
+<i>25% dari biaya ini secara otomatis digunakan untuk buyback & burn token $AUTR setiap 6 jam.</i>`;
+    return bot.sendMessage(chatId, deployText, { parse_mode: 'HTML' });
+  }
+
+  if (text.startsWith('/burn')) {
+    const burnText = `🔥 <b>$AUTR Burn Stats</b>
+    
+Sistem secara otomatis mengumpulkan 25% biaya dari setiap deployment agent untuk melakukan <b>Buyback & Burn</b> token $AUTR via Jupiter. 
+Siklus burn berjalan otomatis setiap 6 jam.
+
+Pantau metrik langsung melalui Dashboard Trenchyard:
+<a href="https://autonomustrencheragent.tech/burn">Lihat Burn History</a>`;
+    return bot.sendMessage(chatId, burnText, { parse_mode: 'HTML', disable_web_page_preview: true });
   }
   if (text.startsWith('/balance')) {
     const { liveWalletPubkey, liveWalletBalanceLamports } = await import('../liveExecutor.js');

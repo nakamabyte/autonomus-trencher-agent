@@ -607,6 +607,18 @@ console.log(data);`}
               isOpen={openFaqs.has(7)}
               onToggle={() => toggleFaq(7)}
             />
+            <FaqItem
+              question="What is the fee structure for deploying agents?"
+              answer="Users pay SOL to deploy agents via Trenchyard. Deploy fees vary by breed tier: Tier 1 (0.025 SOL), Tier 2 (0.05 SOL), Tier 3 (0.1 SOL), and Commander (0.2 SOL)."
+              isOpen={openFaqs.has(8)}
+              onToggle={() => toggleFaq(8)}
+            />
+            <FaqItem
+              question="What happens to the deploy fees? ($AUTR Burn Mechanics)"
+              answer="We use a deflationary fee split mechanism: 25% is used to auto-buyback and burn $AUTR, 25% goes to a holder reward pool, 25% funds the agent treasury, and 25% funds operations/development. The auto-burn cycles run automatically every 6 hours."
+              isOpen={openFaqs.has(9)}
+              onToggle={() => toggleFaq(9)}
+            />
           </div>
         </div>
       </div>

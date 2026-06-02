@@ -153,3 +153,33 @@ export function compactDecisionCandidate(row) {
     createdAtMs: c.createdAtMs,
   };
 }
+
+export function formatDeployNotification(user, breed, fee, split, txHash) {
+  return `
+*NEW AGENT DEPLOYED*
+
+Breed: ${breed}
+Fee: ${fee} SOL
+
+Split:
+  Burn $AUTR: ${split.burn} SOL
+  Holder rewards: ${split.reward_pool} SOL
+  Agent treasury: ${split.agent_treasury} SOL
+  Operations: ${split.operations} SOL
+
+[tx](https://solscan.io/tx/${txHash})
+`.trim()
+}
+
+export function formatBurnNotification(result) {
+  return `
+*$AUTR BUYBACK + BURN*
+
+SOL spent: ${result.sol_spent.toFixed(4)}
+$AUTR bought: ${result.autr_bought.toLocaleString()}
+$AUTR burned: ${result.autr_burned.toLocaleString()}
+
+[swap tx](https://solscan.io/tx/${result.tx_hash_swap})
+[burn tx](https://solscan.io/tx/${result.tx_hash_burn})
+`.trim()
+}

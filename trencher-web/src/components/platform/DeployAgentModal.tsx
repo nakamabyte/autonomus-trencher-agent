@@ -3,6 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { BREEDS, BREED_LIST, BreedKey, DNA_TRAIT_LABELS, DNA_TRAIT_COLORS } from '@/constants/breeds';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { Connection, Transaction } from '@solana/web3.js';
+
+const DEPLOY_FEES: Record<string, number> = {
+  scout: 0.025, degen: 0.025, canary: 0.025,
+  sniper: 0.05, bunker: 0.05, whale_tracker: 0.05, drill_sergeant: 0.05,
+  mole: 0.1, berserker: 0.1, reaper: 0.1, ghost: 0.1,
+  commander: 0.2,
+};
 
 // Risk modifiers for DNA traits
 const RISK_MODIFIERS: Record<string, Partial<Record<string, number>>> = {
@@ -26,6 +35,9 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
   const [exitPreference, setExitPreference] = useState<'trailing_tp' | 'fixed_tp'>('trailing_tp');
   const [rugFilter, setRugFilter] = useState<number>(0.20);
   const [isDeploying, setIsDeploying] = useState(false);
+  const { publicKey, sendTransaction } = useWallet();
+
+  const fee = DEPLOY_FEES[selectedBreed] || 0.05;
 
   // Reset state when opened
   useEffect(() => {
@@ -56,20 +68,72 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
 
   const handleDeploy = async () => {
     if (!name.trim()) return;
+    if (!publicKey) return alert('Connect wallet first');
     setIsDeploying(true);
     
-    const payload = {
-      name: name.trim(),
-      breed: selectedBreed,
-      traits: previewTraits,
-      entryPreference,
-      exitPreference,
-      rugFilter,
-    };
+    try {
+      const payload = {
+        name: name.trim(),
+        breed: selectedBreed,
+        traits: previewTraits,
+        entryPreference,
+        exitPreference,
+        rugFilter,
+      };
 
-    await onDeploy(payload);
-    setIsDeploying(false);
-    onClose();
+      // 1. Request transaction from backend
+      const res = await fetch('/api/deploy/create-transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userAddress: publicKey.toBase58(),
+          breed: selectedBreed,
+          dnaConfig: payload,
+        }),
+      });
+      const data = await res.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      const { transaction: txBase64, fee: confirmedFee, split } = data;
+
+      // 2. Show fee breakdown before signing
+      const confirmed = window.confirm(
+        `Deploy ${selectedBreed} Trencher\n\n` +
+        `Total fee: ${confirmedFee} SOL\n\n` +
+        `25% burn $AUTR: ${split.burn} SOL\n` +
+        `25% holder rewards: ${split.reward_pool} SOL\n` +
+        `25% agent treasury: ${split.agent_treasury} SOL\n` +
+        `25% operations: ${split.operations} SOL\n\n` +
+        `Confirm?`
+      );
+      if (!confirmed) {
+        setIsDeploying(false);
+        return;
+      }
+
+      // 3. Send transaction
+      const tx = Transaction.from(Buffer.from(txBase64, 'base64'));
+      const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL || 'https://api.devnet.solana.com');
+      const sig = await sendTransaction(tx, connection);
+
+      // 4. Verify and deploy agent
+      await fetch('/api/deploy/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ signature: sig, breed: selectedBreed, dnaConfig: payload }),
+      });
+
+      await onDeploy(payload);
+      alert(`${selectedBreed} Trencher deployed successfully!`);
+      onClose();
+    } catch (err: any) {
+      alert(`Deployment failed: ${err.message}`);
+    } finally {
+      setIsDeploying(false);
+    }
   };
 
   return (
@@ -343,6 +407,17 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
               })}
             </div>
 
+            <div style={{ marginTop: '16px', background: '#111118', borderRadius: '6px', padding: '12px', fontSize: '10px', fontFamily: 'monospace' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', borderBottom: '1px solid #222', paddingBottom: '4px' }}>
+                <span style={{ color: '#888' }}>Deploy fee</span>
+                <span style={{ color: '#fff', fontWeight: 'bold' }}>{fee} SOL</span>
+              </div>
+              <div style={{ color: '#FF6B6B' }}>25% burn $AUTR: {(fee * 0.25).toFixed(4)}</div>
+              <div style={{ color: '#00C896' }}>25% holder rewards: {(fee * 0.25).toFixed(4)}</div>
+              <div style={{ color: '#00BBF9' }}>25% agent treasury: {(fee * 0.25).toFixed(4)}</div>
+              <div style={{ color: '#FFB347' }}>25% operations: {(fee * 0.25).toFixed(4)}</div>
+            </div>
+
             <button
               disabled={isDeploying || !name.trim()}
               onClick={handleDeploy}
@@ -361,8 +436,11 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
                 transition: 'all 0.2s',
               }}
             >
-              {isDeploying ? 'DEPLOYING...' : 'MINT DNA & DEPLOY'}
+              {isDeploying ? 'DEPLOYING...' : `DEPLOY TRENCHER — ${fee} SOL`}
             </button>
+            <p style={{ fontSize: '9px', color: '#444', marginTop: '8px', textAlign: 'center' }}>
+              25% of fee is used to buy and burn $AUTR
+            </p>
           </div>
         </div>
 

@@ -289,6 +289,31 @@ export function initDb() {
       win_rate REAL DEFAULT 0,
       last_updated_ms INTEGER
     );
+
+    CREATE TABLE IF NOT EXISTS burn_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sol_spent REAL NOT NULL,
+      autr_bought INTEGER NOT NULL,
+      autr_burned INTEGER NOT NULL,
+      tx_hash_swap TEXT,
+      tx_hash_burn TEXT,
+      source TEXT NOT NULL,            -- 'deploy', 'breed', 'mutation', 'listing'
+      created_at_ms INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS fee_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_address TEXT NOT NULL,
+      action TEXT NOT NULL,             -- 'deploy', 'breed', 'mutation', 'listing'
+      breed TEXT,
+      fee_sol REAL NOT NULL,
+      burn_sol REAL NOT NULL,
+      reward_sol REAL NOT NULL,
+      treasury_sol REAL NOT NULL,
+      ops_sol REAL NOT NULL,
+      tx_hash TEXT,
+      created_at_ms INTEGER NOT NULL
+    );
   `);
 
   const defaults = {
