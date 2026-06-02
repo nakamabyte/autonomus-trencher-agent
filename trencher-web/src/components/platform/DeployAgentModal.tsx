@@ -132,8 +132,12 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
       const tx = Transaction.from(Buffer.from(confirmData.txBase64, 'base64'));
       const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC_URL || process.env.NEXT_PUBLIC_RPC_URL || 'https://api.devnet.solana.com');
       
-      // Refresh blockhash right before signing/sending to ensure it hasn't expired
-      const { blockhash } = await connection.getLatestBlockhash('confirmed');
+      // Refresh blockhash via server-side proxy to bypass public RPC 403 CORS restrictions
+      const bhRes = await fetch('/api/deploy/latest-blockhash');
+      if (!bhRes.ok) {
+        throw new Error('Failed to fetch latest blockhash from server');
+      }
+      const { blockhash } = await bhRes.json();
       tx.recentBlockhash = blockhash;
       
       const sig = await sendTransaction(tx, connection);
