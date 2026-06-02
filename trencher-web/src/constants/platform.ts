@@ -274,6 +274,7 @@ export const NAV_LINKS: { href: string; label: string }[] = [
   { href: '#modes',      label: 'Modes'      },
   { href: '#strategies', label: 'Strategies' },
   { href: '/guide',      label: 'Docs'       },
+  { href: '/burn',       label: 'Burn'       },
   { href: '/verify',     label: 'Verify Holder' },
 ];
 

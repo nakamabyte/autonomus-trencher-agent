@@ -5,9 +5,16 @@ import React from 'react';
 export default function BurnHistoryPage() {
   return (
     <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto', fontFamily: 'monospace', color: '#fff' }}>
-      <h1 style={{ color: '#FF6B6B', borderBottom: '1px solid #333', paddingBottom: '16px', marginBottom: '32px' }}>
+      <h1 style={{ color: '#FF6B6B', borderBottom: '1px solid #333', paddingBottom: '16px', marginBottom: '16px' }}>
         $AUTR Burn History
       </h1>
+      
+      <div style={{ marginBottom: '32px' }}>
+        <a href="/" style={{ color: '#00BBF9', textDecoration: 'none', fontSize: '14px', display: 'inline-block', border: '1px solid #00BBF9', padding: '6px 12px', borderRadius: '4px' }}>
+          ← Back to Home
+        </a>
+      </div>
+
       <p style={{ color: '#888', marginBottom: '24px' }}>
         A transparent log of all $AUTR buyback and burn events executed by the protocol.
       </p>

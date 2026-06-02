@@ -19,7 +19,7 @@ async function mockCreateDeployTransaction(connection: Connection, userPubkey: P
   }
   const fee = DEPLOY_FEES[breed] || 0.05
   return { 
-    transaction: { serialize: () => Buffer.from('mock_tx') }, // Mock tx for compilation
+    transaction: { serialize: (options?: any) => Buffer.from('mock_tx') }, // Mock tx for compilation
     fee, 
     split: {
       burn: fee * 0.25,

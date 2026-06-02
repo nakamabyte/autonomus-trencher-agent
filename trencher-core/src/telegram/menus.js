@@ -20,6 +20,9 @@ export function menuKeyboard() {
           { text: 'Positions', callback_data: 'menu:positions' },
           { text: 'PnL', callback_data: 'menu:pnl' },
         ],
+        [
+          { text: 'Burn Stats 🔥', callback_data: 'menu:burn' },
+        ]
       ],
     },
   };
@@ -447,4 +450,14 @@ async function editMenuMessage(query, text, extra = {}) {
       ...extra,
     });
   }
+}
+
+export function burnStatsText() {
+  return `🔥 <b>$AUTR Burn Stats</b>
+    
+The system automatically collects 25% of the fees from every agent deployment to perform a <b>Buyback & Burn</b> of the $AUTR token via Jupiter. 
+The burn cycle runs automatically every 6 hours.
+
+Monitor live metrics via the Trenchyard Dashboard:
+<a href="https://autonomustrencheragent.tech/burn">View Burn History</a>`;
 }

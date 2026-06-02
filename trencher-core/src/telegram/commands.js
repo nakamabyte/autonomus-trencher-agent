@@ -121,14 +121,8 @@ To deploy an agent, you need to pay SOL via the Trenchyard platform.
   }
 
   if (text.startsWith('/burn')) {
-    const burnText = `🔥 <b>$AUTR Burn Stats</b>
-    
-The system automatically collects 25% of the fees from every agent deployment to perform a <b>Buyback & Burn</b> of the $AUTR token via Jupiter. 
-The burn cycle runs automatically every 6 hours.
-
-Monitor live metrics via the Trenchyard Dashboard:
-<a href="https://autonomustrencheragent.tech/burn">View Burn History</a>`;
-    return bot.sendMessage(chatId, burnText, { parse_mode: 'HTML', disable_web_page_preview: true });
+    const { burnStatsText } = await import('./menus.js');
+    return bot.sendMessage(chatId, burnStatsText(), { parse_mode: 'HTML', disable_web_page_preview: true });
   }
   if (text.startsWith('/balance')) {
     const { liveWalletPubkey, liveWalletBalanceLamports } = await import('../liveExecutor.js');
