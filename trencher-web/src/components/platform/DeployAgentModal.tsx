@@ -130,7 +130,7 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
     try {
       // 3. Send transaction
       const tx = Transaction.from(Buffer.from(confirmData.txBase64, 'base64'));
-      const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL || 'https://api.devnet.solana.com');
+      const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC_URL || process.env.NEXT_PUBLIC_RPC_URL || 'https://api.devnet.solana.com');
       
       // Refresh blockhash right before signing/sending to ensure it hasn't expired
       const { blockhash } = await connection.getLatestBlockhash('confirmed');

@@ -70,7 +70,7 @@ export async function POST(req: Request) {
       treasuryAmount
     });
 
-    const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL || 'https://api.devnet.solana.com')
+    const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC_URL || process.env.NEXT_PUBLIC_RPC_URL || 'https://api.devnet.solana.com')
     const tx = new Transaction()
 
     // 25% to burn wallet

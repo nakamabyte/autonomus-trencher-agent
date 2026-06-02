@@ -5,7 +5,7 @@ import { Connection } from '@solana/web3.js'
 export async function POST(req: Request) {
   try {
     const { signature, breed, dnaConfig } = await req.json()
-    const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL || 'https://api.devnet.solana.com')
+    const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC_URL || process.env.NEXT_PUBLIC_RPC_URL || 'https://api.devnet.solana.com')
 
     // 1. Wait for confirmation via signature status polling
     let confirmed = false;
