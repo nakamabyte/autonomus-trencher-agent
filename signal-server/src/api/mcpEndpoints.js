@@ -6,14 +6,14 @@ function setupMcpApiEndpoints(app, db, getLatestSignals, getRecentDecisions) {
   app.get('/api/status', requireApiKey, (req, res) => {
     const settings = db.prepare('SELECT key, value FROM settings').all()
     const openPositions = db.prepare(
-      'SELECT COUNT(*) as count FROM dry_run_positions WHERE status = "open"'
+      "SELECT COUNT(*) as count FROM dry_run_positions WHERE status = 'open'"
     ).get()
     const stats = db.prepare(`
       SELECT
         COUNT(*) as total_trades,
         ROUND(SUM(CASE WHEN pnl_percent > 0 THEN 1.0 ELSE 0 END) / COUNT(*) * 100, 1) as win_rate,
         ROUND(SUM(pnl_sol), 4) as total_pnl_sol
-      FROM dry_run_positions WHERE status = "closed"
+      FROM dry_run_positions WHERE status = 'closed'
     `).get()
 
     res.json({
@@ -43,10 +43,10 @@ function setupMcpApiEndpoints(app, db, getLatestSignals, getRecentDecisions) {
       SELECT symbol, pnl_percent, pnl_sol, exit_reason, entry_mcap,
         strategy_id, execution_mode,
         (closed_at_ms - opened_at_ms) / 60000.0 as hold_minutes,
-        datetime(opened_at_ms/1000, "unixepoch") as opened_at,
-        datetime(closed_at_ms/1000, "unixepoch") as closed_at
+        datetime(opened_at_ms/1000, 'unixepoch') as opened_at,
+        datetime(closed_at_ms/1000, 'unixepoch') as closed_at
       FROM dry_run_positions
-      WHERE status = "closed"
+      WHERE status = 'closed'
       ORDER BY closed_at_ms DESC
       LIMIT ?
     `).all(limit)
@@ -68,7 +68,8 @@ function setupMcpApiEndpoints(app, db, getLatestSignals, getRecentDecisions) {
 
 function requireApiKey(req, res, next) {
   const key = req.headers['x-api-key']
-  const validKeys = new Set((process.env.API_KEYS || '').split(','))
+  const keysStr = process.env.API_KEYS || process.env.API_KEY || '';
+  const validKeys = new Set(keysStr.split(','))
   if (!key || !validKeys.has(key)) {
     return res.status(401).json({ error: 'invalid API key' })
   }
