@@ -7,7 +7,7 @@ export default function BurnHistoryPage() {
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
-    fetch('/api/core-proxy/burn')
+    fetch('/api/burn')
       .then(res => res.json())
       .then(data => {
         if (data.history) setHistory(data.history);

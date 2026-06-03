@@ -91,6 +91,11 @@ export const SIGNAL_SERVER_URL = process.env.SIGNAL_SERVER_URL || 'http://localh
 export const SIGNAL_SERVER_KEY = process.env.SIGNAL_SERVER_KEY || '';
 export const SIGNAL_POLL_MS = Number(process.env.SIGNAL_POLL_MS || 30_000);
 
+// Burn wallet configurations
+export const BURN_WALLET_PRIVATE_KEY = process.env.BURN_WALLET_PRIVATE_KEY || '';
+export const AUTR_MINT_ADDRESS = process.env.AUTR_MINT_ADDRESS || 'BuFWUxhWGJWsCCp5wEtww9YLazfUHMUJkQsuje1gpump';
+export const BURN_INTERVAL_HOURS = Number(process.env.BURN_INTERVAL_HOURS || 6);
+
 export const JSON_HEADERS = {
   Accept: 'application/json, text/plain, */*',
   'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',

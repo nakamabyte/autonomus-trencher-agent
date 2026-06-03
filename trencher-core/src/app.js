@@ -14,11 +14,14 @@ validateConfig();
 
 export async function startTrencherAgent() {
   initDb();
-  // Seed Genesis agent if this is first run
   const { ensureGenesisAgent } = await import('./db/agentDna.js');
   ensureGenesisAgent();
   initLiveExecution();
   setupTelegram();
+  
+  // Start the Auto-Burn Cron Job
+  const { initBurnCron } = await import('./jobs/burnCron.js');
+  initBurnCron();
   
   // Start WebSocket server and passive state manager
   // NOTE: consciousness stream (CONSCIOUSNESS_DECISION) is broadcast

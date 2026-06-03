@@ -88,6 +88,21 @@ export function startWsServer(port = 4001) {
       return;
     }
 
+    // MCP burn history endpoint
+    if (pathname === '/api/burn' && req.method === 'GET') {
+      if (!requireAuth()) return;
+      try {
+        const { db } = await import('../db/connection.js');
+        const history = db.prepare('SELECT * FROM burn_log ORDER BY created_at_ms DESC LIMIT 100').all();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ history }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
     // MCP trades history endpoint
     if (pathname === '/api/trades' && req.method === 'GET') {
       if (!requireAuth()) return;

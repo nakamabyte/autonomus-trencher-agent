@@ -15,7 +15,7 @@ import { setting } from './db/settings.js';
 let liveWallet = null;
 let solanaConnection = null;
 
-function parseKeypair(secret) {
+export function parseKeypair(secret) {
   const value = String(secret || '').trim();
   if (!value) return null;
   if (value.startsWith('[')) return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(value)));
@@ -145,6 +145,60 @@ export async function executeJupiterSwap({ inputMint, outputMint, amount, priori
   if (!signature) {
     throw new Error(`Jupiter execute returned no signature (status: ${executed?.status || 'unknown'})`);
   }
+  return {
+    order,
+    executed,
+    signature,
+    inputAmount: String(amount),
+    outputAmount: String(executed?.outputAmountResult || executed?.totalOutputAmount || order?.outAmount || ''),
+  };
+}
+
+export async function executeJupiterSwapWithKey(keypair, { inputMint, outputMint, amount, priorityFee, useJito, slippageBps }) {
+  if (!JUPITER_API_KEY) throw new Error('JUPITER_API_KEY is required for live execution.');
+  
+  const url = new URL(`${JUPITER_SWAP_BASE_URL.replace(/\/$/, '')}/order`);
+  url.searchParams.set('inputMint', inputMint);
+  url.searchParams.set('outputMint', outputMint);
+  url.searchParams.set('amount', String(amount));
+  url.searchParams.set('taker', keypair.publicKey.toBase58());
+  url.searchParams.set('slippageBps', String(slippageBps || JUPITER_SLIPPAGE_BPS));
+  if (priorityFee) url.searchParams.set('priorityFee', String(priorityFee));
+  if (useJito) url.searchParams.set('useJito', 'true');
+  
+  const res = await axios.get(url.toString(), {
+    timeout: 20_000,
+    headers: { ...JSON_HEADERS, 'x-api-key': JUPITER_API_KEY },
+  });
+  
+  const order = res.data;
+  if (order.errorCode || order.error) {
+    throw new Error(`Jupiter order failed: ${order.errorMessage || order.error || order.errorCode}`);
+  }
+
+  const transactionBase64 = order?.transaction || order?.swapTransaction || null;
+  if (!transactionBase64) throw new Error('Jupiter order did not include a transaction.');
+
+  const tx = VersionedTransaction.deserialize(Buffer.from(transactionBase64, 'base64'));
+  tx.sign([keypair]);
+  const signedTransaction = Buffer.from(tx.serialize()).toString('base64');
+
+  const executeBody = { signedTransaction, requestId: order.requestId };
+  const executeRes = await axios.post(`${JUPITER_SWAP_BASE_URL.replace(/\/$/, '')}/execute`, executeBody, {
+    timeout: 30_000,
+    headers: { ...JSON_HEADERS, 'content-type': 'application/json', 'x-api-key': JUPITER_API_KEY },
+  });
+  
+  const executed = executeRes.data;
+  if (executed?.status && executed.status !== 'Success') {
+    throw new Error(`Jupiter execute failed: ${executed.error || executed.code || executed.status}`);
+  }
+  
+  const signature = executed?.signature || executed?.txid || executed?.transactionId || null;
+  if (!signature) {
+    throw new Error(`Jupiter execute returned no signature (status: ${executed?.status || 'unknown'})`);
+  }
+  
   return {
     order,
     executed,
