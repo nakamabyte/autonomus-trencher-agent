@@ -19,6 +19,22 @@ export function BurnStats() {
     last_burn_at: null,
   })
 
+  React.useEffect(() => {
+    fetch('/api/core-proxy/burn')
+      .then(res => res.json())
+      .then(data => {
+        if (data.stats) {
+          setStats({
+            total_autr_burned: data.stats.total_autr_burned || 0,
+            total_sol_collected: data.stats.total_sol_spent || 0,
+            total_deploys: data.stats.total_deploys || 0,
+            last_burn_at: null
+          });
+        }
+      })
+      .catch(err => console.error('Error fetching burn stats:', err));
+  }, []);
+
   return (
     <div style={{ display: 'flex', gap: '16px', fontFamily: 'monospace' }}>
       <StatBox label="$AUTR BURNED" value={stats.total_autr_burned.toLocaleString()} color="#FF6B6B" />

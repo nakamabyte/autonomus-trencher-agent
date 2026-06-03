@@ -64,6 +64,34 @@ function setupMcpApiEndpoints(app, db, getLatestSignals, getRecentDecisions) {
     `).all(`%${q}%`, `%${q}%`)
     res.json({ query: q, count: results.length, results })
   })
+
+  // /api/burn
+  app.get('/api/burn', requireApiKey, (req, res) => {
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+    const history = db.prepare(`
+      SELECT * FROM burn_log ORDER BY created_at_ms DESC LIMIT ?
+    `).all(limit);
+
+    const stats = db.prepare(`
+      SELECT 
+        SUM(sol_spent) as total_sol_spent,
+        SUM(autr_burned) as total_autr_burned
+      FROM burn_log
+    `).get();
+
+    const deploys = db.prepare(`
+      SELECT COUNT(*) as count FROM agent_dna
+    `).get();
+
+    res.json({ 
+      history, 
+      stats: {
+        total_sol_spent: stats.total_sol_spent || 0,
+        total_autr_burned: stats.total_autr_burned || 0,
+        total_deploys: deploys.count || 0
+      }
+    });
+  });
 }
 
 function requireApiKey(req, res, next) {
