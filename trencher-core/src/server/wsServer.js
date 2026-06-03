@@ -8,15 +8,188 @@ let wss;
 const clients = new Set();
 
 export function startWsServer(port = 4001) {
-  const server = http.createServer((req, res) => {
+  const server = http.createServer(async (req, res) => {
     // CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
       res.end();
+      return;
+    }
+
+    const parsedUrl = new URL(req.url, 'http://localhost');
+    const pathname = parsedUrl.pathname;
+
+    // Helper for API Auth
+    const requireAuth = () => {
+      const key = req.headers['x-api-key'];
+      const validKey = process.env.SIGNAL_SERVER_KEY || 'kucing_oreng_sniping_2026';
+      if (!key || key !== validKey) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Unauthorized: invalid API key' }));
+        return false;
+      }
+      return true;
+    };
+
+    // MCP status endpoint
+    if (pathname === '/api/status' && req.method === 'GET') {
+      if (!requireAuth()) return;
+      try {
+        const { db } = await import('../db/connection.js');
+        const settings = db.prepare('SELECT key, value FROM settings').all();
+        const openPositions = db.prepare(
+          "SELECT COUNT(*) as count FROM dry_run_positions WHERE status = 'open'"
+        ).get();
+        const stats = db.prepare(`
+          SELECT
+            COUNT(*) as total_trades,
+            ROUND(SUM(CASE WHEN pnl_percent > 0 THEN 1.0 ELSE 0 END) / COUNT(*) * 100, 1) as win_rate,
+            ROUND(SUM(pnl_sol), 4) as total_pnl_sol
+          FROM dry_run_positions WHERE status = 'closed'
+        `).get();
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          mode: settings.find(s => s.key === 'trading_mode')?.value || 'unknown',
+          strategy: settings.find(s => s.key === 'active_strategy')?.value || 'sniper',
+          open_positions: openPositions.count,
+          total_trades: stats.total_trades,
+          win_rate: stats.win_rate,
+          pnl_sol: stats.total_pnl_sol,
+          chains: ['solana', 'base'],
+          nodes: 19,
+          uptime_ms: process.uptime() * 1000,
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // MCP agent DNA endpoint
+    if (pathname === '/api/agent/dna' && req.method === 'GET') {
+      if (!requireAuth()) return;
+      try {
+        const { db } = await import('../db/connection.js');
+        const dna = db.prepare('SELECT * FROM agent_dna ORDER BY created_at_ms DESC LIMIT 1').get();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(dna || { error: 'no DNA profile found' }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // MCP trades history endpoint
+    if (pathname === '/api/trades' && req.method === 'GET') {
+      if (!requireAuth()) return;
+      try {
+        const limitParam = parsedUrl.searchParams.get('limit');
+        const limit = Math.min(parseInt(limitParam) || 20, 100);
+        const { db } = await import('../db/connection.js');
+        const trades = db.prepare(`
+          SELECT symbol, pnl_percent, pnl_sol, exit_reason, entry_mcap,
+            strategy_id, execution_mode,
+            (closed_at_ms - opened_at_ms) / 60000.0 as hold_minutes,
+            datetime(opened_at_ms/1000, 'unixepoch') as opened_at,
+            datetime(closed_at_ms/1000, 'unixepoch') as closed_at
+          FROM dry_run_positions
+          WHERE status = 'closed'
+          ORDER BY closed_at_ms DESC
+          LIMIT ?
+        `).all(limit);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ count: trades.length, trades }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // MCP search endpoint
+    if (pathname === '/api/search' && req.method === 'GET') {
+      if (!requireAuth()) return;
+      try {
+        const q = parsedUrl.searchParams.get('q');
+        if (!q) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'query required' }));
+          return;
+        }
+        const { db } = await import('../db/connection.js');
+        const results = db.prepare(`
+          SELECT * FROM dry_run_positions
+          WHERE symbol LIKE ? OR mint LIKE ?
+          ORDER BY opened_at_ms DESC LIMIT 10
+        `).all(`%${q}%`, `%${q}%`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ query: q, count: results.length, results }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // MCP signals endpoint (Proxy to signal-server)
+    if (pathname === '/api/signals' && req.method === 'GET') {
+      if (!requireAuth()) return;
+      try {
+        const chain = parsedUrl.searchParams.get('chain') || 'solana';
+        const limit = parsedUrl.searchParams.get('limit') || '10';
+        const signalUrl = (process.env.SIGNAL_SERVER_URL || 'https://signal-server-production-e554.up.railway.app/api')
+          .replace(/\/api$/, '');
+        const targetUrl = `${signalUrl}/api/signals?chain=${chain}&limit=${limit}`;
+        const response = await fetch(targetUrl, {
+          headers: { 'x-api-key': process.env.SIGNAL_SERVER_KEY || 'kucing_oreng_sniping_2026' }
+        });
+        if (!response.ok) {
+          throw new Error(`Signal server responded with status: ${response.status}`);
+        }
+        const signalData = await response.json();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(signalData));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // MCP consciousness/enriched endpoint
+    if (pathname === '/api/signals/enriched' && req.method === 'GET') {
+      if (!requireAuth()) return;
+      try {
+        const limitParam = parsedUrl.searchParams.get('limit') || '15';
+        const limit = Math.min(parseInt(limitParam) || 15, 50);
+        const recentDecisions = getRecentDecisions(limit);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          count: recentDecisions.length,
+          decisions: recentDecisions.map(d => ({
+            symbol: d.symbol,
+            mint: d.mint,
+            confidence: d.confidence,
+            verdict: d.verdict,
+            runner_signal: d.runner_signal,
+            rug_probability: d.rug_probability,
+            smart_money_overlap: d.smart_money_overlap,
+            strategy: d.strategy,
+            entry_mcap: d.entry_mcap,
+            timestamp: d.timestamp,
+          }))
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
       return;
     }
 

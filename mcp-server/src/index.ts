@@ -4,7 +4,7 @@ import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mc
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-const API_BASE = process.env.TRENCHER_API_URL || "https://signal-server-production-e554.up.railway.app";
+const API_BASE = process.env.TRENCHER_API_URL || "https://trencher-core.up.railway.app";
 const API_KEY = process.env.TRENCHER_API_KEY || "";
 
 async function fetchApi(path: string) {

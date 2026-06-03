@@ -30,22 +30,21 @@ to a live autonomous trading agent operating on Pump.fun (Solana + Base).
 
 ### 1. Claude Desktop Configuration
 
-To use the Trencher Agent MCP Server with Claude Desktop, you need to add it to your `claude_desktop_config.json` file.
+First, install the MCP server globally on your system:
+```bash
+npm install -g autonomustrench-mcp-server
+```
 
-1. Open Claude Desktop settings and find the configuration file.
-2. Add the following JSON structure:
+Then, add it to your `claude_desktop_config.json` file:
 
 ```json
 {
   "mcpServers": {
     "trencher-agent": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "autonomustrench-mcp-server@latest"
-      ],
+      "command": "trencher-mcp",
       "env": {
-        "TRENCHER_API_KEY": "your_api_key_here"
+        "TRENCHER_API_KEY": "your_api_key_here",
+        "TRENCHER_API_URL": "https://trencher-core.up.railway.app"
       }
     }
   }
@@ -56,9 +55,9 @@ To use the Trencher Agent MCP Server with Claude Desktop, you need to add it to 
 
 ### 2. Using with Cursor IDE
 
-For Cursor, you can add this MCP server directly from the MCP settings panel by specifying the execution command:
+After installing globally, you can add this MCP server directly from the MCP settings panel by specifying:
 - **Type**: `command`
-- **Command**: `npx -y autonomustrench-mcp-server@latest`
+- **Command**: `trencher-mcp`
 - Add the `TRENCHER_API_KEY` to the environment variables.
 
 ### Example Prompts
