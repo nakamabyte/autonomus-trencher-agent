@@ -75,6 +75,7 @@ export function startWsServer(port = 4001) {
     if (pathname === '/api/agent/dna' && req.method === 'GET') {
       if (!requireAuth()) return;
       try {
+        const { db } = await import('../db/connection.js');
         const limitParam = parsedUrl.searchParams.get('limit');
         const query = 'SELECT * FROM agent_dna ORDER BY created_at_ms DESC';
         const dna = limitParam ? db.prepare(query + ' LIMIT ?').all(parseInt(limitParam)) : db.prepare(query).all();
