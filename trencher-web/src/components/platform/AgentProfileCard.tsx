@@ -2,6 +2,7 @@
 
 import type { AgentDna } from '@/types';
 import { BREEDS, DNA_TRAIT_LABELS, DNA_TRAIT_COLORS } from '@/constants/breeds';
+import { AgentModeToggle } from './AgentModeToggle';
 
 // ─── DNA Trait Keys to display on card ───────────────────────────
 const CARD_TRAITS: (keyof AgentDna)[] = [
@@ -107,55 +108,64 @@ export function AgentProfileCard({ agent, compact = false, onClick }: AgentProfi
       }} />
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
-        <div style={{
-          fontSize: compact ? '20px' : '24px',
-          lineHeight: 1,
-          flexShrink: 0,
-        }}>
-          {breed.icon}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: '10px', flex: 1, minWidth: 0 }}>
           <div style={{
-            fontSize: compact ? '11px' : '12px',
-            fontFamily: "'JetBrains Mono', monospace",
-            fontWeight: 700,
-            color: '#fff',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
+            fontSize: compact ? '20px' : '24px',
+            lineHeight: 1,
+            flexShrink: 0,
           }}>
-            {agent.name}
+            {breed.icon}
           </div>
-          <div style={{ display: 'flex', gap: '6px', marginTop: '3px', flexWrap: 'wrap' }}>
-            {/* Breed badge */}
-            <span style={{
-              fontSize: '8px',
-              fontFamily: "'Barlow Condensed', sans-serif",
-              fontWeight: 700,
-              letterSpacing: '.1em',
-              textTransform: 'uppercase',
-              color: breed.color,
-              background: `${breed.color}18`,
-              padding: '1px 6px',
-              borderRadius: '2px',
-              border: `1px solid ${breed.color}40`,
-            }}>
-              {breed.name}
-            </span>
-            {/* Generation badge */}
-            <span style={{
-              fontSize: '8px',
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: compact ? '11px' : '12px',
               fontFamily: "'JetBrains Mono', monospace",
-              color: '#555',
-              padding: '1px 4px',
-              border: '1px solid #222',
-              borderRadius: '2px',
+              fontWeight: 700,
+              color: '#fff',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
             }}>
-              {genLabel}
-            </span>
+              {agent.name}
+            </div>
+            <div style={{ display: 'flex', gap: '6px', marginTop: '3px', flexWrap: 'wrap' }}>
+              {/* Breed badge */}
+              <span style={{
+                fontSize: '8px',
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontWeight: 700,
+                letterSpacing: '.1em',
+                textTransform: 'uppercase',
+                color: breed.color,
+                background: `${breed.color}18`,
+                padding: '1px 6px',
+                borderRadius: '2px',
+                border: `1px solid ${breed.color}40`,
+              }}>
+                {breed.name}
+              </span>
+              {/* Generation badge */}
+              <span style={{
+                fontSize: '8px',
+                fontFamily: "'JetBrains Mono', monospace",
+                color: '#555',
+                padding: '1px 4px',
+                border: '1px solid #222',
+                borderRadius: '2px',
+              }}>
+                {genLabel}
+              </span>
+            </div>
           </div>
         </div>
+
+        {/* Mode Toggle */}
+        {!compact && (
+          <div style={{ flexShrink: 0 }}>
+            <AgentModeToggle agent={agent} />
+          </div>
+        )}
       </div>
 
       {/* Performance stats */}

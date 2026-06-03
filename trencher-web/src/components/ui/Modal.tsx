@@ -21,6 +21,7 @@ export function Modal({ id, isOpen, onClose, title, children }: ModalProps) {
   }, [isOpen, onClose]);
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
     if (e.target === e.currentTarget) onClose();
   };
 
@@ -30,10 +31,10 @@ export function Modal({ id, isOpen, onClose, title, children }: ModalProps) {
       className={`modal-overlay${isOpen ? ' open' : ''}`}
       onClick={handleOverlayClick}
     >
-      <div className="modal-box">
+      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <div className="modal-title">{title}</div>
-          <button className="modal-close" onClick={onClose} type="button">
+          <button className="modal-close" onClick={(e) => { e.stopPropagation(); onClose(); }} type="button">
             ✕ Close
           </button>
         </div>
@@ -44,3 +45,4 @@ export function Modal({ id, isOpen, onClose, title, children }: ModalProps) {
     </div>
   );
 }
+

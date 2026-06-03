@@ -195,8 +195,94 @@ export function startWsServer(port = 4001) {
       return;
     }
 
+    // Get agent "can go live" status
+    const canGoLiveMatch = pathname.match(/^\/api\/agent\/([^\/]+)\/can-go-live$/);
+    if (canGoLiveMatch && req.method === 'GET') {
+      if (!requireAuth()) return;
+      try {
+        const agentId = canGoLiveMatch[1];
+        const { db } = await import('../db/connection.js');
+        const agent = db.prepare('SELECT * FROM agent_dna WHERE id = ?').get(agentId);
+        if (!agent) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Agent not found' }));
+          return;
+        }
+
+        let balanceSol = 0;
+        try {
+          const { liveWalletBalanceLamports } = await import('../liveExecutor.js');
+          const lamports = await liveWalletBalanceLamports();
+          balanceSol = lamports / 1_000_000_000;
+        } catch (e) {
+          console.error('[can-go-live] failed to fetch wallet balance:', e.message);
+        }
+
+        const genesis = db.prepare('SELECT id FROM agent_dna ORDER BY created_at_ms ASC LIMIT 1').get();
+        const isGenesis = genesis && genesis.id === agentId;
+        const dryRunTrades = db.prepare(`
+          SELECT COUNT(*) as count FROM dry_run_positions
+          WHERE execution_mode = 'dry_run' AND (${isGenesis ? 'agent_dna_id = ? OR agent_dna_id IS NULL' : 'agent_dna_id = ?'})
+        `).get(agentId).count;
+
+        const { liveWalletPubkey } = await import('../liveExecutor.js');
+        const address = liveWalletPubkey();
+
+        const ok = balanceSol >= 0.1;
+        const result = {
+          ok,
+          reason: ok ? undefined : 'fund agent wallet first (min 0.1 SOL)',
+          warning: ok && dryRunTrades < 10 ? 'agent has < 10 dry run trades, consider testing more' : undefined,
+          wallet_balance_sol: balanceSol,
+          dry_run_trades: dryRunTrades,
+          wallet_address: address
+        };
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // Set agent execution mode
+    const setModeMatch = pathname.match(/^\/api\/agent\/([^\/]+)\/set-mode$/);
+    if (setModeMatch && req.method === 'POST') {
+      if (!requireAuth()) return;
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', async () => {
+        try {
+          const payload = JSON.parse(body);
+          const agentId = setModeMatch[1];
+          const { mode } = payload;
+          if (!['dry_run', 'live'].includes(mode)) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Invalid mode' }));
+            return;
+          }
+
+          const { db } = await import('../db/connection.js');
+          db.prepare('UPDATE agent_dna SET execution_mode = ?, updated_at_ms = ? WHERE id = ?').run(mode, Date.now(), agentId);
+
+          const { listBreeds } = await import('../db/agentDna.js');
+          broadcast('AGENT_DNA_UPDATE', listBreeds());
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, mode }));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+      return;
+    }
+
     // Deploy Agent API
     if (req.url === '/api/deploy' && req.method === 'POST') {
+      if (!requireAuth()) return;
       let body = '';
       req.on('data', chunk => { body += chunk; });
       req.on('end', async () => {
@@ -218,6 +304,7 @@ export function startWsServer(port = 4001) {
 
     // Delete Agent API
     if (req.url === '/api/deploy/delete' && req.method === 'POST') {
+      if (!requireAuth()) return;
       let body = '';
       req.on('data', chunk => { body += chunk; });
       req.on('end', async () => {
@@ -258,6 +345,7 @@ export function startWsServer(port = 4001) {
 
     // Breed Agent API
     if (req.url === '/api/breed' && req.method === 'POST') {
+      if (!requireAuth()) return;
       let body = '';
       req.on('data', chunk => { body += chunk; });
       req.on('end', async () => {
@@ -279,6 +367,7 @@ export function startWsServer(port = 4001) {
 
     // List Agent on Marketplace API
     if (req.url === '/api/marketplace/list' && req.method === 'POST') {
+      if (!requireAuth()) return;
       let body = '';
       req.on('data', chunk => { body += chunk; });
       req.on('end', async () => {
@@ -300,6 +389,7 @@ export function startWsServer(port = 4001) {
 
     // Clone Agent (Purchase) API
     if (req.url === '/api/marketplace/clone' && req.method === 'POST') {
+      if (!requireAuth()) return;
       let body = '';
       req.on('data', chunk => { body += chunk; });
       req.on('end', async () => {

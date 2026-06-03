@@ -169,6 +169,7 @@ export interface AgentDna {
   royalty_pct: number;
   copies_minted: number;
   copies_limit: number;
+  execution_mode?: 'dry_run' | 'live';
   created_at_ms: number;
   updated_at_ms: number;
 }

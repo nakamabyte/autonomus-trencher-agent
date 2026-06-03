@@ -24,9 +24,7 @@ export function Marketplace() {
     setError('');
     setSuccess('');
     try {
-      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:4001';
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || wsUrl.replace(/^ws/, 'http');
-      const res = await fetch(`${apiUrl}/api/marketplace/list`, {
+      const res = await fetch(`/api/core-proxy/marketplace/list`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -60,9 +58,7 @@ export function Marketplace() {
         return; // cancelled
       }
 
-      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:4001';
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || wsUrl.replace(/^ws/, 'http');
-      const res = await fetch(`${apiUrl}/api/marketplace/clone`, {
+      const res = await fetch(`/api/core-proxy/marketplace/clone`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

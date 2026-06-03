@@ -17,7 +17,7 @@ import { updateCandidateStatus } from '../db/candidates.js';
 import { createTradeIntent } from '../db/intents.js';
 import { setCooldown } from '../utils/mintCooldown.js';
 
-export async function executeLiveBuy(selectedRow, decision, batchId, rows = [], triggerCandidateId = null) {
+export async function executeLiveBuy(selectedRow, decision, batchId, rows = [], triggerCandidateId = null, agentDnaId = null) {
   const strat = activeStrategy();
   const chain = selectedRow.candidate.chain || 'solana';
   let swap;
@@ -44,7 +44,7 @@ export async function executeLiveBuy(selectedRow, decision, batchId, rows = [], 
   if (!swap.outputAmount) {
     swap.outputAmount = await fetchLiveTokenBalance(selectedRow.candidate.token.mint) || swap.outputAmount;
   }
-  const positionId = createLivePosition(selectedRow.id, selectedRow.candidate, decision, swap, `live_batch_${batchId}`);
+  const positionId = createLivePosition(selectedRow.id, selectedRow.candidate, decision, swap, `live_batch_${batchId}`, agentDnaId);
   logDecisionEvent({
     batchId,
     triggerCandidateId,

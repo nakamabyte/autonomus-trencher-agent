@@ -25,6 +25,18 @@ export function canOpenMorePositions() {
   return openPositionCount() < max;
 }
 
+export function openPositionCountForAgent(agentDnaId) {
+  if (!agentDnaId) return openPositionCount();
+  return db.prepare('SELECT COUNT(*) AS count FROM dry_run_positions WHERE status = ? AND agent_dna_id = ?').get('open', agentDnaId).count;
+}
+
+export function canOpenMorePositionsForAgent(agentDnaId) {
+  const strat = activeStrategy();
+  const max = strat.max_open_positions ?? numSetting('max_open_positions', 3);
+  if (max <= 0) return true;
+  return openPositionCountForAgent(agentDnaId) < max;
+}
+
 export function tradingMode() {
   const mode = setting('trading_mode', 'dry_run');
   return ['dry_run', 'confirm', 'live'].includes(mode) ? mode : 'dry_run';
@@ -34,7 +46,7 @@ export function allPositions(limit = 10) {
   return db.prepare('SELECT * FROM dry_run_positions ORDER BY id DESC LIMIT ?').all(limit);
 }
 
-export function createDryRunPosition(candidateId, candidate, decision, reason = 'llm_buy') {
+export function createDryRunPosition(candidateId, candidate, decision, reason = 'llm_buy', agentDnaId = null) {
   const strat = activeStrategy();
   let sizeSol = strat.position_size_sol ?? numSetting('dry_run_buy_sol', 0.1);
   if (decision && typeof decision.confidence === 'number') {
@@ -58,8 +70,8 @@ export function createDryRunPosition(candidateId, candidate, decision, reason = 
       INSERT INTO dry_run_positions (
         candidate_id, mint, symbol, status, opened_at_ms, size_sol, entry_price, entry_mcap,
         token_amount_est, high_water_price, high_water_mcap, tp_percent, sl_percent,
-        trailing_enabled, trailing_percent, trailing_armed, llm_decision_id, strategy_id, snapshot_json
-      ) VALUES (?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+        trailing_enabled, trailing_percent, trailing_armed, llm_decision_id, strategy_id, agent_dna_id, snapshot_json
+      ) VALUES (?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
     `).run(
       candidateId,
       candidate.token.mint,
@@ -77,6 +89,7 @@ export function createDryRunPosition(candidateId, candidate, decision, reason = 
       trailingPercent,
       decision.id || null,
       strat.id,
+      agentDnaId,
       json({ candidate, decision, reason, strategy: strat.id }),
     );
     const positionId = Number(result.lastInsertRowid);
@@ -92,7 +105,7 @@ export function createDryRunPosition(candidateId, candidate, decision, reason = 
   })();
 }
 
-export function createLivePosition(candidateId, candidate, decision, swap, reason = 'live_buy') {
+export function createLivePosition(candidateId, candidate, decision, swap, reason = 'live_buy', agentDnaId = null) {
   const strat = activeStrategy();
   let sizeSol = strat.position_size_sol ?? numSetting('dry_run_buy_sol', 0.1);
   if (decision && typeof decision.confidence === 'number') {
@@ -117,8 +130,8 @@ export function createLivePosition(candidateId, candidate, decision, swap, reaso
         candidate_id, mint, symbol, status, opened_at_ms, size_sol, entry_price, entry_mcap,
         token_amount_est, high_water_price, high_water_mcap, tp_percent, sl_percent,
         trailing_enabled, trailing_percent, trailing_armed, llm_decision_id,
-        execution_mode, entry_signature, token_amount_raw, strategy_id, snapshot_json
-      ) VALUES (?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'live', ?, ?, ?, ?)
+        execution_mode, entry_signature, token_amount_raw, strategy_id, agent_dna_id, snapshot_json
+      ) VALUES (?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'live', ?, ?, ?, ?, ?)
     `).run(
       candidateId,
       candidate.token.mint,
@@ -138,6 +151,7 @@ export function createLivePosition(candidateId, candidate, decision, swap, reaso
       swap.signature,
       swap.outputAmount || null,
       strat.id,
+      agentDnaId,
       json({ candidate, decision, reason, swap, strategy: strat.id }),
     );
     const positionId = Number(result.lastInsertRowid);

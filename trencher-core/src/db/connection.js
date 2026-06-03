@@ -261,7 +261,8 @@ export function initDb() {
       mutation_history TEXT,
 
       created_at_ms INTEGER NOT NULL,
-      updated_at_ms INTEGER NOT NULL
+      updated_at_ms INTEGER NOT NULL,
+      execution_mode TEXT DEFAULT 'dry_run'
     );
     CREATE INDEX IF NOT EXISTS idx_agent_dna_breed ON agent_dna(breed);
   `);
@@ -281,6 +282,8 @@ export function initDb() {
   ensureColumn('agent_dna', 'rug_filter', "REAL DEFAULT 0.20");
   ensureColumn('agent_dna', 'dna_hash', 'TEXT');
   ensureColumn('agent_dna', 'mutation_history', 'TEXT');
+  ensureColumn('agent_dna', 'execution_mode', "TEXT DEFAULT 'dry_run'");
+  ensureColumn('dry_run_positions', 'agent_dna_id', 'TEXT');
   db.exec(`
     CREATE TABLE IF NOT EXISTS kol_accuracy (
       account TEXT PRIMARY KEY,

@@ -74,14 +74,14 @@ const stmtInsert = db.prepare(`
     momentum_sensitivity, social_signal_weight, liquidity_sensitivity,
     exit_discipline, stealth, mutation_rate, survival_score,
     entry_preference, exit_preference, rug_filter, dna_hash, mutation_history,
-    owner_address, created_at_ms, updated_at_ms
+    owner_address, execution_mode, created_at_ms, updated_at_ms
   ) VALUES (
     @id, @name, @breed, @parent_a, @parent_b, @generation,
     @speed, @aggression, @rug_defense, @wallet_intelligence,
     @momentum_sensitivity, @social_signal_weight, @liquidity_sensitivity,
     @exit_discipline, @stealth, @mutation_rate, @survival_score,
     @entry_preference, @exit_preference, @rug_filter, @dna_hash, @mutation_history,
-    @owner_address, @created_at_ms, @updated_at_ms
+    @owner_address, @execution_mode, @created_at_ms, @updated_at_ms
   )
 `);
 
@@ -98,6 +98,7 @@ const stmtListBreeds = db.prepare(`
     avg_hold_min, rug_survival_rate,
     owner_address, for_sale, sale_price_sol, royalty_pct,
     copies_minted, copies_limit,
+    execution_mode,
     created_at_ms, updated_at_ms
   FROM agent_dna
   ORDER BY created_at_ms ASC
@@ -123,7 +124,8 @@ const stmtUpdatePerf = db.prepare(`
  */
 export function createDna({
   name, breed, parentA = null, parentB = null, generation = 0, traits = {},
-  ownerAddress = null, entryPreference = 'wait_for_dip', exitPreference = 'trailing_tp', rugFilter = 0.20
+  ownerAddress = null, entryPreference = 'wait_for_dip', exitPreference = 'trailing_tp', rugFilter = 0.20,
+  executionMode = 'dry_run'
 } = {}) {
   const defaults = BREED_DNA_DEFAULTS[breed] || BREED_DNA_DEFAULTS.scout;
   const merged = { ...defaults, ...traits };
@@ -141,6 +143,7 @@ export function createDna({
     dna_hash: dnaHash,
     mutation_history: JSON.stringify([]),
     owner_address: ownerAddress,
+    execution_mode: executionMode,
     created_at_ms: now, updated_at_ms: now,
   });
 

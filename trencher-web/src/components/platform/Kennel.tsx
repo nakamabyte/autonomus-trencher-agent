@@ -44,9 +44,7 @@ export function Kennel() {
     setResult(null);
 
     try {
-      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:4001';
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || wsUrl.replace(/^ws/, 'http');
-      const res = await fetch(`${apiUrl}/api/breed`, {
+      const res = await fetch(`/api/core-proxy/breed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

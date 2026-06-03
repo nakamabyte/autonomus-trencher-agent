@@ -41,10 +41,16 @@ export async function processCandidateFromSignals(signals) {
     return;
   }
 
-  // Skip if max positions reached — don't waste enrichment/LLM calls
-  if (!canOpenMorePositions()) {
-    const max = numSetting('max_open_positions', 3);
-    console.log(`[agent] max positions reached (${openPositionCount()}/${max}), skipping ${signals.mint.slice(0, 8)}...`);
+  const strat = activeStrategy();
+  const { getBreedForStrategy } = await import('../db/agentDna.js');
+  const breed = getBreedForStrategy(strat.id);
+  const { db } = await import('../db/connection.js');
+  const matchedAgents = db.prepare('SELECT id FROM agent_dna WHERE breed = ?').all(breed);
+  const { canOpenMorePositionsForAgent, openPositionCountForAgent } = await import('../db/positions.js');
+  const anyAgentCanOpen = matchedAgents.length === 0 || matchedAgents.some(agent => canOpenMorePositionsForAgent(agent.id));
+  if (!anyAgentCanOpen) {
+    const max = strat.max_open_positions ?? numSetting('max_open_positions', 3);
+    console.log(`[agent] all matching agents for strategy ${strat.id} reached max open positions, skipping ${signals.mint.slice(0, 8)}...`);
     return;
   }
 
@@ -63,7 +69,6 @@ export async function processCandidateFromSignals(signals) {
     return;
   }
 
-  const strat = activeStrategy();
   let rows, batchDecision, batchId;
 
   if (!strat.use_llm) {
@@ -148,7 +153,6 @@ export async function processCandidateFromSignals(signals) {
 }
 
 export async function handleApprovedBuy(selectedRow, decision, batchId, rows = [], triggerCandidateId = null) {
-  const mode = tradingMode();
   const freshSelectedRow = await refreshCandidateForExecution(selectedRow);
   const executionRows = rows.map(row => row.id === freshSelectedRow.id ? freshSelectedRow : row);
   if (!freshSelectedRow.candidate.filters?.passed) {
@@ -159,7 +163,7 @@ export async function handleApprovedBuy(selectedRow, decision, batchId, rows = [
       selectedRow: freshSelectedRow,
       rows: executionRows,
       decision,
-      mode,
+      mode: 'unknown',
       action: 'entry_rejected_fresh_filters',
       guardrails: {
         failures: freshSelectedRow.candidate.filters?.failures || [],
@@ -185,63 +189,79 @@ export async function handleApprovedBuy(selectedRow, decision, batchId, rows = [
     return;
   }
 
-  if (mode === 'dry_run') {
-    const positionId = await createDryRunPosition(freshSelectedRow.id, freshSelectedRow.candidate, decision, `llm_batch_${batchId}`);
-    logDecisionEvent({
-      batchId,
-      triggerCandidateId,
-      selectedRow: freshSelectedRow,
-      rows: executionRows,
-      decision,
-      mode,
-      action: 'dry_run_entry',
-      guardrails: { maxOpenPositions: numSetting('max_open_positions', 3), openPositions: openPositionCount() },
-      execution: { positionId },
-    });
-    await sendPositionOpen(positionId);
-    return;
+  const { getBreedForStrategy } = await import('../db/agentDna.js');
+  const { db } = await import('../db/connection.js');
+  const { canOpenMorePositionsForAgent, openPositionCountForAgent } = await import('../db/positions.js');
+
+  const breed = getBreedForStrategy(strat.id);
+  let matchedAgents = db.prepare('SELECT id, execution_mode FROM agent_dna WHERE breed = ?').all(breed);
+  if (matchedAgents.length === 0) {
+    matchedAgents = [{ id: null, execution_mode: tradingMode() }];
   }
 
-  if (mode === 'confirm') {
-    const intentId = createTradeIntent(freshSelectedRow.id, freshSelectedRow.candidate, decision, mode, 'pending_confirmation');
-    logDecisionEvent({
-      batchId,
-      triggerCandidateId,
-      selectedRow: freshSelectedRow,
-      rows: executionRows,
-      decision,
-      mode,
-      action: 'confirm_intent_created',
-      guardrails: { maxOpenPositions: numSetting('max_open_positions', 3), openPositions: openPositionCount() },
-      execution: { intentId },
-    });
-    await sendTradeIntent(intentId, freshSelectedRow.candidate, decision);
-    return;
-  }
+  for (const agent of matchedAgents) {
+    const mode = agent.execution_mode || 'dry_run';
 
-  try {
-    await executeLiveBuy(freshSelectedRow, decision, batchId, executionRows, triggerCandidateId);
-  } catch (err) {
-    const intentId = createTradeIntent(freshSelectedRow.id, freshSelectedRow.candidate, decision, mode, 'execution_failed');
-    logDecisionEvent({
-      batchId,
-      triggerCandidateId,
-      selectedRow: freshSelectedRow,
-      rows: executionRows,
-      decision,
-      mode,
-      action: 'live_entry_failed',
-      guardrails: { maxOpenPositions: numSetting('max_open_positions', 3), openPositions: openPositionCount() },
-      execution: { intentId, error: err.message },
-    });
-    await sendTelegram([
-      '🛑 <b>Live trade failed</b>',
-      '',
-      candidateSummary(freshSelectedRow.candidate, decision),
-      '',
-      `Intent #${intentId} stored.`,
-      `Error: ${escapeHtml(err.message)}`,
-    ].join('\n'));
+    if (!canOpenMorePositionsForAgent(agent.id)) {
+      const max = strat.max_open_positions ?? numSetting('max_open_positions', 3);
+      console.log(`[agent] max open positions reached for agent ${agent.id || 'global'} (${openPositionCountForAgent(agent.id)}/${max}), skipping buy`);
+      continue;
+    }
+
+    if (mode === 'dry_run') {
+      const positionId = await createDryRunPosition(freshSelectedRow.id, freshSelectedRow.candidate, decision, `llm_batch_${batchId}`, agent.id);
+      logDecisionEvent({
+        batchId,
+        triggerCandidateId,
+        selectedRow: freshSelectedRow,
+        rows: executionRows,
+        decision,
+        mode,
+        action: 'dry_run_entry',
+        guardrails: { maxOpenPositions: strat.max_open_positions ?? numSetting('max_open_positions', 3), openPositions: openPositionCountForAgent(agent.id) },
+        execution: { positionId },
+      });
+      await sendPositionOpen(positionId);
+    } else if (mode === 'confirm') {
+      const intentId = createTradeIntent(freshSelectedRow.id, freshSelectedRow.candidate, decision, mode, 'pending_confirmation');
+      logDecisionEvent({
+        batchId,
+        triggerCandidateId,
+        selectedRow: freshSelectedRow,
+        rows: executionRows,
+        decision,
+        mode,
+        action: 'confirm_intent_created',
+        guardrails: { maxOpenPositions: strat.max_open_positions ?? numSetting('max_open_positions', 3), openPositions: openPositionCountForAgent(agent.id) },
+        execution: { intentId },
+      });
+      await sendTradeIntent(intentId, freshSelectedRow.candidate, decision);
+    } else if (mode === 'live') {
+      try {
+        await executeLiveBuy(freshSelectedRow, decision, batchId, executionRows, triggerCandidateId, agent.id);
+      } catch (err) {
+        const intentId = createTradeIntent(freshSelectedRow.id, freshSelectedRow.candidate, decision, mode, 'execution_failed');
+        logDecisionEvent({
+          batchId,
+          triggerCandidateId,
+          selectedRow: freshSelectedRow,
+          rows: executionRows,
+          decision,
+          mode,
+          action: 'live_entry_failed',
+          guardrails: { maxOpenPositions: strat.max_open_positions ?? numSetting('max_open_positions', 3), openPositions: openPositionCountForAgent(agent.id) },
+          execution: { intentId, error: err.message },
+        });
+        await sendTelegram([
+          '🛑 <b>Live trade failed</b>',
+          '',
+          candidateSummary(freshSelectedRow.candidate, decision),
+          '',
+          `Intent #${intentId} stored.`,
+          `Error: ${escapeHtml(err.message)}`,
+        ].join('\n'));
+      }
+    }
   }
 }
 
