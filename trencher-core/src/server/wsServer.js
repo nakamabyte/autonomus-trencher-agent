@@ -75,10 +75,11 @@ export function startWsServer(port = 4001) {
     if (pathname === '/api/agent/dna' && req.method === 'GET') {
       if (!requireAuth()) return;
       try {
-        const { db } = await import('../db/connection.js');
-        const dna = db.prepare('SELECT * FROM agent_dna ORDER BY created_at_ms DESC LIMIT 1').get();
+        const limitParam = parsedUrl.searchParams.get('limit');
+        const query = 'SELECT * FROM agent_dna ORDER BY created_at_ms DESC';
+        const dna = limitParam ? db.prepare(query + ' LIMIT ?').all(parseInt(limitParam)) : db.prepare(query).all();
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(dna || { error: 'no DNA profile found' }));
+        res.end(JSON.stringify(dna));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));

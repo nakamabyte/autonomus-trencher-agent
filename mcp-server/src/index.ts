@@ -69,9 +69,12 @@ server.tool(
 server.tool(
   "get_agent_dna",
   "Get the Genesis Trencher DNA profile including breed, 11 trait scores (Speed, Aggression, Rug Defense, etc), performance stats, and survival score",
-  {},
-  async () => {
-    const data = await fetchApi("/api/agent/dna");
+  {
+    limit: z.number().optional().describe("Number of DNA profiles to return (defaults to all)"),
+  },
+  async ({ limit }) => {
+    const url = limit ? `/api/agent/dna?limit=${limit}` : "/api/agent/dna";
+    const data = await fetchApi(url);
     return {
       content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
     };
