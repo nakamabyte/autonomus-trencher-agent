@@ -1,5 +1,7 @@
 import { db } from './connection.js';
 import { randomUUID, createHash } from 'crypto';
+import { Keypair } from '@solana/web3.js';
+import { encrypt } from '../security/encryption.js';
 
 // ─── Breed → Strategy mapping ──────────────────────────────────────
 // Maps existing strategy IDs to breed identities from the ecosystem spec
@@ -315,4 +317,27 @@ export function cloneAgent(parentDnaId, cloneName, ownerAddress) {
     rugFilter: parent.rug_filter,
     ownerAddress
   });
+}
+
+/**
+ * Generate a new wallet for a spawned agent and encrypt its private key.
+ */
+export function createAgentWallet(agentId) {
+  const keypair = Keypair.generate();
+  const encryptedKey = encrypt(JSON.stringify(Array.from(keypair.secretKey)));
+
+  db.prepare(`
+    UPDATE agent_dna SET agent_wallet = ?, encrypted_key = ? WHERE id = ?
+  `).run(keypair.publicKey.toBase58(), encryptedKey, agentId);
+
+  return keypair.publicKey.toBase58();
+}
+
+/**
+ * Update auto-activate preference for an agent.
+ */
+export function updateAutoActivate(agentId, autoActivateBool) {
+  db.prepare(`
+    UPDATE agent_dna SET auto_activate = ? WHERE id = ?
+  `).run(autoActivateBool ? 1 : 0, agentId);
 }

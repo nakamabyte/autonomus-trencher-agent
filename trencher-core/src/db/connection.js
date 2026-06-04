@@ -283,6 +283,11 @@ export function initDb() {
   ensureColumn('agent_dna', 'dna_hash', 'TEXT');
   ensureColumn('agent_dna', 'mutation_history', 'TEXT');
   ensureColumn('agent_dna', 'execution_mode', "TEXT DEFAULT 'dry_run'");
+  ensureColumn('agent_dna', 'agent_wallet', 'TEXT');
+  ensureColumn('agent_dna', 'auto_activate', 'INTEGER DEFAULT 1');
+  ensureColumn('agent_dna', 'activated_at_ms', 'INTEGER');
+  ensureColumn('agent_dna', 'dna_config', 'TEXT');
+  ensureColumn('agent_dna', 'encrypted_key', 'TEXT');
   ensureColumn('dry_run_positions', 'agent_dna_id', 'TEXT');
   db.exec(`
     CREATE TABLE IF NOT EXISTS kol_accuracy (
