@@ -40,6 +40,7 @@ interface UseConsciousnessStreamReturn {
     skips: number;
     escalates: number;
   };
+  executionMode?: string;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────
@@ -59,6 +60,8 @@ export function useConsciousnessStream({
   const [decisions, setDecisions] = useState<ConsciousnessDecision[]>([]);
   const [connected, setConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({ total: 0, buys: 0, skips: 0, escalates: 0 });
+  const [executionMode, setExecutionMode] = useState<string>();
 
   const wsRef = useRef<WebSocket | null>(null);
   const isMountedRef = useRef(true);
@@ -89,6 +92,12 @@ export function useConsciousnessStream({
                   .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
                   .slice(0, maxDecisions);
               });
+            }
+            if (data.stats) {
+              setStats(data.stats);
+            }
+            if (data.execution_mode) {
+              setExecutionMode(data.execution_mode);
             }
           }
         } catch (err) {
@@ -128,6 +137,12 @@ export function useConsciousnessStream({
               setDecisions(prev =>
                 [payload, ...prev].slice(0, maxDecisions)
               );
+              setStats(prev => ({
+                total: prev.total + 1,
+                buys: prev.buys + (payload.verdict === 'BUY' ? 1 : 0),
+                skips: prev.skips + (payload.verdict === 'SKIP' ? 1 : 0),
+                escalates: prev.escalates + (payload.verdict === 'ESCALATE' ? 1 : 0),
+              }));
             }
           } else if (msg.type === 'CONSCIOUSNESS_HISTORY' && Array.isArray(msg.payload)) {
             // History arrives newest-first already (reversed by getRecentDecisions)
@@ -169,13 +184,5 @@ export function useConsciousnessStream({
     };
   }, [agentId, maxDecisions, reconnectDelay]);
 
-  // Derived stats
-  const stats = {
-    total:     decisions.length,
-    buys:      decisions.filter(d => d.verdict === 'BUY').length,
-    skips:     decisions.filter(d => d.verdict === 'SKIP').length,
-    escalates: decisions.filter(d => d.verdict === 'ESCALATE').length,
-  };
-
-  return { decisions, connected, isLoading, stats };
+  return { decisions, connected, isLoading, stats, executionMode };
 }

@@ -25,10 +25,19 @@ const TIER_COLOR: Record<string, string> = {
 function StatsBar({
   stats,
   connected,
+  executionMode
 }: {
   stats: ReturnType<typeof useConsciousnessStream>['stats'];
   connected: boolean;
+  executionMode?: string;
 }) {
+  let displayMode = connected ? 'LIVE' : 'OFFLINE';
+  let dotColor = connected ? '#00C896' : '#555';
+
+  if (connected && executionMode) {
+    displayMode = executionMode === 'dry_run' ? 'DRY RUN' : 'LIVE';
+    dotColor = executionMode === 'dry_run' ? '#FFB347' : '#00C896';
+  }
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: '16px',
@@ -40,12 +49,12 @@ function StatsBar({
       <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
         <span style={{
           width: 6, height: 6, borderRadius: '50%',
-          background: connected ? '#00C896' : '#555',
-          boxShadow: connected ? '0 0 6px #00C896' : 'none',
+          background: dotColor,
+          boxShadow: connected ? `0 0 6px ${dotColor}` : 'none',
           flexShrink: 0,
         }} />
-        <span style={{ color: connected ? '#00C896' : '#555' }}>
-          {connected ? 'LIVE' : 'OFFLINE'}
+        <span style={{ color: dotColor }}>
+          {displayMode}
         </span>
       </span>
 
@@ -166,7 +175,7 @@ function DecisionRow({ d }: { d: ConsciousnessDecision }) {
 
 // ─── Main Component ───────────────────────────────────────────────
 export function ConsciousnessStream({ strategyFilter }: { strategyFilter?: string } = {}) {
-  const { decisions, connected, isLoading, stats } = useConsciousnessStream({ 
+  const { decisions, connected, isLoading, stats, executionMode } = useConsciousnessStream({ 
     maxDecisions: strategyFilter ? 100 : 30,
     agentId: strategyFilter
   });
@@ -205,7 +214,7 @@ export function ConsciousnessStream({ strategyFilter }: { strategyFilter?: strin
       </div>
 
       {/* Stats bar */}
-      <StatsBar stats={stats} connected={connected} />
+      <StatsBar stats={stats} connected={connected} executionMode={executionMode} />
 
       {/* Decision feed */}
       <div

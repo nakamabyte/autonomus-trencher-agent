@@ -13,6 +13,7 @@ import { sharedSignalFeed } from './signals/sharedSignalFeed.js';
 import { Connection } from '@solana/web3.js';
 import { SOLANA_RPC_URL } from './config.js';
 import { resumeActiveAgents } from './agents/agentRunner.js';
+import { startFundingWatcher } from './agents/fundingWatcher.js';
 
 setDefaultResultOrder('ipv4first');
 validateConfig();
@@ -31,6 +32,9 @@ export async function startTrencherAgent() {
   // Resume active custom agents
   const connection = new Connection(SOLANA_RPC_URL);
   resumeActiveAgents(db, sharedSignalFeed, connection);
+  
+  // Start funding watcher to auto-activate newly funded agents
+  startFundingWatcher(connection, db, sharedSignalFeed);
   
   // Start WebSocket server and passive state manager
   // NOTE: consciousness stream (CONSCIOUSNESS_DECISION) is broadcast

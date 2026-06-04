@@ -320,11 +320,33 @@ export function startWsServer(port = 4001) {
           LIMIT ?
         `).all(agentId, limit);
         
+        const stats = db.prepare(`
+          SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN verdict = 'BUY' THEN 1 ELSE 0 END) as buys,
+            SUM(CASE WHEN verdict = 'ESCALATE' THEN 1 ELSE 0 END) as escalates,
+            SUM(CASE WHEN verdict = 'SKIP' THEN 1 ELSE 0 END) as skips
+          FROM decision_logs 
+          WHERE strategy_id = ?
+        `).get(agentId);
+
+        const execution_mode = db.prepare('SELECT execution_mode FROM agent_dna WHERE id = ?').get(agentId)?.execution_mode || 'offline';
+
         // Map db row to ConsciousnessDecision format
         const decisions = rows.map(mapDbDecision);
         
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ count: decisions.length, decisions }));
+        res.end(JSON.stringify({ 
+          count: decisions.length, 
+          decisions,
+          stats: {
+            total: stats.total || 0,
+            buys: stats.buys || 0,
+            escalates: stats.escalates || 0,
+            skips: stats.skips || 0
+          },
+          execution_mode
+        }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));
@@ -347,10 +369,28 @@ export function startWsServer(port = 4001) {
           LIMIT ?
         `).all(limit);
         
+        const stats = db.prepare(`
+          SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN verdict = 'BUY' THEN 1 ELSE 0 END) as buys,
+            SUM(CASE WHEN verdict = 'ESCALATE' THEN 1 ELSE 0 END) as escalates,
+            SUM(CASE WHEN verdict = 'SKIP' THEN 1 ELSE 0 END) as skips
+          FROM decision_logs 
+        `).get();
+        
         const decisions = rows.map(mapDbDecision);
         
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ count: decisions.length, decisions }));
+        res.end(JSON.stringify({ 
+          count: decisions.length, 
+          decisions,
+          stats: {
+            total: stats.total || 0,
+            buys: stats.buys || 0,
+            escalates: stats.escalates || 0,
+            skips: stats.skips || 0
+          }
+        }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));
