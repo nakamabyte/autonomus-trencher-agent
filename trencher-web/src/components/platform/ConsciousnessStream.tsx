@@ -119,8 +119,8 @@ function DecisionRow({ d }: { d: ConsciousnessDecision }) {
       {/* Row 2: metrics */}
       <div style={{ display: 'flex', gap: '12px', color: '#555', marginTop: '1px' }}>
         <span>
-          conf: <span style={{ color: d.confidence >= 0.8 ? '#00C896' : d.confidence >= 0.75 ? '#FFB347' : '#aaa' }}>
-            {d.confidence.toFixed(2)}
+          conf: <span style={{ color: (d.confidence ?? 0) >= 0.8 ? '#00C896' : (d.confidence ?? 0) >= 0.75 ? '#FFB347' : '#aaa' }}>
+            {d.confidence != null ? d.confidence.toFixed(2) : 'N/A'}
           </span>
         </span>
         <span>

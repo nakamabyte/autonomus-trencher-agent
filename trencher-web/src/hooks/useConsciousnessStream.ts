@@ -77,7 +77,14 @@ export function useConsciousnessStream({
         const url = agentId 
           ? `/api/core-proxy/agent/${agentId}/decisions?limit=${maxDecisions}`
           : `/api/core-proxy/decisions?limit=${maxDecisions}`;
-        const res = await fetch(url);
+          
+        const headers: Record<string, string> = {};
+        if (typeof window !== 'undefined') {
+          const secret = localStorage.getItem('trencher_secret_key');
+          if (secret) headers['x-client-key'] = secret;
+        }
+
+        const res = await fetch(url, { headers });
           if (res.ok) {
             const data = await res.json();
             if (data && Array.isArray(data.decisions)) {
