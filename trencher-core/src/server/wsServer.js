@@ -9,7 +9,7 @@ function extractTokenInfo(r) {
   let name = null;
   const parseJson = (jsonStr) => {
     if (jsonStr && jsonStr !== '{}' && jsonStr !== 'null') {
-      try { return JSON.parse(jsonStr); } catch (e) {}
+      try { return JSON.parse(jsonStr); } catch (e) { }
     }
     return null;
   };
@@ -264,24 +264,34 @@ export function startWsServer(port = 4001) {
           return;
         }
 
+        const genesis = db.prepare('SELECT id FROM agent_dna ORDER BY created_at_ms ASC LIMIT 1').get();
+        const isGenesis = genesis && genesis.id === agentId;
+
         let balanceSol = 0;
+        let address = '';
+
         try {
-          const { liveWalletBalanceLamports } = await import('../liveExecutor.js');
-          const lamports = await liveWalletBalanceLamports();
-          balanceSol = lamports / 1_000_000_000;
+          if (isGenesis) {
+            const { liveWalletBalanceLamports, liveWalletPubkey } = await import('../liveExecutor.js');
+            const lamports = await liveWalletBalanceLamports();
+            balanceSol = lamports / 1_000_000_000;
+            address = liveWalletPubkey();
+          } else if (agent.agent_wallet) {
+            const { Connection, PublicKey } = await import('@solana/web3.js');
+            const { SOLANA_RPC_URL } = await import('../config.js');
+            const connection = new Connection(SOLANA_RPC_URL);
+            const balance = await connection.getBalance(new PublicKey(agent.agent_wallet));
+            balanceSol = balance / 1_000_000_000;
+            address = agent.agent_wallet;
+          }
         } catch (e) {
           console.error('[can-go-live] failed to fetch wallet balance:', e.message);
         }
 
-        const genesis = db.prepare('SELECT id FROM agent_dna ORDER BY created_at_ms ASC LIMIT 1').get();
-        const isGenesis = genesis && genesis.id === agentId;
         const dryRunTrades = db.prepare(`
           SELECT COUNT(*) as count FROM dry_run_positions
           WHERE execution_mode = 'dry_run' AND (${isGenesis ? 'agent_dna_id = ? OR agent_dna_id IS NULL' : 'agent_dna_id = ?'})
         `).get(agentId).count;
-
-        const { liveWalletPubkey } = await import('../liveExecutor.js');
-        const address = liveWalletPubkey();
 
         const ok = balanceSol >= 0.1;
         const result = {
@@ -319,7 +329,7 @@ export function startWsServer(port = 4001) {
           ORDER BY d.at_ms DESC 
           LIMIT ?
         `).all(agentId, limit);
-        
+
         const stats = db.prepare(`
           SELECT 
             COUNT(*) as total,
@@ -334,10 +344,10 @@ export function startWsServer(port = 4001) {
 
         // Map db row to ConsciousnessDecision format
         const decisions = rows.map(mapDbDecision);
-        
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
-          count: decisions.length, 
+        res.end(JSON.stringify({
+          count: decisions.length,
           decisions,
           stats: {
             total: stats.total || 0,
@@ -368,7 +378,7 @@ export function startWsServer(port = 4001) {
           ORDER BY d.at_ms DESC 
           LIMIT ?
         `).all(limit);
-        
+
         const stats = db.prepare(`
           SELECT 
             COUNT(*) as total,
@@ -377,12 +387,12 @@ export function startWsServer(port = 4001) {
             SUM(CASE WHEN verdict = 'SKIP' THEN 1 ELSE 0 END) as skips
           FROM decision_logs 
         `).get();
-        
+
         const decisions = rows.map(mapDbDecision);
-        
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
-          count: decisions.length, 
+        res.end(JSON.stringify({
+          count: decisions.length,
           decisions,
           stats: {
             total: stats.total || 0,
@@ -421,11 +431,11 @@ export function startWsServer(port = 4001) {
 
           const { listBreeds } = await import('../db/agentDna.js');
           broadcast('AGENT_DNA_UPDATE', listBreeds());
-          
+
           const msg = `🔄 <b>Agent Mode Changed</b>\n\n` +
-                      `<b>Agent ID:</b> ${agentId}\n` +
-                      `<b>New Mode:</b> ${mode.toUpperCase()}`;
-          import('../telegram/send.js').then(({ sendTelegram }) => sendTelegram(msg)).catch(() => {});
+            `<b>Agent ID:</b> ${agentId}\n` +
+            `<b>New Mode:</b> ${mode.toUpperCase()}`;
+          import('../telegram/send.js').then(({ sendTelegram }) => sendTelegram(msg)).catch(() => { });
 
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true, mode }));
@@ -448,14 +458,14 @@ export function startWsServer(port = 4001) {
           const { createDna, listBreeds } = await import('../db/agentDna.js');
           const newAgent = createDna(payload);
           broadcast('AGENT_DNA_UPDATE', listBreeds());
-          
+
           const msg = `🧬 <b>New Agent Spawned!</b>\n\n` +
-                      `<b>Name:</b> ${newAgent.name}\n` +
-                      `<b>Breed:</b> ${newAgent.breed}\n` +
-                      `<b>Aggression:</b> ${newAgent.aggression}%\n` +
-                      `<b>Wallet:</b> <code>${newAgent.agent_wallet}</code>`;
-          import('../telegram/send.js').then(({ sendTelegram }) => sendTelegram(msg)).catch(() => {});
-          
+            `<b>Name:</b> ${newAgent.name}\n` +
+            `<b>Breed:</b> ${newAgent.breed}\n` +
+            `<b>Aggression:</b> ${newAgent.aggression}%\n` +
+            `<b>Wallet:</b> <code>${newAgent.agent_wallet}</code>`;
+          import('../telegram/send.js').then(({ sendTelegram }) => sendTelegram(msg)).catch(() => { });
+
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true, agent: newAgent }));
         } catch (err) {
@@ -493,10 +503,10 @@ export function startWsServer(port = 4001) {
 
           const { db } = await import('../db/connection.js');
           const { listBreeds } = await import('../db/agentDna.js');
-          
+
           db.prepare('DELETE FROM agent_dna WHERE id = ?').run(id);
           broadcast('AGENT_DNA_UPDATE', listBreeds());
-          
+
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true, message: 'Agent deleted successfully' }));
         } catch (err) {
@@ -592,18 +602,18 @@ export function startWsServer(port = 4001) {
   });
 
   wss = new WebSocketServer({ server });
-  
+
   server.listen(port, () => {
     console.log(`[ws-server] HTTP & WebSocket broadcasting on port ${port}`);
   });
-  
+
   wss.on('connection', (ws, req) => {
     clients.add(ws);
-    
+
     ws.on('close', () => {
       clients.delete(ws);
     });
-    
+
     // Send immediate initial state
     import('./stateManager.js').then(({ getMetrics, getStatuses, getLogHistory }) => {
       ws.send(JSON.stringify({ type: 'METRICS_UPDATE', payload: getMetrics() }));
@@ -614,7 +624,7 @@ export function startWsServer(port = 4001) {
     // Send recent consciousness decisions on connect
     const url = new URL(req.url, 'http://localhost');
     const agentId = url.searchParams.get('agentId');
-    
+
     if (agentId) {
       import('../db/connection.js').then(({ db }) => {
         try {
@@ -626,9 +636,9 @@ export function startWsServer(port = 4001) {
             ORDER BY d.at_ms DESC 
             LIMIT 30
           `).all(agentId);
-          
+
           const recentDecisions = rows.map(mapDbDecision);
-          
+
           if (recentDecisions.length > 0) {
             ws.send(JSON.stringify({ type: 'CONSCIOUSNESS_HISTORY', payload: recentDecisions }));
           }
@@ -648,8 +658,8 @@ export function startWsServer(port = 4001) {
       try {
         const agents = listBreeds();
         ws.send(JSON.stringify({ type: 'AGENT_DNA_UPDATE', payload: agents }));
-      } catch (_) {}
-    }).catch(() => {});
+      } catch (_) { }
+    }).catch(() => { });
   });
 
   // Forward consciousness stream decisions to all WS clients

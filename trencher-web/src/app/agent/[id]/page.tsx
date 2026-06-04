@@ -116,6 +116,38 @@ export default function AgentProfilePage() {
                   </div>
                 </div>
               </div>
+
+              {agent.agent_wallet && (
+                <div style={{ background: '#0a0a0f', padding: '16px', borderRadius: '6px', border: '1px dashed #00C89640' }}>
+                  <div style={{ color: '#00C896', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Agent Wallet</span>
+                    <span style={{ fontSize: '8px', background: 'rgba(0,200,150,0.1)', padding: '2px 6px', borderRadius: '4px' }}>FUNDING ADDRESS</span>
+                  </div>
+                  <div 
+                    onClick={() => agent.agent_wallet && navigator.clipboard.writeText(agent.agent_wallet)}
+                    style={{ 
+                      fontSize: '11px', 
+                      fontFamily: "'JetBrains Mono', monospace", 
+                      color: '#ddd', 
+                      background: 'rgba(0,0,0,0.3)',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      wordBreak: 'break-all',
+                      border: '1px solid #1a1a24',
+                      cursor: 'pointer',
+                      transition: 'border-color 0.2s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#00C896')}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = '#1a1a24')}
+                    title="Click to copy wallet address"
+                  >
+                    {agent.agent_wallet}
+                  </div>
+                  <div style={{ fontSize: '9px', color: '#666', marginTop: '8px', fontFamily: "'JetBrains Mono', monospace" }}>
+                    Transfer SOL to this address to start automatic Live Trading.
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
