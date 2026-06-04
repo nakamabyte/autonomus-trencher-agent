@@ -104,7 +104,25 @@ function DecisionRow({ d }: { d: ConsciousnessDecision }) {
         }}>
           {d.tier}
         </span>
-        <span style={{ color: '#fff', fontWeight: 700, letterSpacing: '.03em' }}>{d.symbol}</span>
+        <span style={{ color: '#fff', fontWeight: 700, letterSpacing: '.03em' }}>
+          {d.name ? `${d.name} (${d.symbol})` : d.symbol}
+        </span>
+        {d.mint && (
+          <a
+            href={`https://dexscreener.com/solana/${d.mint}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              color: '#888',
+              fontSize: '9px',
+              textDecoration: 'none',
+              borderBottom: '1px dashed #555'
+            }}
+            title="View on DexScreener"
+          >
+            {d.mint.slice(0, 4)}...{d.mint.slice(-4)}
+          </a>
+        )}
         {d.runner_signal && (
           <span style={{ color: '#00BBF9', fontSize: '9px' }}>{d.runner_signal}</span>
         )}
@@ -120,7 +138,7 @@ function DecisionRow({ d }: { d: ConsciousnessDecision }) {
       <div style={{ display: 'flex', gap: '12px', color: '#555', marginTop: '1px' }}>
         <span>
           conf: <span style={{ color: (d.confidence ?? 0) >= 0.8 ? '#00C896' : (d.confidence ?? 0) >= 0.75 ? '#FFB347' : '#aaa' }}>
-            {d.confidence != null ? d.confidence.toFixed(2) : 'N/A'}
+            {typeof d.confidence === 'number' ? d.confidence.toFixed(2) : 'N/A'}
           </span>
         </span>
         <span>

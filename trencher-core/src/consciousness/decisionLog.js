@@ -32,6 +32,7 @@ export function logDecision(candidate, analysis, verdict, confidence, reason, ti
     timestamp,
     tier,
     symbol:              candidate?.symbol || candidate?.token?.symbol || 'UNKNOWN',
+    name:                candidate?.name || candidate?.token?.name || null,
     mint:                candidate?.mint   || candidate?.token?.mint   || '',
     wallets_analyzed:    analysis?.wallet_count        ?? 0,
     holder_count:        analysis?.holder_count        ?? analysis?.holders?.total ?? 0,

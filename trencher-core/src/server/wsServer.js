@@ -4,6 +4,47 @@ import fs from 'fs';
 import path from 'path';
 import { consciousnessStream, getRecentDecisions } from '../consciousness/decisionLog.js';
 
+function extractTokenInfo(r) {
+  let symbol = r.selected_mint ? r.selected_mint.slice(0, 4) : 'UNK';
+  let name = null;
+  const parseJson = (jsonStr) => {
+    if (jsonStr && jsonStr !== '{}' && jsonStr !== 'null') {
+      try { return JSON.parse(jsonStr); } catch (e) {}
+    }
+    return null;
+  };
+  const tokenData = parseJson(r.token_json) || parseJson(r.candidate_json);
+  if (tokenData) {
+    symbol = tokenData.symbol || tokenData.token?.symbol || symbol;
+    name = tokenData.name || tokenData.token?.name || null;
+  }
+  return { symbol, name };
+}
+
+function mapDbDecision(r) {
+  const info = extractTokenInfo(r);
+  return {
+    timestamp: new Date(r.at_ms).toISOString().slice(11, 19),
+    tier: 'T1',
+    symbol: info.symbol,
+    name: info.name,
+    mint: r.selected_mint,
+    wallets_analyzed: 0,
+    holder_count: 0,
+    bundle_wallets: Math.round((r.bundle_wallets || 0) * 100),
+    rug_probability: Math.round((r.rug_probability || 0) * 100),
+    smart_money_overlap: r.smart_money_overlap || 0,
+    runner_signal: r.runner_signal || null,
+    kol_signal: r.kol_signal || null,
+    confidence: r.confidence,
+    verdict: r.verdict,
+    reason: r.reason,
+    strategy: r.strategy_id,
+    agent_name: r.agent_name || null,
+    entry_mcap: r.entry_mcap || null,
+  };
+}
+
 let wss;
 const clients = new Set();
 
@@ -280,25 +321,7 @@ export function startWsServer(port = 4001) {
         `).all(agentId, limit);
         
         // Map db row to ConsciousnessDecision format
-        const decisions = rows.map(r => ({
-          timestamp: new Date(r.at_ms).toISOString().slice(11, 19),
-          tier: 'T1',
-          symbol: r.selected_mint ? r.selected_mint.slice(0, 4) : 'UNK',
-          mint: r.selected_mint,
-          wallets_analyzed: 0,
-          holder_count: 0,
-          bundle_wallets: 0,
-          rug_probability: 0,
-          smart_money_overlap: 0,
-          runner_signal: null,
-          kol_signal: null,
-          confidence: r.confidence,
-          verdict: r.verdict,
-          reason: r.reason,
-          strategy: r.strategy_id,
-          agent_name: r.agent_name || null,
-          entry_mcap: null,
-        }));
+        const decisions = rows.map(mapDbDecision);
         
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ count: decisions.length, decisions }));
@@ -324,25 +347,7 @@ export function startWsServer(port = 4001) {
           LIMIT ?
         `).all(limit);
         
-        const decisions = rows.map(r => ({
-          timestamp: new Date(r.at_ms).toISOString().slice(11, 19),
-          tier: 'T1',
-          symbol: r.selected_mint ? r.selected_mint.slice(0, 4) : 'UNK',
-          mint: r.selected_mint,
-          wallets_analyzed: 0,
-          holder_count: 0,
-          bundle_wallets: 0,
-          rug_probability: 0,
-          smart_money_overlap: 0,
-          runner_signal: null,
-          kol_signal: null,
-          confidence: r.confidence,
-          verdict: r.verdict,
-          reason: r.reason,
-          strategy: r.strategy_id,
-          agent_name: r.agent_name || null,
-          entry_mcap: null,
-        }));
+        const decisions = rows.map(mapDbDecision);
         
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ count: decisions.length, decisions }));
@@ -352,48 +357,7 @@ export function startWsServer(port = 4001) {
       }
       return;
     }
-    if (agentDecisionsMatch && req.method === 'GET') {
-      if (!requireAuth()) return;
-      try {
-        const agentId = agentDecisionsMatch[1];
-        const limitParam = parsedUrl.searchParams.get('limit') || '30';
-        const limit = Math.min(parseInt(limitParam) || 30, 100);
-        const { db } = await import('../db/connection.js');
-        const rows = db.prepare(`
-          SELECT * FROM decision_logs 
-          WHERE strategy_id = ? 
-          ORDER BY at_ms DESC 
-          LIMIT ?
-        `).all(agentId, limit);
-        
-        // Map db row to ConsciousnessDecision format
-        const decisions = rows.map(r => ({
-          timestamp: new Date(r.at_ms).toISOString().slice(11, 19),
-          tier: 'T1',
-          symbol: r.selected_mint ? r.selected_mint.slice(0, 4) : 'UNK',
-          mint: r.selected_mint,
-          wallets_analyzed: 0,
-          holder_count: 0,
-          bundle_wallets: 0,
-          rug_probability: 0,
-          smart_money_overlap: 0,
-          runner_signal: null,
-          kol_signal: null,
-          confidence: r.confidence,
-          verdict: r.verdict,
-          reason: r.reason,
-          strategy: r.strategy_id,
-          entry_mcap: null,
-        }));
-        
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ count: decisions.length, decisions }));
-      } catch (err) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
-      }
-      return;
-    }
+
 
     // Set agent execution mode
     const setModeMatch = pathname.match(/^\/api\/agent\/([^\/]+)\/set-mode$/);
@@ -623,25 +587,7 @@ export function startWsServer(port = 4001) {
             LIMIT 30
           `).all(agentId);
           
-          const recentDecisions = rows.map(r => ({
-            timestamp: new Date(r.at_ms).toISOString().slice(11, 19),
-            tier: 'T1',
-            symbol: r.selected_mint ? r.selected_mint.slice(0, 4) : 'UNK',
-            mint: r.selected_mint,
-            wallets_analyzed: 0,
-            holder_count: 0,
-            bundle_wallets: Math.round((r.bundle_wallets || 0) * 100),
-            rug_probability: Math.round((r.rug_probability || 0) * 100),
-            smart_money_overlap: r.smart_money_overlap || 0,
-            runner_signal: r.runner_signal || null,
-            kol_signal: r.kol_signal || null,
-            confidence: r.confidence,
-            verdict: r.verdict,
-            reason: r.reason,
-            strategy: r.strategy_id,
-            agent_name: r.agent_name,
-            entry_mcap: r.entry_mcap || null,
-          }));
+          const recentDecisions = rows.map(mapDbDecision);
           
           if (recentDecisions.length > 0) {
             ws.send(JSON.stringify({ type: 'CONSCIOUSNESS_HISTORY', payload: recentDecisions }));

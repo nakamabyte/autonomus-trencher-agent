@@ -7,6 +7,7 @@ export interface ConsciousnessDecision {
   timestamp: string;
   tier: 'T1' | 'T2';
   symbol: string;
+  name?: string | null;
   mint: string;
   wallets_analyzed: number;
   holder_count: number;
@@ -77,14 +78,7 @@ export function useConsciousnessStream({
         const url = agentId 
           ? `/api/core-proxy/agent/${agentId}/decisions?limit=${maxDecisions}`
           : `/api/core-proxy/decisions?limit=${maxDecisions}`;
-          
-        const headers: Record<string, string> = {};
-        if (typeof window !== 'undefined') {
-          const secret = localStorage.getItem('trencher_secret_key');
-          if (secret) headers['x-client-key'] = secret;
-        }
-
-        const res = await fetch(url, { headers });
+        const res = await fetch(url);
           if (res.ok) {
             const data = await res.json();
             if (data && Array.isArray(data.decisions)) {
