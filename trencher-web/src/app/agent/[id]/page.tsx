@@ -15,11 +15,10 @@ export default function AgentProfilePage() {
 
   const agent = agents.find(a => a.id === id || a.id.startsWith(id));
 
-  // Find strategy id based on breed for filtering
+  // Filter stream by the specific agent's ID so we only see its actual thoughts
   let strategyFilter: string | undefined = undefined;
   if (agent) {
-    const breedConfig = BREEDS[agent.breed as keyof typeof BREEDS];
-    strategyFilter = breedConfig?.strategyId || undefined;
+    strategyFilter = agent.id;
   }
 
   return (

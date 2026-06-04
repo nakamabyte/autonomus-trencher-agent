@@ -6,12 +6,12 @@
     "url": "https://github.com/zero520-dot/trencher-agent",
     "source": "github"
   },
-  "version": "1.0.1",
+  "version": "1.0.5",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "autonomustrench-mcp-server",
-      "version": "1.0.1",
+      "version": "1.0.5",
       "transport": {
         "type": "stdio"
       },

@@ -15,7 +15,7 @@ async function getWalletBalance(connection, walletAddress) {
   }
 }
 
-function logAgentDecision(db, agentId, signal, decision) {
+function logAgentDecision(db, agentId, signal, decision, mode = 'live') {
   try {
     db.prepare(`
       INSERT INTO decision_logs (
@@ -25,7 +25,7 @@ function logAgentDecision(db, agentId, signal, decision) {
     `).run(
       Date.now(),
       signal.mint,
-      'live',
+      mode,
       'evaluate',
       decision.verdict,
       decision.confidence,
@@ -33,6 +33,27 @@ function logAgentDecision(db, agentId, signal, decision) {
       '{}', '{}', '{}', '{}', '{}',
       agentId // Using strategy_id as agentId for now to differentiate
     );
+
+    import('../server/wsServer.js').then(({ broadcast }) => {
+      broadcast('CONSCIOUSNESS_DECISION', {
+        timestamp: new Date().toISOString().slice(11, 19),
+        tier: 'T1',
+        symbol: signal.symbol || signal.mint.slice(0, 4),
+        mint: signal.mint,
+        wallets_analyzed: 0,
+        holder_count: 0,
+        bundle_wallets: Math.round((signal.bundler_ratio || 0) * 100),
+        rug_probability: Math.round((signal.rug_probability || 0) * 100),
+        smart_money_overlap: signal.smart_money_overlap || 0,
+        runner_signal: signal.runner_signal || null,
+        kol_signal: signal.kol_signal || null,
+        confidence: decision.confidence,
+        verdict: decision.verdict,
+        reason: decision.reason,
+        strategy: agentId, // The frontend filters by strategy, so we pass agentId here
+        entry_mcap: signal.mcap_usd || null,
+      });
+    }).catch(err => console.error('[agentRunner] error broadcasting:', err.message));
   } catch (err) {
     console.error(`[agentRunner] failed to log decision for ${agentId}:`, err.message);
   }
@@ -45,16 +66,16 @@ export function startAgentTradingLoop(agentId, db, sharedSignalFeed, connection)
   }
 
   const agent = db.prepare('SELECT * FROM agent_dna WHERE id = ?').get(agentId);
-  if (!agent || agent.execution_mode !== 'live') return;
+  if (!agent || !['live', 'dry_run'].includes(agent.execution_mode)) return;
 
   const dna = agent.dna_config ? JSON.parse(agent.dna_config) : {};
 
   console.log(`[agent] starting trading loop for ${agent.name} (${agent.breed})`);
 
   const handler = async (signal) => {
-    // Skip if agent is no longer live
+    // Skip if agent is no longer active
     const current = db.prepare('SELECT execution_mode, agent_wallet FROM agent_dna WHERE id = ?').get(agentId);
-    if (!current || current.execution_mode !== 'live') {
+    if (!current || !['live', 'dry_run'].includes(current.execution_mode)) {
       stopAgentTradingLoop(agentId, sharedSignalFeed);
       return;
     }
@@ -65,10 +86,15 @@ export function startAgentTradingLoop(agentId, db, sharedSignalFeed, connection)
     }
 
     // Check if wallet still has enough SOL
-    const balance = await getWalletBalance(connection, current.agent_wallet);
-    if (balance < 0.02) {
-      console.log(`[agent] ${agent.name} low balance (${balance} SOL), pausing`);
-      return;
+    let balance = 0;
+    if (current.execution_mode === 'dry_run') {
+      balance = 1.0; // Virtual balance for simulation
+    } else {
+      balance = await getWalletBalance(connection, current.agent_wallet);
+      if (balance < 0.02) {
+        console.log(`[agent] ${agent.name} low balance (${balance} SOL), pausing`);
+        return;
+      }
     }
 
     // Evaluate signal using this agent's DNA config
@@ -79,7 +105,7 @@ export function startAgentTradingLoop(agentId, db, sharedSignalFeed, connection)
     }
 
     // Log to per-agent consciousness feed
-    logAgentDecision(db, agentId, signal, decision);
+    logAgentDecision(db, agentId, signal, decision, current.execution_mode);
   };
 
   sharedSignalFeed.on('signal', handler);
@@ -99,16 +125,16 @@ export function stopAgentTradingLoop(agentId, sharedSignalFeed) {
 export function resumeActiveAgents(db, sharedSignalFeed, connection) {
   // we assume agents table has status column as mentioned in the brief
   // however `connection.js` doesn't show a `status` column for `agent_dna`
-  // so we just rely on execution_mode = 'live'
+  // so we just rely on execution_mode = 'live' or 'dry_run'
   try {
     const liveAgents = db.prepare(`
-      SELECT id FROM agent_dna WHERE execution_mode = 'live'
+      SELECT id FROM agent_dna WHERE execution_mode IN ('live', 'dry_run')
     `).all();
 
     for (const agent of liveAgents) {
       startAgentTradingLoop(agent.id, db, sharedSignalFeed, connection);
     }
-    console.log(`[agent] resumed ${liveAgents.length} live agents`);
+    console.log(`[agent] resumed ${liveAgents.length} agents`);
   } catch (err) {
     console.error('[agent] Error resuming active agents:', err.message);
   }
