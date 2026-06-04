@@ -1,16 +1,44 @@
 import { decrypt } from '../security/encryption.js';
+import { executeJupiterSwapWithKey, parseKeypair } from '../liveExecutor.js';
 
-// Stub for executeBuy - this would normally integrate with Jupiter
+const WSOL_MINT = 'So11111111111111111111111111111111111111112';
+
 async function executeBuy({ mint, amountSol, wallet, walletKey, slippageBps }) {
-  console.log(`[execute] Mock buying ${amountSol} SOL of ${mint} using agent wallet ${wallet}`);
-  return { success: true, price: 0.0001, mcap: 50000 }; 
+  console.log(`[execute] Initiating real trade: ${amountSol} SOL of ${mint} using agent wallet ${wallet}`);
+  
+  try {
+    const keypair = parseKeypair(walletKey);
+    if (!keypair) {
+      throw new Error('Failed to parse agent keypair from decrypted key.');
+    }
+
+    const amountLamports = Math.floor(amountSol * 1e9);
+
+    // Swap WSOL -> Target Mint
+    const result = await executeJupiterSwapWithKey(keypair, {
+      inputMint: WSOL_MINT,
+      outputMint: mint,
+      amount: amountLamports,
+      slippageBps: slippageBps || 300,
+      useJito: false,
+    });
+
+    console.log(`[execute] ✅ Jupiter Swap Success! Tx: ${result.signature}`);
+    return { success: true, mcap: null, signature: result.signature };
+  } catch (error) {
+    console.error(`[execute] ❌ Jupiter Swap Failed: ${error.message}`);
+    return { success: false, error: error.message };
+  }
 }
 
 function calculatePositionSize(balance, dna) {
   // Aggression determines position sizing
   // conservative: smaller positions, degen: bigger
   const riskFraction = 0.1 + ((dna.aggression || 50) / 100) * 0.3;  // 10% to 40%
-  return Math.min(balance * riskFraction, balance - 0.02);  // keep 0.02 for fees
+  // Hard cap to 0.05 SOL to protect funds during initial testing!
+  const cap = 0.05;
+  const calculatedSize = Math.min(balance * riskFraction, balance - 0.02);  // keep 0.02 for fees
+  return Math.min(calculatedSize, cap);
 }
 
 export function getAgentWalletKey(db, agentId) {
@@ -35,6 +63,13 @@ function recordPosition(db, pos) {
 
 function notifyAgentTrade(agent, signal, side) {
   console.log(`[notify] Agent ${agent.name} ${side} ${signal.symbol || signal.mint}`);
+  const msg = `🤖 <b>Agent Trade Executed</b>\n\n` +
+              `<b>Agent:</b> ${agent.name}\n` +
+              `<b>Action:</b> ${side}\n` +
+              `<b>Token:</b> ${signal.symbol || signal.mint}\n` +
+              `<b>MCAP:</b> $${signal.mcap_usd || 0}\n` +
+              `<b>Mode:</b> ${agent.execution_mode.toUpperCase()}`;
+  import('../telegram/send.js').then(({ sendTelegram }) => sendTelegram(msg)).catch(() => {});
 }
 
 export async function executeAgentTrade(agent, signal, decision, dna, db, balance) {
@@ -47,7 +82,29 @@ export async function executeAgentTrade(agent, signal, decision, dna, db, balanc
     return;
   }
 
-  // Execute via existing Jupiter execution engine
+  if (agent.execution_mode === 'dry_run') {
+    // Only simulate execution
+    console.log(`[agent] ${agent.name} is in dry_run mode. Simulating trade...`);
+    recordPosition(db, {
+      agent_dna_id: agent.id,
+      mint: signal.mint,
+      symbol: signal.symbol || signal.mint.slice(0, 4),
+      entry_mcap: signal.mcap_usd || 0,
+      size_sol: positionSize,
+      tp_percent: dna.tp_percent || 50,
+      sl_percent: dna.sl_percent || -15,
+      trailing_enabled: dna.trailing_enabled ? 1 : 0,
+      trailing_percent: dna.trailing_percent || 15,
+      execution_mode: 'dry_run',
+      opened_at_ms: Date.now(),
+      snapshot_json: '{}'
+    });
+    console.log(`[agent] ${agent.name} simulated BUY ${signal.symbol || signal.mint}`);
+    notifyAgentTrade(agent, signal, 'DRY_BUY');
+    return;
+  }
+
+  // Live execution mode!
   const result = await executeBuy({
     mint: signal.mint,
     amountSol: positionSize,
@@ -62,7 +119,7 @@ export async function executeAgentTrade(agent, signal, decision, dna, db, balanc
       agent_dna_id: agent.id,
       mint: signal.mint,
       symbol: signal.symbol || signal.mint.slice(0, 4),
-      entry_mcap: signal.mcap_usd || result.mcap,
+      entry_mcap: signal.mcap_usd || result.mcap || 0,
       size_sol: positionSize,
       tp_percent: dna.tp_percent || 50,
       sl_percent: dna.sl_percent || -15,
@@ -70,10 +127,10 @@ export async function executeAgentTrade(agent, signal, decision, dna, db, balanc
       trailing_percent: dna.trailing_percent || 15,
       execution_mode: 'live',
       opened_at_ms: Date.now(),
-      snapshot_json: '{}'
+      snapshot_json: JSON.stringify({ signature: result.signature })
     });
 
-    console.log(`[agent] ${agent.name} BUY ${signal.symbol || signal.mint} at ${signal.mcap_usd || result.mcap}`);
-    notifyAgentTrade(agent, signal, 'BUY');
+    console.log(`[agent] ${agent.name} LIVE BUY ${signal.symbol || signal.mint} | Sig: ${result.signature}`);
+    notifyAgentTrade(agent, signal, 'LIVE_BUY');
   }
 }

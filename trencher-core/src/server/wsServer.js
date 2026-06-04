@@ -283,6 +283,11 @@ export function startWsServer(port = 4001) {
 
           const { listBreeds } = await import('../db/agentDna.js');
           broadcast('AGENT_DNA_UPDATE', listBreeds());
+          
+          const msg = `🔄 <b>Agent Mode Changed</b>\n\n` +
+                      `<b>Agent ID:</b> ${agentId}\n` +
+                      `<b>New Mode:</b> ${mode.toUpperCase()}`;
+          import('../telegram/send.js').then(({ sendTelegram }) => sendTelegram(msg)).catch(() => {});
 
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true, mode }));
@@ -305,6 +310,14 @@ export function startWsServer(port = 4001) {
           const { createDna, listBreeds } = await import('../db/agentDna.js');
           const newAgent = createDna(payload);
           broadcast('AGENT_DNA_UPDATE', listBreeds());
+          
+          const msg = `🧬 <b>New Agent Spawned!</b>\n\n` +
+                      `<b>Name:</b> ${newAgent.name}\n` +
+                      `<b>Breed:</b> ${newAgent.breed}\n` +
+                      `<b>Aggression:</b> ${newAgent.aggression}%\n` +
+                      `<b>Wallet:</b> <code>${newAgent.agent_wallet}</code>`;
+          import('../telegram/send.js').then(({ sendTelegram }) => sendTelegram(msg)).catch(() => {});
+          
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true, agent: newAgent }));
         } catch (err) {

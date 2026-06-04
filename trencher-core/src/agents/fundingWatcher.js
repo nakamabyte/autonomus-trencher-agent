@@ -6,10 +6,21 @@ const MIN_FUNDING_SOL = 0.1;  // minimum for auto-activate
 // Stub notifications since we don't have the real ones yet
 function notifyAgentActivated(agent, balanceSol) {
   console.log(`[notify] Agent ${agent.name} is now LIVE with ${balanceSol.toFixed(4)} SOL`);
+  const msg = `⚡ <b>Agent Auto-Activated!</b>\n\n` +
+              `<b>Agent:</b> ${agent.name}\n` +
+              `<b>Balance:</b> ${balanceSol.toFixed(4)} SOL\n` +
+              `<b>Mode:</b> LIVE 🟢\n` +
+              `<i>Trading loop is now active.</i>`;
+  import('../telegram/send.js').then(({ sendTelegram }) => sendTelegram(msg)).catch(() => {});
 }
 
 function notifyAgentFunded(agent, balanceSol) {
   console.log(`[notify] Agent ${agent.name} funded with ${balanceSol.toFixed(4)} SOL but auto_activate is OFF`);
+  const msg = `💰 <b>Agent Funded (Dry Run)</b>\n\n` +
+              `<b>Agent:</b> ${agent.name}\n` +
+              `<b>Balance:</b> ${balanceSol.toFixed(4)} SOL\n` +
+              `<i>Auto-activate is OFF. Switch to LIVE manually.</i>`;
+  import('../telegram/send.js').then(({ sendTelegram }) => sendTelegram(msg)).catch(() => {});
 }
 
 export function startFundingWatcher(connection, db, sharedSignalFeed) {
