@@ -264,7 +264,7 @@ export function startWsServer(port = 4001) {
         }
 
         const agentKey = req.headers['x-agent-key'];
-        if (agent.agent_secret_key && agent.agent_secret_key !== agentKey) {
+        if (!agent.agent_secret_key || agent.agent_secret_key !== agentKey) {
           res.writeHead(401, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Unauthorized: invalid agent secret key' }));
           return;
@@ -434,7 +434,7 @@ export function startWsServer(port = 4001) {
           }
 
           const agentKey = req.headers['x-agent-key'];
-          if (agent.agent_secret_key && agent.agent_secret_key !== agentKey) {
+          if (!agent.agent_secret_key || agent.agent_secret_key !== agentKey) {
             res.writeHead(401, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Unauthorized: invalid agent secret key' }));
             return;
