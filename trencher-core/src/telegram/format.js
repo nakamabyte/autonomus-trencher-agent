@@ -1,4 +1,15 @@
 import { escapeHtml, fmtPct, fmtSol, fmtUsd, short, gmgnLink, txLink, accountLink } from '../format.js';
+import { db } from '../db/connection.js';
+
+function getAgentName(id) {
+  if (!id) return null;
+  try {
+    const row = db.prepare('SELECT name FROM agent_dna WHERE id = ?').get(id);
+    return row ? row.name : null;
+  } catch (e) {
+    return null;
+  }
+}
 
 export function formatRecipients(shareholders) {
   if (!shareholders?.length) return '';
@@ -21,8 +32,13 @@ export function candidateSummary(candidate, decision = null) {
   const chartWindow = candidate.chart?.windows?.find(row => row.label === 'ath_context_24h_5m' && row.available)
     || candidate.chart?.windows?.find(row => row.label === 'recent_24h_5m' && row.available);
   const route = candidate.signals?.label || signalLabel(candidate.signals);
+  const strategyId = candidate.signals?.strategy || candidate.strategy || decision?.strategy_id;
+  const agentName = getAgentName(strategyId);
+  const agentLabel = agentName ? `${escapeHtml(agentName)} (${escapeHtml(strategyId)})` : escapeHtml(strategyId || 'System');
+
   const lines = [
     `🌀 <b>Trencher Agent Candidate</b>`,
+    `Agent: <b>${agentLabel}</b>`,
     '',
     `Signal: <b>${escapeHtml(route)}</b>`,
     candidate.token.name || candidate.token.symbol ? `Name: <b>${escapeHtml(candidate.token.name || candidate.token.symbol)}${candidate.token.symbol && candidate.token.name ? ` (${escapeHtml(candidate.token.symbol)})` : ''}</b>` : null,
@@ -85,8 +101,13 @@ export function compactCandidateLine(row, index = null) {
 export function batchRevealSummary(batchId, rows, decision, triggerCandidateId = null) {
   const selected = rows.find(row => row.id === Number(decision.selected_candidate_id));
   const trigger = rows.find(row => row.id === Number(triggerCandidateId));
+  const strategyId = decision?.strategy_id || trigger?.candidate?.signals?.strategy || trigger?.candidate?.strategy;
+  const agentName = getAgentName(strategyId);
+  const agentLabel = agentName ? `${escapeHtml(agentName)} (${escapeHtml(strategyId)})` : escapeHtml(strategyId || 'System');
+
   const lines = [
     '🧭 <b>Trencher Agent Screening</b>',
+    `Agent: <b>${agentLabel}</b>`,
     '',
     `Batch: <b>#${batchId}</b> · Screened: <b>${rows.length}</b>`,
     trigger ? `Trigger: ${compactCandidateLine(trigger)}` : null,
@@ -104,10 +125,13 @@ export function formatPosition(position) {
     : position.entry_mcap && position.high_water_mcap
       ? (Number(position.high_water_mcap) / Number(position.entry_mcap) - 1) * 100
       : 0;
+  const agentName = getAgentName(position.strategy_id);
+  const agentLabel = agentName ? `${escapeHtml(agentName)} (${escapeHtml(position.strategy_id)})` : escapeHtml(position.strategy_id || 'sniper');
+
   return [
     `📍 <b>${escapeHtml(position.symbol || short(position.mint))}</b> #${position.id}`,
     `Token: <a href="${gmgnLink(position.mint)}">${short(position.mint)}</a>`,
-    `Status: <b>${escapeHtml(position.status)}</b> · Mode: <b>${escapeHtml(position.execution_mode || 'dry_run')}</b> · Strategy: <b>${escapeHtml(position.strategy_id || 'sniper')}</b>`,
+    `Status: <b>${escapeHtml(position.status)}</b> · Mode: <b>${escapeHtml(position.execution_mode || 'dry_run')}</b> · Agent: <b>${agentLabel}</b>`,
     position.entry_signature ? `Entry TX: <a href="${txLink(position.entry_signature)}">${short(position.entry_signature)}</a>` : null,
     `Entry mcap: ${fmtUsd(position.entry_mcap)} · High: ${fmtUsd(position.high_water_mcap)}`,
     `Size: ${fmtSol(position.size_sol)} SOL · PnL: ${fmtPct(pnl)}`,
