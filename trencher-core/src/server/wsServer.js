@@ -144,6 +144,35 @@ export function startWsServer(port = 4001) {
     }
 
     // MCP trades history endpoint
+    const agentTradesMatch = pathname.match(/^\/api\/agent\/([^\/]+)\/trades$/);
+    if (agentTradesMatch && req.method === 'GET') {
+      try {
+        const agentId = agentTradesMatch[1];
+        const limitParam = parsedUrl.searchParams.get('limit');
+        const limit = Math.min(parseInt(limitParam) || 10, 50);
+        const { db } = await import('../db/connection.js');
+        const trades = db.prepare(`
+          SELECT symbol, pnl_percent, pnl_sol, exit_reason, entry_mcap,
+            execution_mode, entry_signature, exit_signature,
+            (closed_at_ms - opened_at_ms) / 60000.0 as hold_minutes,
+            datetime(opened_at_ms/1000, 'unixepoch') as opened_at,
+            datetime(closed_at_ms/1000, 'unixepoch') as closed_at
+          FROM dry_run_positions
+          WHERE status = 'closed' AND agent_dna_id = ?
+          ORDER BY closed_at_ms DESC
+          LIMIT ?
+        `).all(agentId, limit);
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ count: trades.length, trades }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // MCP global trades history endpoint
     if (pathname === '/api/trades' && req.method === 'GET') {
       if (!requireAuth()) return;
       try {

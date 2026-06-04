@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAgentDna } from '@/hooks/useAgentDna';
 import { AgentProfileCard } from '@/components/platform/AgentProfileCard';
 import { ConsciousnessStream } from '@/components/platform/ConsciousnessStream';
+import { AgentTradingHistory } from '@/components/platform/AgentTradingHistory';
 import { BREEDS } from '@/constants/breeds';
 
 export default function AgentProfilePage() {
@@ -171,13 +172,22 @@ export default function AgentProfilePage() {
                   </div>
                 </div>
               )}
+              
             </div>
           )}
         </div>
 
-        {/* Right Column: Consciousness Stream */}
-        <div style={{ flex: 1, position: 'relative' }}>
-          <ConsciousnessStream strategyFilter={strategyFilter} />
+        {/* Right Area: Split into History and Stream */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'row' }}>
+          {/* Middle Column: Trading History */}
+          <div style={{ flex: 1, borderRight: '1px solid #1a1a24', position: 'relative', overflowY: 'auto', padding: '24px' }}>
+            <AgentTradingHistory agentId={id} />
+          </div>
+          
+          {/* Right Column: Consciousness Stream */}
+          <div style={{ flex: 1, position: 'relative' }}>
+            <ConsciousnessStream strategyFilter={strategyFilter} />
+          </div>
         </div>
       </div>
     </div>
