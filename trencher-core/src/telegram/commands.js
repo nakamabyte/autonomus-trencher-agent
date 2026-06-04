@@ -110,6 +110,20 @@ Welcome! Trencher Agent is your personal AI robot that automatically finds and t
     return bot.sendMessage(chatId, helpText, { parse_mode: 'HTML' });
   }
 
+  if (text.startsWith('/agentkeys')) {
+    const agents = db.prepare('SELECT id, name, breed, agent_secret_key FROM agent_dna').all();
+    if (!agents.length) return bot.sendMessage(chatId, 'No agents found in database.');
+    
+    let msg = `🔐 <b>Agent Secret Keys</b>\n\n`;
+    for (const agent of agents) {
+      msg += `• <b>${escapeHtml(agent.name)}</b> (${agent.breed})\n`;
+      msg += `  <code>${agent.agent_secret_key || 'No Key Set'}</code>\n\n`;
+    }
+    msg += `<i>Use these keys to switch between Live and Dry Run modes. Keep them secure!</i>`;
+    
+    return bot.sendMessage(chatId, msg, { parse_mode: 'HTML' });
+  }
+
   if (text.startsWith('/deploy')) {
     const deployText = `🤖 <b>Deploy Trencher Agent</b>
     
@@ -623,6 +637,7 @@ export function setupTelegram() {
     { command: 'strategy', description: 'Show/switch strategy' },
     { command: 'stratset', description: 'Set strategy config (stratset id key value)' },
     { command: 'positions', description: 'Show dry-run positions' },
+    { command: 'agentkeys', description: 'Show secret keys for all agents' },
     { command: 'candidate', description: 'Show candidate by mint' },
     { command: 'filters', description: 'Show filters' },
     { command: 'pnl', description: 'Show saved-wallet PnL' },
