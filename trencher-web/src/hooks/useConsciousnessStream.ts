@@ -25,6 +25,7 @@ export interface ConsciousnessDecision {
 interface UseConsciousnessStreamOptions {
   maxDecisions?: number;
   reconnectDelay?: number;   // base delay ms (doubles on each retry, capped at 30s)
+  agentId?: string;          // if provided, fetches past history for this agent
 }
 
 interface UseConsciousnessStreamReturn {
@@ -50,6 +51,7 @@ interface UseConsciousnessStreamReturn {
 export function useConsciousnessStream({
   maxDecisions = 30,
   reconnectDelay = 2000,
+  agentId,
 }: UseConsciousnessStreamOptions = {}): UseConsciousnessStreamReturn {
   const [decisions, setDecisions] = useState<ConsciousnessDecision[]>([]);
   const [connected, setConnected] = useState(false);
@@ -61,6 +63,32 @@ export function useConsciousnessStream({
 
   useEffect(() => {
     isMountedRef.current = true;
+
+    // 1. Fetch initial REST history (agent-specific or global)
+    const fetchHistory = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
+        const url = agentId 
+          ? `${apiUrl}/api/agent/${agentId}/decisions?limit=${maxDecisions}`
+          : `${apiUrl}/api/decisions?limit=${maxDecisions}`;
+        const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && Array.isArray(data.decisions)) {
+              setDecisions(prev => {
+                const existingMap = new Map(prev.map(d => [`${d.timestamp}-${d.mint}`, d]));
+                data.decisions.forEach((d: ConsciousnessDecision) => existingMap.set(`${d.timestamp}-${d.mint}`, d));
+                return Array.from(existingMap.values())
+                  .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+                  .slice(0, maxDecisions);
+              });
+            }
+          }
+        } catch (err) {
+        console.error('Failed to fetch consciousness history:', err);
+      }
+    };
+    fetchHistory();
 
     const wsUrl =
       process.env.NEXT_PUBLIC_CONSCIOUSNESS_WS_URL ||

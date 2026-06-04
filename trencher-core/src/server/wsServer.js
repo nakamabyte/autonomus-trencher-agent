@@ -261,6 +261,134 @@ export function startWsServer(port = 4001) {
       return;
     }
 
+    // Get agent decisions history
+    const agentDecisionsMatch = pathname.match(/^\/api\/agent\/([^\/]+)\/decisions$/);
+    if (agentDecisionsMatch && req.method === 'GET') {
+      if (!requireAuth()) return;
+      try {
+        const agentId = agentDecisionsMatch[1];
+        const limitParam = parsedUrl.searchParams.get('limit') || '30';
+        const limit = Math.min(parseInt(limitParam) || 30, 100);
+        const { db } = await import('../db/connection.js');
+        const rows = db.prepare(`
+          SELECT * FROM decision_logs 
+          WHERE strategy_id = ? 
+          ORDER BY at_ms DESC 
+          LIMIT ?
+        `).all(agentId, limit);
+        
+        // Map db row to ConsciousnessDecision format
+        const decisions = rows.map(r => ({
+          timestamp: new Date(r.at_ms).toISOString().slice(11, 19),
+          tier: 'T1',
+          symbol: r.selected_mint ? r.selected_mint.slice(0, 4) : 'UNK',
+          mint: r.selected_mint,
+          wallets_analyzed: 0,
+          holder_count: 0,
+          bundle_wallets: 0,
+          rug_probability: 0,
+          smart_money_overlap: 0,
+          runner_signal: null,
+          kol_signal: null,
+          confidence: r.confidence,
+          verdict: r.verdict,
+          reason: r.reason,
+          strategy: r.strategy_id,
+          entry_mcap: null,
+        }));
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ count: decisions.length, decisions }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // Get global decisions history
+    if (pathname === '/api/decisions' && req.method === 'GET') {
+      if (!requireAuth()) return;
+      try {
+        const limitParam = parsedUrl.searchParams.get('limit') || '30';
+        const limit = Math.min(parseInt(limitParam) || 30, 100);
+        const { db } = await import('../db/connection.js');
+        const rows = db.prepare(`
+          SELECT * FROM decision_logs 
+          ORDER BY at_ms DESC 
+          LIMIT ?
+        `).all(limit);
+        
+        const decisions = rows.map(r => ({
+          timestamp: new Date(r.at_ms).toISOString().slice(11, 19),
+          tier: 'T1',
+          symbol: r.selected_mint ? r.selected_mint.slice(0, 4) : 'UNK',
+          mint: r.selected_mint,
+          wallets_analyzed: 0,
+          holder_count: 0,
+          bundle_wallets: 0,
+          rug_probability: 0,
+          smart_money_overlap: 0,
+          runner_signal: null,
+          kol_signal: null,
+          confidence: r.confidence,
+          verdict: r.verdict,
+          reason: r.reason,
+          strategy: r.strategy_id,
+          entry_mcap: null,
+        }));
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ count: decisions.length, decisions }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+    if (agentDecisionsMatch && req.method === 'GET') {
+      if (!requireAuth()) return;
+      try {
+        const agentId = agentDecisionsMatch[1];
+        const limitParam = parsedUrl.searchParams.get('limit') || '30';
+        const limit = Math.min(parseInt(limitParam) || 30, 100);
+        const { db } = await import('../db/connection.js');
+        const rows = db.prepare(`
+          SELECT * FROM decision_logs 
+          WHERE strategy_id = ? 
+          ORDER BY at_ms DESC 
+          LIMIT ?
+        `).all(agentId, limit);
+        
+        // Map db row to ConsciousnessDecision format
+        const decisions = rows.map(r => ({
+          timestamp: new Date(r.at_ms).toISOString().slice(11, 19),
+          tier: 'T1',
+          symbol: r.selected_mint ? r.selected_mint.slice(0, 4) : 'UNK',
+          mint: r.selected_mint,
+          wallets_analyzed: 0,
+          holder_count: 0,
+          bundle_wallets: 0,
+          rug_probability: 0,
+          smart_money_overlap: 0,
+          runner_signal: null,
+          kol_signal: null,
+          confidence: r.confidence,
+          verdict: r.verdict,
+          reason: r.reason,
+          strategy: r.strategy_id,
+          entry_mcap: null,
+        }));
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ count: decisions.length, decisions }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
     // Set agent execution mode
     const setModeMatch = pathname.match(/^\/api\/agent\/([^\/]+)\/set-mode$/);
     if (setModeMatch && req.method === 'POST') {
