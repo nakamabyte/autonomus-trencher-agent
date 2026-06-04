@@ -4,8 +4,8 @@ import { NextResponse } from 'next/server';
 // without proper monorepo setup or relative paths that reach outside the app.
 // In a real integration, this would call the core db and agentWallet functions.
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   
   // Example response for balance
   return NextResponse.json({
@@ -16,8 +16,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
   });
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const body = await request.json();
   
   if (body.action === 'withdraw') {
