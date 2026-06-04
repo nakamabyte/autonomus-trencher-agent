@@ -81,7 +81,7 @@ export function startAgentTradingLoop(agentId, db, sharedSignalFeed, connection)
       return;
     }
 
-    if (!current.agent_wallet) {
+    if (current.execution_mode === 'live' && !current.agent_wallet) {
       console.log(`[agent] ${agent.name} has no wallet, pausing`);
       return;
     }
