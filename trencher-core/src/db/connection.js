@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import { DB_PATH } from '../config.js';
+import { randomUUID } from 'crypto';
 
 export const db = new Database(DB_PATH);
 
@@ -571,3 +572,24 @@ function cleanupOldSignals() {
 // Run cleanup immediately on startup, then every 24 hours
 cleanupOldSignals();
 setInterval(cleanupOldSignals, 24 * 60 * 60 * 1000);
+
+// Auto-backfill agent_secret_key for existing agents
+function backfillAgentKeys() {
+  try {
+    const agents = db.prepare('SELECT id, name FROM agent_dna WHERE agent_secret_key IS NULL').all();
+    if (agents.length > 0) {
+      const stmt = db.prepare('UPDATE agent_dna SET agent_secret_key = ? WHERE id = ?');
+      db.transaction(() => {
+        for (const agent of agents) {
+          const key = randomUUID();
+          stmt.run(key, agent.id);
+          console.log(`[db] Backfilled secret key for agent ${agent.name} (${agent.id}): ${key}`);
+        }
+      })();
+      console.log(`[db] Completed backfilling ${agents.length} agent secret keys. Be sure to save these keys!`);
+    }
+  } catch (e) {
+    // Ignore errors if the table/column doesn't exist yet
+  }
+}
+backfillAgentKeys();
