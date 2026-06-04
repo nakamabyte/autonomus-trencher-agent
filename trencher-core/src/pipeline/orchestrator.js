@@ -33,6 +33,8 @@ function isActiveHour() {
 setDegenHandler(maybeProcessDegenCandidate);
 setCandidateHandler(processCandidateFromSignals);
 
+import { sharedSignalFeed } from '../signals/sharedSignalFeed.js';
+
 export async function processCandidateFromSignals(signals) {
   try {
   // Pause execution during dead zones
@@ -40,6 +42,9 @@ export async function processCandidateFromSignals(signals) {
     console.log(`[scheduler] skipped processing ${signals.mint.slice(0, 8)}... (PAUSE HOUR)`);
     return;
   }
+
+  // Broadcast signal to all listening custom agents (agentRunner.js)
+  sharedSignalFeed.broadcast(signals);
 
   const strat = activeStrategy();
   const { getBreedForStrategy } = await import('../db/agentDna.js');

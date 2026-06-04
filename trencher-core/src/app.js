@@ -8,6 +8,11 @@ import { processCandidateFromSignals, maybeProcessDegenCandidate } from './pipel
 import { sendTelegram } from './telegram/send.js';
 import { makeFailureTracker } from './utils.js';
 import { clearExpiredCooldowns } from './utils/mintCooldown.js';
+import { db } from './db/connection.js';
+import { sharedSignalFeed } from './signals/sharedSignalFeed.js';
+import { Connection } from '@solana/web3.js';
+import { SOLANA_RPC_URL } from './config.js';
+import { resumeActiveAgents } from './agents/agentRunner.js';
 
 setDefaultResultOrder('ipv4first');
 validateConfig();
@@ -22,6 +27,10 @@ export async function startTrencherAgent() {
   // Start the Auto-Burn Cron Job
   const { initBurnCron } = await import('./jobs/burnCron.js');
   initBurnCron();
+  
+  // Resume active custom agents
+  const connection = new Connection(SOLANA_RPC_URL);
+  resumeActiveAgents(db, sharedSignalFeed, connection);
   
   // Start WebSocket server and passive state manager
   // NOTE: consciousness stream (CONSCIOUSNESS_DECISION) is broadcast

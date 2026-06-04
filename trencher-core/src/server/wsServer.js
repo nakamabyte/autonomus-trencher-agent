@@ -593,7 +593,7 @@ export function startWsServer(port = 4001) {
     console.log(`[ws-server] HTTP & WebSocket broadcasting on port ${port}`);
   });
   
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws, req) => {
     clients.add(ws);
     
     ws.on('close', () => {
@@ -608,9 +608,53 @@ export function startWsServer(port = 4001) {
     });
 
     // Send recent consciousness decisions on connect
-    const recentDecisions = getRecentDecisions(10);
-    if (recentDecisions.length > 0) {
-      ws.send(JSON.stringify({ type: 'CONSCIOUSNESS_HISTORY', payload: recentDecisions }));
+    const url = new URL(req.url, 'http://localhost');
+    const agentId = url.searchParams.get('agentId');
+    
+    if (agentId) {
+      import('../db/connection.js').then(({ db }) => {
+        try {
+          const rows = db.prepare(`
+            SELECT d.*, a.name as agent_name 
+            FROM decision_logs d
+            LEFT JOIN agent_dna a ON d.strategy_id = a.id
+            WHERE d.strategy_id = ? 
+            ORDER BY d.at_ms DESC 
+            LIMIT 30
+          `).all(agentId);
+          
+          const recentDecisions = rows.map(r => ({
+            timestamp: new Date(r.at_ms).toISOString().slice(11, 19),
+            tier: 'T1',
+            symbol: r.selected_mint ? r.selected_mint.slice(0, 4) : 'UNK',
+            mint: r.selected_mint,
+            wallets_analyzed: 0,
+            holder_count: 0,
+            bundle_wallets: Math.round((r.bundle_wallets || 0) * 100),
+            rug_probability: Math.round((r.rug_probability || 0) * 100),
+            smart_money_overlap: r.smart_money_overlap || 0,
+            runner_signal: r.runner_signal || null,
+            kol_signal: r.kol_signal || null,
+            confidence: r.confidence,
+            verdict: r.verdict,
+            reason: r.reason,
+            strategy: r.strategy_id,
+            agent_name: r.agent_name,
+            entry_mcap: r.entry_mcap || null,
+          }));
+          
+          if (recentDecisions.length > 0) {
+            ws.send(JSON.stringify({ type: 'CONSCIOUSNESS_HISTORY', payload: recentDecisions }));
+          }
+        } catch (err) {
+          console.error('[wsServer] Failed to fetch agent decisions for WS history:', err.message);
+        }
+      });
+    } else {
+      const recentDecisions = getRecentDecisions(10);
+      if (recentDecisions.length > 0) {
+        ws.send(JSON.stringify({ type: 'CONSCIOUSNESS_HISTORY', payload: recentDecisions }));
+      }
     }
 
     // Send agent DNA list on connect

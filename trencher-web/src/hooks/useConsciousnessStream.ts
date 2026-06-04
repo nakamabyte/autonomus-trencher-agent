@@ -64,6 +64,9 @@ export function useConsciousnessStream({
 
   useEffect(() => {
     isMountedRef.current = true;
+    
+    // Clear old decisions when agentId changes (e.g. from undefined to UUID)
+    setDecisions([]);
 
     // 1. Fetch initial REST history (agent-specific or global)
     const fetchHistory = async () => {
@@ -90,10 +93,12 @@ export function useConsciousnessStream({
     };
     fetchHistory();
 
-    const wsUrl =
+    const wsUrlBase =
       process.env.NEXT_PUBLIC_CONSCIOUSNESS_WS_URL ||
       process.env.NEXT_PUBLIC_WS_URL ||
       'ws://localhost:4001';
+      
+    const wsUrl = agentId ? `${wsUrlBase}?agentId=${agentId}` : wsUrlBase;
 
     function connect() {
       if (!isMountedRef.current) return;
@@ -112,9 +117,12 @@ export function useConsciousnessStream({
           const msg = JSON.parse(event.data as string);
 
           if (msg.type === 'CONSCIOUSNESS_DECISION' && msg.payload) {
-            setDecisions(prev =>
-              [msg.payload as ConsciousnessDecision, ...prev].slice(0, maxDecisions)
-            );
+            const payload = msg.payload as ConsciousnessDecision;
+            if (!agentId || payload.strategy === agentId) {
+              setDecisions(prev =>
+                [payload, ...prev].slice(0, maxDecisions)
+              );
+            }
           } else if (msg.type === 'CONSCIOUSNESS_HISTORY' && Array.isArray(msg.payload)) {
             // History arrives newest-first already (reversed by getRecentDecisions)
             setDecisions((msg.payload as ConsciousnessDecision[]).slice(0, maxDecisions));
@@ -153,8 +161,7 @@ export function useConsciousnessStream({
         wsRef.current.close();
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [agentId, maxDecisions, reconnectDelay]);
 
   // Derived stats
   const stats = {
