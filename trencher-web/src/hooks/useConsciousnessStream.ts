@@ -32,6 +32,7 @@ interface UseConsciousnessStreamOptions {
 interface UseConsciousnessStreamReturn {
   decisions: ConsciousnessDecision[];
   connected: boolean;
+  isLoading: boolean;
   stats: {
     total: number;
     buys: number;
@@ -56,6 +57,7 @@ export function useConsciousnessStream({
 }: UseConsciousnessStreamOptions = {}): UseConsciousnessStreamReturn {
   const [decisions, setDecisions] = useState<ConsciousnessDecision[]>([]);
   const [connected, setConnected] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const wsRef = useRef<WebSocket | null>(null);
   const isMountedRef = useRef(true);
@@ -67,6 +69,7 @@ export function useConsciousnessStream({
     
     // Clear old decisions when agentId changes (e.g. from undefined to UUID)
     setDecisions([]);
+    setIsLoading(true);
 
     // 1. Fetch initial REST history (agent-specific or global)
     const fetchHistory = async () => {
@@ -89,6 +92,8 @@ export function useConsciousnessStream({
           }
         } catch (err) {
         console.error('Failed to fetch consciousness history:', err);
+      } finally {
+        if (isMountedRef.current) setIsLoading(false);
       }
     };
     fetchHistory();
@@ -171,5 +176,5 @@ export function useConsciousnessStream({
     escalates: decisions.filter(d => d.verdict === 'ESCALATE').length,
   };
 
-  return { decisions, connected, stats };
+  return { decisions, connected, isLoading, stats };
 }

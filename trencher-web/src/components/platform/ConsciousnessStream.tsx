@@ -148,7 +148,7 @@ function DecisionRow({ d }: { d: ConsciousnessDecision }) {
 
 // ─── Main Component ───────────────────────────────────────────────
 export function ConsciousnessStream({ strategyFilter }: { strategyFilter?: string } = {}) {
-  const { decisions, connected, stats } = useConsciousnessStream({ 
+  const { decisions, connected, isLoading, stats } = useConsciousnessStream({ 
     maxDecisions: strategyFilter ? 100 : 30,
     agentId: strategyFilter
   });
@@ -194,7 +194,21 @@ export function ConsciousnessStream({ strategyFilter }: { strategyFilter?: strin
         ref={scrollRef}
         style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}
       >
-        {displayDecisions.length === 0 ? (
+        {isLoading ? (
+          <div style={{
+            padding: '24px 12px',
+            color: '#00C896',
+            fontSize: '10px',
+            fontFamily: "'JetBrains Mono', monospace",
+            textAlign: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px'
+          }}>
+            <span className="animate-pulse">Loading agent memory...</span>
+          </div>
+        ) : displayDecisions.length === 0 ? (
           <div style={{
             padding: '24px 12px',
             color: '#333',
