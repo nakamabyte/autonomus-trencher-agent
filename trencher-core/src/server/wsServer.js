@@ -271,9 +271,11 @@ export function startWsServer(port = 4001) {
         const limit = Math.min(parseInt(limitParam) || 30, 100);
         const { db } = await import('../db/connection.js');
         const rows = db.prepare(`
-          SELECT * FROM decision_logs 
-          WHERE strategy_id = ? 
-          ORDER BY at_ms DESC 
+          SELECT d.*, a.name as agent_name 
+          FROM decision_logs d
+          LEFT JOIN agent_dna a ON d.strategy_id = a.id
+          WHERE d.strategy_id = ? 
+          ORDER BY d.at_ms DESC 
           LIMIT ?
         `).all(agentId, limit);
         
@@ -294,6 +296,7 @@ export function startWsServer(port = 4001) {
           verdict: r.verdict,
           reason: r.reason,
           strategy: r.strategy_id,
+          agent_name: r.agent_name || null,
           entry_mcap: null,
         }));
         
@@ -314,8 +317,10 @@ export function startWsServer(port = 4001) {
         const limit = Math.min(parseInt(limitParam) || 30, 100);
         const { db } = await import('../db/connection.js');
         const rows = db.prepare(`
-          SELECT * FROM decision_logs 
-          ORDER BY at_ms DESC 
+          SELECT d.*, a.name as agent_name 
+          FROM decision_logs d
+          LEFT JOIN agent_dna a ON d.strategy_id = a.id
+          ORDER BY d.at_ms DESC 
           LIMIT ?
         `).all(limit);
         
@@ -335,6 +340,7 @@ export function startWsServer(port = 4001) {
           verdict: r.verdict,
           reason: r.reason,
           strategy: r.strategy_id,
+          agent_name: r.agent_name || null,
           entry_mcap: null,
         }));
         

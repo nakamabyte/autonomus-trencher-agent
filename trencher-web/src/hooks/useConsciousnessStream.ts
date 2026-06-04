@@ -19,6 +19,7 @@ export interface ConsciousnessDecision {
   verdict: 'BUY' | 'SKIP' | 'ESCALATE';
   reason: string;
   strategy: string | null;
+  agent_name?: string | null;
   entry_mcap: number | null;
 }
 
@@ -67,10 +68,9 @@ export function useConsciousnessStream({
     // 1. Fetch initial REST history (agent-specific or global)
     const fetchHistory = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
         const url = agentId 
-          ? `${apiUrl}/api/agent/${agentId}/decisions?limit=${maxDecisions}`
-          : `${apiUrl}/api/decisions?limit=${maxDecisions}`;
+          ? `/api/core-proxy/agent/${agentId}/decisions?limit=${maxDecisions}`
+          : `/api/core-proxy/decisions?limit=${maxDecisions}`;
         const res = await fetch(url);
           if (res.ok) {
             const data = await res.json();

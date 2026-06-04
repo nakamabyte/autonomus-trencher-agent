@@ -15,7 +15,7 @@ async function getWalletBalance(connection, walletAddress) {
   }
 }
 
-function logAgentDecision(db, agentId, signal, decision, mode = 'live') {
+function logAgentDecision(db, agentId, agentName, signal, decision, mode = 'live') {
   try {
     db.prepare(`
       INSERT INTO decision_logs (
@@ -51,6 +51,7 @@ function logAgentDecision(db, agentId, signal, decision, mode = 'live') {
         verdict: decision.verdict,
         reason: decision.reason,
         strategy: agentId, // The frontend filters by strategy, so we pass agentId here
+        agent_name: agentName,
         entry_mcap: signal.mcap_usd || null,
       });
     }).catch(err => console.error('[agentRunner] error broadcasting:', err.message));
@@ -74,7 +75,7 @@ export function startAgentTradingLoop(agentId, db, sharedSignalFeed, connection)
 
   const handler = async (signal) => {
     // Skip if agent is no longer active
-    const current = db.prepare('SELECT execution_mode, agent_wallet FROM agent_dna WHERE id = ?').get(agentId);
+    const current = db.prepare('SELECT name, execution_mode, agent_wallet FROM agent_dna WHERE id = ?').get(agentId);
     if (!current || !['live', 'dry_run'].includes(current.execution_mode)) {
       stopAgentTradingLoop(agentId, sharedSignalFeed);
       return;
@@ -105,7 +106,7 @@ export function startAgentTradingLoop(agentId, db, sharedSignalFeed, connection)
     }
 
     // Log to per-agent consciousness feed
-    logAgentDecision(db, agentId, signal, decision, current.execution_mode);
+    logAgentDecision(db, agentId, current.name, signal, decision, current.execution_mode);
   };
 
   sharedSignalFeed.on('signal', handler);

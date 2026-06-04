@@ -76,9 +76,24 @@ function DecisionRow({ d }: { d: ConsciousnessDecision }) {
       fontFamily: "'JetBrains Mono', monospace",
       lineHeight: '1.6',
     }}>
-      {/* Row 1: timestamp | tier | symbol | verdict */}
+      {/* Row 1: timestamp | agent | tier | symbol | verdict */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
         <span style={{ color: '#444', minWidth: 56 }}>{d.timestamp}</span>
+        {d.strategy && (
+          <span style={{
+            color: '#888',
+            fontSize: '9px',
+            background: 'rgba(255,255,255,0.05)',
+            padding: '1px 4px',
+            borderRadius: '2px',
+            maxWidth: '120px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }}>
+            {d.agent_name || d.strategy}
+          </span>
+        )}
         <span style={{
           color: TIER_COLOR[d.tier] || '#888',
           fontSize: '9px',
