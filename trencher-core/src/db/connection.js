@@ -573,23 +573,36 @@ function cleanupOldSignals() {
 cleanupOldSignals();
 setInterval(cleanupOldSignals, 24 * 60 * 60 * 1000);
 
-// Auto-backfill agent_secret_key for existing agents
-function backfillAgentKeys() {
+// Auto-backfill agent_secret_key and agent_wallet for existing agents
+async function backfillAgentKeys() {
   try {
-    const agents = db.prepare('SELECT id, name FROM agent_dna WHERE agent_secret_key IS NULL').all();
-    if (agents.length > 0) {
-      const stmt = db.prepare('UPDATE agent_dna SET agent_secret_key = ? WHERE id = ?');
-      db.transaction(() => {
-        for (const agent of agents) {
-          const key = randomUUID();
-          stmt.run(key, agent.id);
-          console.log(`[db] Backfilled secret key for agent ${agent.name} (${agent.id}): ${key}`);
-        }
-      })();
-      console.log(`[db] Completed backfilling ${agents.length} agent secret keys. Be sure to save these keys!`);
+    const agents = db.prepare('SELECT id, name, agent_secret_key, agent_wallet FROM agent_dna').all();
+    const { createAgentWallet } = await import('./agentDna.js');
+    
+    let keysUpdated = 0;
+    let walletsUpdated = 0;
+
+    for (const agent of agents) {
+      if (!agent.agent_secret_key) {
+        const key = randomUUID();
+        db.prepare('UPDATE agent_dna SET agent_secret_key = ? WHERE id = ?').run(key, agent.id);
+        console.log(`[db] Backfilled secret key for agent ${agent.name} (${agent.id}): ${key}`);
+        keysUpdated++;
+      }
+      
+      if (!agent.agent_wallet) {
+        const walletAddress = createAgentWallet(agent.id);
+        console.log(`[db] Backfilled wallet for agent ${agent.name} (${agent.id}): ${walletAddress}`);
+        walletsUpdated++;
+      }
+    }
+    
+    if (keysUpdated > 0 || walletsUpdated > 0) {
+      console.log(`[db] Completed backfilling: ${keysUpdated} secret keys, ${walletsUpdated} wallets. Be sure to save the keys!`);
     }
   } catch (e) {
     // Ignore errors if the table/column doesn't exist yet
+    console.error('[db] Error backfilling agent data:', e.message);
   }
 }
 backfillAgentKeys();

@@ -414,7 +414,6 @@ export function startWsServer(port = 4001) {
       return;
     }
 
-
     // Set agent execution mode
     const setModeMatch = pathname.match(/^\/api\/agent\/([^\/]+)\/set-mode$/);
     if (setModeMatch && req.method === 'POST') {
@@ -475,8 +474,13 @@ export function startWsServer(port = 4001) {
       req.on('end', async () => {
         try {
           const payload = JSON.parse(body);
-          const { createDna, listBreeds } = await import('../db/agentDna.js');
+          const { createDna, listBreeds, createAgentWallet } = await import('../db/agentDna.js');
           const newAgent = createDna(payload);
+          
+          // Generate Solana Wallet for the newly deployed agent
+          const agentWallet = createAgentWallet(newAgent.id);
+          newAgent.agent_wallet = agentWallet; // Attach to object for telegram message
+          
           broadcast('AGENT_DNA_UPDATE', listBreeds());
 
           const msg = `🧬 <b>New Agent Spawned!</b>\n\n` +
