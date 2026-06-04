@@ -8,8 +8,6 @@ import { candidateById, latestCandidateByMint, updateCandidateStatus } from '../
 import { storeDecision, logDecisionEvent } from '../db/decisions.js';
 import fs from 'fs';
 import path from 'path';
-import { Connection, PublicKey } from '@solana/web3.js';
-import { SOLANA_RPC_URL } from '../config.js';
 import { createWriteStream } from 'fs';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
@@ -127,32 +125,22 @@ Welcome! Trencher Agent is your personal AI robot that automatically finds and t
   }
 
   if (text.startsWith('/agentwallets')) {
-    const statusMsg = await bot.sendMessage(chatId, '⏳ Fetching agent wallets and balances...');
+    const statusMsg = await bot.sendMessage(chatId, '⏳ Fetching agent wallets...');
     try {
       const agents = db.prepare('SELECT id, name, breed, agent_wallet, total_trades, win_rate, total_pnl_sol FROM agent_dna WHERE agent_wallet IS NOT NULL').all();
       if (!agents.length) {
         return bot.editMessageText('No agent wallets found.', { chat_id: chatId, message_id: statusMsg.message_id });
       }
 
-      const connection = new Connection(SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com');
       let msg = `💼 <b>Agent Wallets & Stats</b>\n\n`;
 
       for (const agent of agents) {
-        let balanceSol = 0;
-        try {
-          const lamports = await connection.getBalance(new PublicKey(agent.agent_wallet));
-          balanceSol = lamports / 1e9;
-        } catch (e) {
-          console.error(`[telegram] Failed to fetch balance for ${agent.agent_wallet}:`, e.message);
-        }
-
         const pnl = Number(agent.total_pnl_sol || 0);
         const pnlStr = pnl > 0 ? `+${pnl.toFixed(4)}` : pnl.toFixed(4);
         const winRateStr = ((agent.win_rate || 0) * 100).toFixed(0) + '%';
 
         msg += `• <b>${escapeHtml(agent.name)}</b> (${agent.breed})\n`;
         msg += `  💳 <code>${agent.agent_wallet}</code>\n`;
-        msg += `  💰 Balance: ${balanceSol.toFixed(4)} SOL\n`;
         msg += `  📈 Trades: ${agent.total_trades || 0} | WR: ${winRateStr} | PnL: ${pnlStr} SOL\n\n`;
       }
 
