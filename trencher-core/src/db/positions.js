@@ -62,8 +62,8 @@ export function createDryRunPosition(candidateId, candidate, decision, reason = 
 
   return db.transaction(() => {
     const existing = db.prepare(`
-      SELECT id FROM dry_run_positions WHERE mint = ? AND status = 'open' LIMIT 1
-    `).get(candidate.token.mint);
+      SELECT id FROM dry_run_positions WHERE mint = ? AND status = 'open' AND (agent_dna_id = ? OR (agent_dna_id IS NULL AND ? IS NULL)) LIMIT 1
+    `).get(candidate.token.mint, agentDnaId, agentDnaId);
     if (existing) return existing.id;
 
     const result = db.prepare(`
@@ -121,8 +121,8 @@ export function createLivePosition(candidateId, candidate, decision, swap, reaso
 
   return db.transaction(() => {
     const existing = db.prepare(`
-      SELECT id FROM dry_run_positions WHERE mint = ? AND status = 'open' LIMIT 1
-    `).get(candidate.token.mint);
+      SELECT id FROM dry_run_positions WHERE mint = ? AND status = 'open' AND (agent_dna_id = ? OR (agent_dna_id IS NULL AND ? IS NULL)) LIMIT 1
+    `).get(candidate.token.mint, agentDnaId, agentDnaId);
     if (existing) return existing.id;
 
     const result = db.prepare(`
