@@ -253,7 +253,6 @@ export function startWsServer(port = 4001) {
     // Get agent "can go live" status
     const canGoLiveMatch = pathname.match(/^\/api\/agent\/([^\/]+)\/can-go-live$/);
     if (canGoLiveMatch && req.method === 'GET') {
-      if (!requireAuth()) return;
       try {
         const agentId = canGoLiveMatch[1];
         const { db } = await import('../db/connection.js');
@@ -261,6 +260,13 @@ export function startWsServer(port = 4001) {
         if (!agent) {
           res.writeHead(404, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Agent not found' }));
+          return;
+        }
+
+        const agentKey = req.headers['x-agent-key'];
+        if (agent.agent_secret_key && agent.agent_secret_key !== agentKey) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Unauthorized: invalid agent secret key' }));
           return;
         }
 
@@ -412,13 +418,28 @@ export function startWsServer(port = 4001) {
     // Set agent execution mode
     const setModeMatch = pathname.match(/^\/api\/agent\/([^\/]+)\/set-mode$/);
     if (setModeMatch && req.method === 'POST') {
-      if (!requireAuth()) return;
       let body = '';
       req.on('data', chunk => { body += chunk; });
       req.on('end', async () => {
         try {
           const payload = JSON.parse(body);
           const agentId = setModeMatch[1];
+          
+          const { db } = await import('../db/connection.js');
+          const agent = db.prepare('SELECT agent_secret_key FROM agent_dna WHERE id = ?').get(agentId);
+          if (!agent) {
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Agent not found' }));
+            return;
+          }
+
+          const agentKey = req.headers['x-agent-key'];
+          if (agent.agent_secret_key && agent.agent_secret_key !== agentKey) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Unauthorized: invalid agent secret key' }));
+            return;
+          }
+
           const { mode } = payload;
           if (!['dry_run', 'live'].includes(mode)) {
             res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -426,7 +447,6 @@ export function startWsServer(port = 4001) {
             return;
           }
 
-          const { db } = await import('../db/connection.js');
           db.prepare('UPDATE agent_dna SET execution_mode = ?, updated_at_ms = ? WHERE id = ?').run(mode, Date.now(), agentId);
 
           const { listBreeds } = await import('../db/agentDna.js');

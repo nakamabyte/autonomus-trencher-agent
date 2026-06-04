@@ -266,6 +266,7 @@ export function Trenchyard({ onSelectAgent }: TrenchyardProps) {
       if (!res.ok) throw new Error('Deployment failed');
       const data = await res.json();
       console.log('Deployed agent:', data.agent);
+      return data.agent;
     } catch (err: any) {
       console.error(err);
       throw new Error(err.message || 'Failed to deploy agent. Check console.');

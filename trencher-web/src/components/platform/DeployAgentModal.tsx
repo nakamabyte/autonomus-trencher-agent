@@ -30,7 +30,7 @@ const RISK_MODIFIERS: Record<string, Partial<Record<string, number>>> = {
 interface DeployAgentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onDeploy: (payload: Record<string, unknown>) => Promise<void>;
+  onDeploy: (payload: Record<string, unknown>) => Promise<any>;
 }
 
 export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModalProps) {
@@ -159,11 +159,11 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
         throw new Error(errMsg);
       }
 
-      await onDeploy(confirmData.payload);
+      const deployedAgent = await onDeploy(confirmData.payload);
       setConfirmData(null);
       setAlertData({ 
-        title: 'SUCCESS', 
-        message: `${selectedBreed} Trencher deployed successfully!`, 
+        title: 'SUCCESS: SAVE YOUR SECRET KEY NOW', 
+        message: `${selectedBreed} Trencher deployed successfully!\n\nYOUR AGENT SECRET KEY:\n${deployedAgent.agent_secret_key}\n\nSave this key securely now. You will need it to toggle Live/Dry Run modes. It will never be shown again.\nIf lost, contact @Arkaddddd on Telegram.`, 
         type: 'success',
         txHash: sig,
         onOk: onClose
@@ -574,14 +574,15 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
           title={alertData.title}
         >
           <div style={{ padding: '12px 8px', fontFamily: 'monospace', maxWidth: '360px' }}>
-            <p style={{ 
+            <div style={{ 
               color: alertData.type === 'error' ? '#FF6B6B' : '#00C896', 
               marginBottom: '20px', 
               lineHeight: 1.6,
-              fontSize: '14px'
+              fontSize: '14px',
+              whiteSpace: 'pre-wrap'
             }}>
               {alertData.message}
-            </p>
+            </div>
 
             {alertData.txHash && (
               <div style={{

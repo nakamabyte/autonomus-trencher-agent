@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAgentDna } from '@/hooks/useAgentDna';
 import { AgentProfileCard } from '@/components/platform/AgentProfileCard';
@@ -10,8 +11,15 @@ export default function AgentProfilePage() {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string;
+  const [isCopied, setIsCopied] = useState(false);
 
   const { agents, connected, isLoaded } = useAgentDna();
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
 
   const agent = agents.find(a => a.id === id || a.id.startsWith(id));
 
@@ -95,7 +103,7 @@ export default function AgentProfilePage() {
                 DNA Hash: {agent.id}
               </div>
               
-              <AgentProfileCard agent={agent} compact={false} />
+              <AgentProfileCard agent={agent} compact={false} hideViewProfile={true} />
               
               <div style={{ background: '#0a0a0f', padding: '16px', borderRadius: '6px', border: '1px solid #1a1a24' }}>
                 <div style={{ color: '#00C896', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px', fontWeight: 'bold' }}>
@@ -124,7 +132,9 @@ export default function AgentProfilePage() {
                     <span style={{ fontSize: '8px', background: 'rgba(0,200,150,0.1)', padding: '2px 6px', borderRadius: '4px' }}>FUNDING ADDRESS</span>
                   </div>
                   <div 
-                    onClick={() => agent.agent_wallet && navigator.clipboard.writeText(agent.agent_wallet)}
+                    onClick={() => {
+                      if (agent.agent_wallet) handleCopy(agent.agent_wallet);
+                    }}
                     style={{ 
                       fontSize: '11px', 
                       fontFamily: "'JetBrains Mono', monospace", 
@@ -132,16 +142,29 @@ export default function AgentProfilePage() {
                       background: 'rgba(0,0,0,0.3)',
                       padding: '8px',
                       borderRadius: '4px',
-                      wordBreak: 'break-all',
                       border: '1px solid #1a1a24',
                       cursor: 'pointer',
-                      transition: 'border-color 0.2s',
+                      transition: 'border-color 0.2s, background-color 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '8px'
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#00C896')}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor = '#1a1a24')}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#00C896'; e.currentTarget.style.background = 'rgba(0,200,150,0.05)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#1a1a24'; e.currentTarget.style.background = 'rgba(0,0,0,0.3)'; }}
                     title="Click to copy wallet address"
                   >
-                    {agent.agent_wallet}
+                    <span style={{ wordBreak: 'break-all' }}>{agent.agent_wallet}</span>
+                    {isCopied ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00C896" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: '#00C896' }}>
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    )}
                   </div>
                   <div style={{ fontSize: '9px', color: '#666', marginTop: '8px', fontFamily: "'JetBrains Mono', monospace" }}>
                     Transfer SOL to this address to start automatic Live Trading.

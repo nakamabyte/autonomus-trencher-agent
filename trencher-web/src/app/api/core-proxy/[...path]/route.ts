@@ -12,20 +12,30 @@ async function handleProxy(req: Request, { params }: { params: Promise<{ path: s
     const clientKey = req.headers.get('x-client-key') || req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '').trim();
     const serverSecret = process.env.CLIENT_SECRET_KEY;
 
-    const isAuthorized = !!session || (!!serverSecret && !!clientKey && clientKey === serverSecret);
+    const subPath = path.join('/');
+    const isAgentModeRoute = subPath.match(/^agent\/[^\/]+\/(set-mode|can-go-live)$/);
+
+    let isAuthorized = !!session || (!!serverSecret && !!clientKey && clientKey === serverSecret);
+
+    if (isAgentModeRoute) {
+      isAuthorized = true; // Let the core backend validate the agent secret key
+    }
 
     if (!isAuthorized) {
       return NextResponse.json({ error: 'Unauthorized: Please sign in with GitHub or enter a valid Secret Key.' }, { status: 401 });
     }
 
 
-    const subPath = path.join('/');
     const searchParams = new URL(req.url).searchParams.toString();
     const destUrl = `${CORE_URL}/api/${subPath}${searchParams ? '?' + searchParams : ''}`;
 
     const headers = new Headers();
     headers.set('x-api-key', API_KEY);
     headers.set('Content-Type', 'application/json');
+
+    if (isAgentModeRoute && clientKey) {
+      headers.set('x-agent-key', clientKey);
+    }
 
     const method = req.method;
     let body = undefined;

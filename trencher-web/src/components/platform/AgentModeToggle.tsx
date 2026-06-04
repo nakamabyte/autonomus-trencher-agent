@@ -27,16 +27,20 @@ export function AgentModeToggle({ agent }: AgentModeToggleProps) {
   const [pendingRetry, setPendingRetry] = useState<'none' | 'toggle' | 'dry_run' | 'live'>('none');
   const [secretKeyInput, setSecretKeyInput] = useState('');
   const [gateDetails, setGateDetails] = useState<GateDetails | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
 
   const isLive = agent.execution_mode === 'live';
 
-  const getHeaders = (baseHeaders: Record<string, string> = {}) => {
+  const getHeaders = (baseHeaders: Record<string, string> = {}, extraKey?: string) => {
     const headers = { ...baseHeaders };
-    if (typeof window !== 'undefined') {
-      const secret = localStorage.getItem('trencher_secret_key');
-      if (secret) {
-        headers['x-client-key'] = secret;
-      }
+    if (extraKey) {
+      headers['x-client-key'] = extraKey;
     }
     return headers;
   };
@@ -54,11 +58,11 @@ export function AgentModeToggle({ agent }: AgentModeToggleProps) {
     setIsAuthError(false);
     try {
       const res = await fetch(`/api/core-proxy/agent/${agent.id}/can-go-live`, {
-        headers: getHeaders(),
+        headers: getHeaders({}, secretKeyInput),
       });
       
       if (res.status === 401) {
-        setErrorMsg('Authentication Required: Please sign in with GitHub or enter a valid Secret Key.');
+        setErrorMsg('Authentication Required: Please enter this agent\'s unique Secret Key.');
         setIsAuthError(true);
         setPendingRetry('toggle');
         setModalType('error');
@@ -92,12 +96,12 @@ export function AgentModeToggle({ agent }: AgentModeToggleProps) {
     try {
       const res = await fetch(`/api/core-proxy/agent/${agent.id}/set-mode`, {
         method: 'POST',
-        headers: getHeaders({ 'Content-Type': 'application/json' }),
+        headers: getHeaders({ 'Content-Type': 'application/json' }, secretKeyInput),
         body: JSON.stringify({ mode: targetMode }),
       });
 
       if (res.status === 401) {
-        setErrorMsg('Authentication Required: Please sign in with GitHub or enter a valid Secret Key.');
+        setErrorMsg('Authentication Required: Please enter this agent\'s unique Secret Key.');
         setIsAuthError(true);
         setPendingRetry(targetMode);
         setModalType('error');
@@ -194,6 +198,34 @@ export function AgentModeToggle({ agent }: AgentModeToggleProps) {
                 <span style={{ color: '#666' }}>Dry Run Trades:</span>
                 <span style={{ color: '#aaa' }}>{gateDetails?.dry_run_trades}</span>
               </div>
+              {gateDetails?.wallet_address && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed #222' }}>
+                  <span style={{ color: '#666', fontSize: '10px' }}>Agent Wallet Address:</span>
+                  <div 
+                    onClick={() => handleCopy(gateDetails.wallet_address!)}
+                    style={{ 
+                      color: '#ccc', fontSize: '10px', background: '#000', padding: '6px', borderRadius: '4px', 
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+                      border: '1px solid #222', transition: 'border-color 0.2s'
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#00C896')}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = '#222')}
+                    title="Click to copy"
+                  >
+                    <span style={{ wordBreak: 'break-all' }}>{gateDetails.wallet_address}</span>
+                    {isCopied ? (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#00C896" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    ) : (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: '#00C896' }}>
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {gateDetails?.warning && (
@@ -293,8 +325,28 @@ export function AgentModeToggle({ agent }: AgentModeToggleProps) {
             {gateDetails?.wallet_address && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <span style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase' }}>Deposit Address:</span>
-                <div style={{ padding: '8px', background: '#050508', border: '1px solid #222', borderRadius: '4px', fontSize: '10px', color: '#fff', wordBreak: 'break-all', userSelect: 'all' }}>
-                  {gateDetails.wallet_address}
+                <div 
+                  onClick={() => handleCopy(gateDetails.wallet_address!)}
+                  style={{ 
+                    padding: '8px', background: '#050508', border: '1px solid #222', borderRadius: '4px', fontSize: '10px', color: '#fff', 
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+                    transition: 'border-color 0.2s'
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = '#00C896')}
+                  onMouseLeave={e => (e.currentTarget.style.borderColor = '#222')}
+                  title="Click to copy"
+                >
+                  <span style={{ wordBreak: 'break-all' }}>{gateDetails.wallet_address}</span>
+                  {isCopied ? (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#00C896" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  ) : (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: '#00C896' }}>
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                  )}
                 </div>
               </div>
             )}
@@ -331,28 +383,16 @@ export function AgentModeToggle({ agent }: AgentModeToggleProps) {
 
             {isAuthError ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
-                <button
-                  onClick={() => signIn('github')}
-                  style={{
-                    width: '100%', padding: '10px', background: '#24292e', border: 'none', borderRadius: '4px',
-                    color: '#fff', fontWeight: 'bold', fontSize: '11px', cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace",
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
-                  }}
-                >
-                  <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: '16px', height: '16px' }}><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-                  SIGN IN WITH GITHUB
-                </button>
-
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#444', fontSize: '9px', textTransform: 'uppercase', margin: '4px 0' }}>
                   <div style={{ flex: 1, height: '1px', background: '#222' }} />
-                  <span>OR USE SECRET KEY</span>
+                  <span>AGENT SECRET KEY REQUIRED</span>
                   <div style={{ flex: 1, height: '1px', background: '#222' }} />
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <input
                     type="password"
-                    placeholder="Enter Client Secret Key..."
+                    placeholder="Enter Agent Secret Key..."
                     value={secretKeyInput}
                     onChange={(e) => setSecretKeyInput(e.target.value)}
                     style={{
@@ -364,7 +404,6 @@ export function AgentModeToggle({ agent }: AgentModeToggleProps) {
                   <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                     <button
                       onClick={() => {
-                        localStorage.setItem('trencher_secret_key', secretKeyInput);
                         setModalType('none');
                         setIsAuthError(false);
                         
@@ -376,12 +415,14 @@ export function AgentModeToggle({ agent }: AgentModeToggleProps) {
                         }
                         setPendingRetry('none');
                       }}
+                      disabled={!secretKeyInput.trim()}
                       style={{
                         flex: 1, padding: '10px', background: '#FFB347', border: 'none', borderRadius: '4px',
-                        color: '#000', fontWeight: 'bold', fontSize: '11px', cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace"
+                        color: '#000', fontWeight: 'bold', fontSize: '11px', cursor: secretKeyInput.trim() ? 'pointer' : 'not-allowed', fontFamily: "'JetBrains Mono', monospace",
+                        opacity: secretKeyInput.trim() ? 1 : 0.5
                       }}
                     >
-                      SAVE SECRET KEY
+                      CONFIRM KEY
                     </button>
                     <button
                       onClick={() => setModalType('none')}
@@ -392,6 +433,9 @@ export function AgentModeToggle({ agent }: AgentModeToggleProps) {
                     >
                       Cancel
                     </button>
+                  </div>
+                  <div style={{ marginTop: '8px', textAlign: 'center', fontSize: '10px', color: '#666' }}>
+                    Lost your key? Contact <a href="https://t.me/Arkaddddd" target="_blank" rel="noopener noreferrer" style={{ color: '#00C896', textDecoration: 'underline' }}>@Arkaddddd</a> on Telegram.
                   </div>
                 </div>
               </div>

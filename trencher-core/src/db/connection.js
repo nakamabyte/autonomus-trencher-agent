@@ -288,6 +288,7 @@ export function initDb() {
   ensureColumn('agent_dna', 'activated_at_ms', 'INTEGER');
   ensureColumn('agent_dna', 'dna_config', 'TEXT');
   ensureColumn('agent_dna', 'encrypted_key', 'TEXT');
+  ensureColumn('agent_dna', 'agent_secret_key', 'TEXT');
   ensureColumn('dry_run_positions', 'agent_dna_id', 'TEXT');
   db.exec(`
     CREATE TABLE IF NOT EXISTS kol_accuracy (

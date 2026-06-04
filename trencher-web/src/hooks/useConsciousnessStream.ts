@@ -74,6 +74,7 @@ export function useConsciousnessStream({
     // Clear old decisions when agentId changes (e.g. from undefined to UUID)
     setDecisions([]);
     setIsLoading(true);
+    setExecutionMode(undefined); // Clear old mode
 
     // 1. Fetch initial REST history (agent-specific or global)
     const fetchHistory = async () => {
@@ -81,7 +82,7 @@ export function useConsciousnessStream({
         const url = agentId 
           ? `/api/core-proxy/agent/${agentId}/decisions?limit=${maxDecisions}`
           : `/api/core-proxy/decisions?limit=${maxDecisions}`;
-        const res = await fetch(url);
+        const res = await fetch(url, { cache: 'no-store' });
           if (res.ok) {
             const data = await res.json();
             if (data && Array.isArray(data.decisions)) {

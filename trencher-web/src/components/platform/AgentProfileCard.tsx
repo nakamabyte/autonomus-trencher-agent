@@ -64,9 +64,10 @@ interface AgentProfileCardProps {
   agent: AgentDna;
   compact?: boolean;
   onClick?: () => void;
+  hideViewProfile?: boolean;
 }
 
-export function AgentProfileCard({ agent, compact = false, onClick }: AgentProfileCardProps) {
+export function AgentProfileCard({ agent, compact = false, onClick, hideViewProfile = false }: AgentProfileCardProps) {
   const breed = BREEDS[agent.breed as keyof typeof BREEDS];
   if (!breed) return null;
 
@@ -217,7 +218,7 @@ export function AgentProfileCard({ agent, compact = false, onClick }: AgentProfi
       )}
 
       {/* Public profile link */}
-      {!compact && (
+      {!compact && !hideViewProfile && (
         <button
           onClick={(e) => {
             e.stopPropagation();

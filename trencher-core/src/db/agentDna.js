@@ -76,14 +76,14 @@ const stmtInsert = db.prepare(`
     momentum_sensitivity, social_signal_weight, liquidity_sensitivity,
     exit_discipline, stealth, mutation_rate, survival_score,
     entry_preference, exit_preference, rug_filter, dna_hash, mutation_history,
-    owner_address, execution_mode, created_at_ms, updated_at_ms
+    owner_address, execution_mode, agent_secret_key, created_at_ms, updated_at_ms
   ) VALUES (
     @id, @name, @breed, @parent_a, @parent_b, @generation,
     @speed, @aggression, @rug_defense, @wallet_intelligence,
     @momentum_sensitivity, @social_signal_weight, @liquidity_sensitivity,
     @exit_discipline, @stealth, @mutation_rate, @survival_score,
     @entry_preference, @exit_preference, @rug_filter, @dna_hash, @mutation_history,
-    @owner_address, @execution_mode, @created_at_ms, @updated_at_ms
+    @owner_address, @execution_mode, @agent_secret_key, @created_at_ms, @updated_at_ms
   )
 `);
 
@@ -100,7 +100,7 @@ const stmtListBreeds = db.prepare(`
     avg_hold_min, rug_survival_rate,
     owner_address, for_sale, sale_price_sol, royalty_pct,
     copies_minted, copies_limit,
-    execution_mode,
+    execution_mode, agent_wallet, auto_activate,
     created_at_ms, updated_at_ms
   FROM agent_dna
   ORDER BY created_at_ms ASC
@@ -134,6 +134,7 @@ export function createDna({
   const now = Date.now();
   const id = randomUUID();
   const dnaHash = computeDnaHash(breed, merged, generation);
+  const agent_secret_key = randomUUID();
 
   stmtInsert.run({
     id, name,
@@ -146,6 +147,7 @@ export function createDna({
     mutation_history: JSON.stringify([]),
     owner_address: ownerAddress,
     execution_mode: executionMode,
+    agent_secret_key,
     created_at_ms: now, updated_at_ms: now,
   });
 
