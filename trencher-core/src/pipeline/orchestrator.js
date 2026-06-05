@@ -43,9 +43,6 @@ export async function processCandidateFromSignals(signals) {
     return;
   }
 
-  // Broadcast signal to all listening custom agents (agentRunner.js)
-  sharedSignalFeed.broadcast(signals);
-
   const strat = activeStrategy();
   const { getBreedForStrategy } = await import('../db/agentDna.js');
   const breed = getBreedForStrategy(strat.id);
@@ -111,6 +108,20 @@ export async function processCandidateFromSignals(signals) {
   const currentDecisionId = storeDecision(candidateId, candidate, currentDecision);
   currentDecision.id = currentDecisionId;
   updateCandidateStatus(candidateId, currentDecision.verdict.toLowerCase());
+
+  // Broadcast enriched signal to all listening custom agents (agentRunner.js)
+  sharedSignalFeed.broadcast({
+    mint: candidate.token.mint,
+    symbol: candidate.token.symbol,
+    name: candidate.token.name,
+    mcap_usd: candidate.metrics.marketCapUsd,
+    rug_probability: candidate.trending?.rug_ratio || 0,
+    bundler_ratio: candidate.trending?.bundler_rate || 0,
+    smart_money_overlap: candidate.metrics.trendingSmartDegenCount || 0,
+    llm_confidence: (currentDecision.confidence || 0) / 100,
+    runner_signal: candidate.signals.route,
+    kol_signal: candidate.twitterNarrative?.mentionCount > 0 ? "YES" : null,
+  });
 
   if (selectedRow && !selectedThisCandidate) {
     const selectedDecisionId = storeDecision(selectedRow.id, selectedRow.candidate, batchDecision);
