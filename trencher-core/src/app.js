@@ -34,7 +34,8 @@ export async function startTrencherAgent() {
   resumeActiveAgents(db, sharedSignalFeed, connection);
   
   // Start funding watcher to auto-activate newly funded agents
-  startFundingWatcher(connection, db, sharedSignalFeed);
+  // DISABLED: User manually activates agents via UI, preventing 429 Too Many Requests errors.
+  // startFundingWatcher(connection, db, sharedSignalFeed);
   
   // Start WebSocket server and passive state manager
   // NOTE: consciousness stream (CONSCIOUSNESS_DECISION) is broadcast
