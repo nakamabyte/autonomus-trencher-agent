@@ -224,11 +224,17 @@ export async function refreshPosition(position, { autoExit = true, jupiterPnl = 
     try {
       sell = await executeLiveSell(position, exitReason);
     } catch (err) {
-      if (err.message.includes('Insufficient funds') || err.message.includes('not enough') || err.message.includes('token balance is 0') || err.message.includes('insufficient lamports')) {
+      const msg = err.message.toLowerCase();
+      if (msg.includes('insufficient funds') || msg.includes('not enough') || msg.includes('token balance is 0') || msg.includes('insufficient lamports')) {
          console.log(`[position] ${position.id} ${err.message}. Force closing position.`);
          db.prepare(`UPDATE dry_run_positions SET status = 'closed', closed_at_ms = ?, exit_reason = 'FORCE_CLOSE_FUNDS' WHERE id = ?`).run(now(), position.id);
          closed = true;
          exitReason = 'FORCE_CLOSE_FUNDS';
+      } else if (pnlPercent <= -50 && (msg.includes('route') || msg.includes('liquidity') || msg.includes('slippage') || msg.includes('simulation') || msg.includes('failed'))) {
+         console.log(`[position] ${position.id} ${err.message}. Force closing RUGGED position.`);
+         db.prepare(`UPDATE dry_run_positions SET status = 'closed', closed_at_ms = ?, exit_reason = 'FORCE_CLOSE_RUGGED' WHERE id = ?`).run(now(), position.id);
+         closed = true;
+         exitReason = 'FORCE_CLOSE_RUGGED';
       } else {
          throw err;
       }
