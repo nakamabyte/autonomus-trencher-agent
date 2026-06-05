@@ -230,7 +230,7 @@ export async function refreshPosition(position, { autoExit = true, jupiterPnl = 
          db.prepare(`UPDATE dry_run_positions SET status = 'closed', closed_at_ms = ?, exit_reason = 'FORCE_CLOSE_FUNDS' WHERE id = ?`).run(now(), position.id);
          closed = true;
          exitReason = 'FORCE_CLOSE_FUNDS';
-      } else if (pnlPercent <= -50 && (msg.includes('route') || msg.includes('liquidity') || msg.includes('slippage') || msg.includes('simulation') || msg.includes('failed'))) {
+      } else if (pnlPercent <= -50) {
          console.log(`[position] ${position.id} ${err.message}. Force closing RUGGED position.`);
          db.prepare(`UPDATE dry_run_positions SET status = 'closed', closed_at_ms = ?, exit_reason = 'FORCE_CLOSE_RUGGED' WHERE id = ?`).run(now(), position.id);
          closed = true;
