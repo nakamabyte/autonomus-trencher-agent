@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAgentDna } from '@/hooks/useAgentDna';
 import { AgentProfileCard } from '@/components/platform/AgentProfileCard';
@@ -13,6 +13,8 @@ export default function AgentProfilePage() {
   const router = useRouter();
   const id = params?.id as string;
   const [isCopied, setIsCopied] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { agents, connected, isLoaded } = useAgentDna();
 
@@ -29,6 +31,35 @@ export default function AgentProfilePage() {
   if (agent) {
     strategyFilter = agent.id;
   }
+
+  const fetchBalance = useCallback(async () => {
+    if (!agent?.agent_wallet) return;
+    setIsRefreshing(true);
+    try {
+      const response = await fetch(process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'getBalance',
+          params: [agent.agent_wallet]
+        })
+      });
+      const data = await response.json();
+      if (data.result !== undefined) {
+        setBalance(data.result.value / 1e9);
+      }
+    } catch (err) {
+      console.error("Failed to fetch balance", err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [agent?.agent_wallet]);
+
+  useEffect(() => {
+    fetchBalance();
+  }, [fetchBalance]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#050508' }}>
@@ -170,6 +201,51 @@ export default function AgentProfilePage() {
                   <div style={{ fontSize: '9px', color: '#666', marginTop: '8px', fontFamily: "'JetBrains Mono', monospace" }}>
                     Transfer SOL to this address to start automatic Live Trading.
                   </div>
+                  {balance !== null && (
+                    <div style={{ 
+                      marginTop: '12px', 
+                      paddingTop: '12px', 
+                      borderTop: '1px solid #1a1a24',
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center' 
+                    }}>
+                      <span style={{ fontSize: '10px', color: '#888', fontFamily: "'JetBrains Mono', monospace", display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        Current Balance
+                        <button 
+                          onClick={fetchBalance}
+                          disabled={isRefreshing}
+                          style={{
+                            background: 'rgba(0, 200, 150, 0.1)',
+                            border: '1px solid rgba(0, 200, 150, 0.2)',
+                            borderRadius: '4px',
+                            cursor: isRefreshing ? 'default' : 'pointer',
+                            padding: '3px 6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px',
+                            color: isRefreshing ? '#555' : '#00C896',
+                            transition: 'all 0.2s',
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: '8px',
+                            textTransform: 'uppercase'
+                          }}
+                          onMouseEnter={e => { if (!isRefreshing) { e.currentTarget.style.background = 'rgba(0, 200, 150, 0.2)'; e.currentTarget.style.borderColor = 'rgba(0, 200, 150, 0.4)'; } }}
+                          onMouseLeave={e => { if (!isRefreshing) { e.currentTarget.style.background = 'rgba(0, 200, 150, 0.1)'; e.currentTarget.style.borderColor = 'rgba(0, 200, 150, 0.2)'; } }}
+                          title="Refresh balance"
+                        >
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isRefreshing ? 'animate-spin' : ''}>
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <polyline points="1 20 1 14 7 14"></polyline>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                          </svg>
+                          {isRefreshing ? 'REFRESHING...' : 'REFRESH'}
+                        </button>
+                      </span>
+                      <span style={{ fontSize: '12px', color: '#fff', fontWeight: 'bold', fontFamily: "'JetBrains Mono', monospace" }}>{balance.toFixed(4)} SOL</span>
+                    </div>
+                  )}
                 </div>
               )}
               

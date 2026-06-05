@@ -14,8 +14,9 @@ async function handleProxy(req: Request, { params }: { params: Promise<{ path: s
 
     const subPath = path.join('/');
     const isAgentModeRoute = subPath.match(/^agent\/[^\/]+\/(set-mode|can-go-live|trades)$/);
+    const isPublicRoute = subPath.match(/^decisions$/) || subPath.match(/^agent\/[^\/]+\/decisions$/);
 
-    let isAuthorized = !!session || (!!serverSecret && !!clientKey && clientKey === serverSecret);
+    let isAuthorized = !!session || (!!serverSecret && !!clientKey && clientKey === serverSecret) || !!isPublicRoute;
 
     if (isAgentModeRoute) {
       isAuthorized = true; // Let the core backend validate the agent secret key

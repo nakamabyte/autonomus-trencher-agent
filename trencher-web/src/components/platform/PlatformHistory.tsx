@@ -360,7 +360,7 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span>{pos.symbol}</span>
                         <a 
-                          href={isBase ? `https://dexscreener.com/base/${pos.mint}` : `https://gmgn.ai/sol/token/${pos.mint}`} 
+                          href={isBase ? `https://gmgn.ai/base/token/${pos.mint}` : `https://gmgn.ai/sol/token/${pos.mint}`} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}

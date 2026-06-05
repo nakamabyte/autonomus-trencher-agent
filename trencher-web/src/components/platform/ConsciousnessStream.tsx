@@ -118,7 +118,7 @@ function DecisionRow({ d }: { d: ConsciousnessDecision }) {
         </span>
         {d.mint && (
           <a
-            href={`https://dexscreener.com/solana/${d.mint}`}
+            href={`https://gmgn.ai/sol/token/${d.mint}`}
             target="_blank"
             rel="noreferrer"
             style={{
@@ -127,7 +127,7 @@ function DecisionRow({ d }: { d: ConsciousnessDecision }) {
               textDecoration: 'none',
               borderBottom: '1px dashed #555'
             }}
-            title="View on DexScreener"
+            title="View on GMGN"
           >
             {d.mint.slice(0, 4)}...{d.mint.slice(-4)}
           </a>
