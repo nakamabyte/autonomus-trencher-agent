@@ -115,6 +115,7 @@ export function AgentProfileCard({ agent, compact = false, onClick, hideViewProf
             fontSize: compact ? '20px' : '24px',
             lineHeight: 1,
             flexShrink: 0,
+            color: breed.color,
           }}>
             {breed.icon}
           </div>

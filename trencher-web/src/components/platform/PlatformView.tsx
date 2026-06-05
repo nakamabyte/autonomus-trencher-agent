@@ -144,14 +144,16 @@ export function PlatformView({ onClose }: PlatformViewProps) {
 
   return (
     <>
-      <div className="pv-root" style={{ gridTemplateRows: `48px 1fr ${logHeight}px` }}>
+      <div className="pv-root" style={{ gridTemplateRows: `48px 1fr ${mainView === 'graph' ? logHeight : 0}px` }}>
         <PlatformHeader metrics={metrics} onClosePlatform={onClose} activeChain={activeChain} setActiveChain={setActiveChain} />
         
         {/* Horizontal Drag Handle for Log Strip */}
-        <div 
-          style={{ position: 'absolute', bottom: logHeight - 3, left: 0, right: 0, height: '6px', cursor: 'ns-resize', zIndex: 50 }} 
-          onMouseDown={startLogDrag} 
-        />
+        {mainView === 'graph' && (
+          <div 
+            style={{ position: 'absolute', bottom: logHeight - 3, left: 0, right: 0, height: '6px', cursor: 'ns-resize', zIndex: 50 }} 
+            onMouseDown={startLogDrag} 
+          />
+        )}
 
         <div className="pv-main" style={{ gridTemplateColumns: `1fr ${mainView === 'graph' ? sidebarWidth : 0}px`, position: 'relative' }}>
           {/* View toggle tabs */}
@@ -293,7 +295,7 @@ export function PlatformView({ onClose }: PlatformViewProps) {
             </>
           )}
         </div>
-        <PlatformLogStrip logs={logs} />
+        {mainView === 'graph' && <PlatformLogStrip logs={logs} />}
       </div>
 
       {/* Agent Detail Modal (graph nodes) */}

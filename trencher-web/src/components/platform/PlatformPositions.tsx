@@ -40,24 +40,40 @@ export function PlatformPositions({ metrics, logHeight }: PlatformPositionsProps
                 <div key={pos.id} className="pv-ai">
                   <div className="pv-adot" style={{ background: colorClass }}></div>
                   <div className="pv-ainfo">
-                    <div className="pv-aname" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <a 
-                        href={isBase ? `https://dexscreener.com/base/${pos.mint}` : `https://gmgn.ai/sol/token/${pos.mint}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        title={pos.mint}
-                        onClick={e => e.stopPropagation()}
-                        style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', position: 'relative', zIndex: 30 }}
-                        className="group"
-                      >
-                        <span className="group-hover:text-[var(--c-accent)] transition-colors duration-300">{pos.symbol}</span>
-                        <span 
-                          style={{ fontFamily: 'var(--fm)', fontSize: '8px' }}
-                          className="opacity-50 group-hover:opacity-100 group-hover:text-white transition-all duration-300"
-                        >
-                          {pos.mint.slice(0, 4)}...{pos.mint.slice(-4)}
+                    {pos.agent_name && (
+                      <div style={{ marginBottom: '4px' }}>
+                        <span style={{ 
+                          fontSize: '8px', 
+                          padding: '2px 6px', 
+                          background: 'rgba(255,255,255,0.05)', 
+                          borderRadius: '4px',
+                          color: '#aaa',
+                          fontFamily: 'var(--fm)',
+                          border: '1px solid rgba(255,255,255,0.05)'
+                        }}>
+                          {pos.agent_name.toUpperCase()}
                         </span>
-                      </a>
+                      </div>
+                    )}
+                    <div className="pv-aname" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span className="group-hover:text-[var(--c-accent)] transition-colors duration-300">{pos.symbol}</span>
+                        <a 
+                          href={isBase ? `https://dexscreener.com/base/${pos.mint}` : `https://gmgn.ai/sol/token/${pos.mint}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          onClick={e => e.stopPropagation()}
+                          style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', position: 'relative', zIndex: 30 }}
+                          className="group"
+                        >
+                          <span 
+                            style={{ fontFamily: 'var(--fm)', fontSize: '8px' }}
+                            className="opacity-50 group-hover:opacity-100 group-hover:text-white transition-all duration-300"
+                          >
+                            {pos.mint.slice(0, 4)}...{pos.mint.slice(-4)}
+                          </span>
+                        </a>
+                      </div>
                       <span style={{ color: colorClass }}>{sign}{pos.pnl_percent.toFixed(2)}%</span>
                     </div>
                     <div className="pv-abar" style={{ background: `${colorClass}22`, height: '2px', marginBottom: '4px' }}>

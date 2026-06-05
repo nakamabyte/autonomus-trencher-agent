@@ -48,7 +48,7 @@ export function getAgentWalletKey(db, agentId) {
 }
 
 function recordPosition(db, pos) {
-  db.prepare(`
+  const info = db.prepare(`
     INSERT INTO dry_run_positions (
       mint, symbol, status, opened_at_ms, size_sol, entry_mcap, 
       tp_percent, sl_percent, trailing_enabled, trailing_percent,
@@ -59,18 +59,10 @@ function recordPosition(db, pos) {
       @execution_mode, @agent_dna_id, @snapshot_json
     )
   `).run(pos);
+  return info.lastInsertRowid;
 }
 
-function notifyAgentTrade(agent, signal, side) {
-  console.log(`[notify] Agent ${agent.name} ${side} ${signal.symbol || signal.mint}`);
-  const msg = `🤖 <b>Agent Trade Executed</b>\n\n` +
-              `<b>Agent:</b> ${agent.name}\n` +
-              `<b>Action:</b> ${side}\n` +
-              `<b>Token:</b> ${signal.symbol || signal.mint}\n` +
-              `<b>MCAP:</b> $${signal.mcap_usd || 0}\n` +
-              `<b>Mode:</b> ${agent.execution_mode.toUpperCase()}`;
-  import('../telegram/send.js').then(({ sendTelegram }) => sendTelegram(msg)).catch(() => {});
-}
+// removed notifyAgentTrade
 
 export async function executeAgentTrade(agent, signal, decision, dna, db, balance) {
   const positionSize = calculatePositionSize(balance, dna);
@@ -85,7 +77,7 @@ export async function executeAgentTrade(agent, signal, decision, dna, db, balanc
   if (agent.execution_mode === 'dry_run') {
     // Only simulate execution
     console.log(`[agent] ${agent.name} is in dry_run mode. Simulating trade...`);
-    recordPosition(db, {
+    const posId = recordPosition(db, {
       agent_dna_id: agent.id,
       mint: signal.mint,
       symbol: signal.symbol || signal.mint.slice(0, 4),
@@ -100,7 +92,7 @@ export async function executeAgentTrade(agent, signal, decision, dna, db, balanc
       snapshot_json: '{}'
     });
     console.log(`[agent] ${agent.name} simulated BUY ${signal.symbol || signal.mint}`);
-    notifyAgentTrade(agent, signal, 'DRY_BUY');
+    import('../telegram/send.js').then(({ sendPositionOpen }) => sendPositionOpen(posId)).catch(() => {});
     return;
   }
 
@@ -115,7 +107,7 @@ export async function executeAgentTrade(agent, signal, decision, dna, db, balanc
 
   if (result.success) {
     // Record position with DNA exit params
-    recordPosition(db, {
+    const posId = recordPosition(db, {
       agent_dna_id: agent.id,
       mint: signal.mint,
       symbol: signal.symbol || signal.mint.slice(0, 4),
@@ -131,6 +123,6 @@ export async function executeAgentTrade(agent, signal, decision, dna, db, balanc
     });
 
     console.log(`[agent] ${agent.name} LIVE BUY ${signal.symbol || signal.mint} | Sig: ${result.signature}`);
-    notifyAgentTrade(agent, signal, 'LIVE_BUY');
+    import('../telegram/send.js').then(({ sendPositionOpen }) => sendPositionOpen(posId)).catch(() => {});
   }
 }

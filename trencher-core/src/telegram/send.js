@@ -70,7 +70,12 @@ export async function sendBatch(chatId, batchId) {
 }
 
 export async function sendPositionOpen(positionId) {
-  const position = db.prepare('SELECT * FROM dry_run_positions WHERE id = ?').get(positionId);
+  const position = db.prepare(`
+    SELECT p.*, a.name as agent_name 
+    FROM dry_run_positions p 
+    LEFT JOIN agent_dna a ON p.agent_dna_id = a.id 
+    WHERE p.id = ?
+  `).get(positionId);
   if (!position) return;
   
   let decision = {};
@@ -85,7 +90,14 @@ export async function sendPositionOpen(positionId) {
 }
 
 export async function sendPositionExit(position) {
-  await notifyClosePosition({ ...position, status: 'closed' });
+  let posObj = { ...position, status: 'closed' };
+  if (!posObj.agent_name && posObj.agent_dna_id) {
+    const agent = db.prepare('SELECT name FROM agent_dna WHERE id = ?').get(posObj.agent_dna_id);
+    if (agent) {
+      posObj.agent_name = agent.name;
+    }
+  }
+  await notifyClosePosition(posObj);
 }
 
 export async function sendTradeIntent(intentId, candidate, decision) {

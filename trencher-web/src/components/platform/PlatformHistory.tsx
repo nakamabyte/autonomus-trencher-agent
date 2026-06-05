@@ -341,6 +341,21 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
                 >
                   <div className="pv-adot" style={{ background: colorClass }}></div>
                   <div className="pv-ainfo">
+                    {pos.agent_name && (
+                      <div style={{ marginBottom: '4px' }}>
+                        <span style={{ 
+                          fontSize: '8px', 
+                          padding: '2px 6px', 
+                          background: 'rgba(255,255,255,0.05)', 
+                          borderRadius: '4px',
+                          color: '#aaa',
+                          fontFamily: 'var(--fm)',
+                          border: '1px solid rgba(255,255,255,0.05)'
+                        }}>
+                          {pos.agent_name.toUpperCase()}
+                        </span>
+                      </div>
+                    )}
                     <div className="pv-aname" style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span>{pos.symbol}</span>

@@ -68,9 +68,10 @@ export function formatOpenPosition(position, decision = {}) {
 
   const chainBadge = isBase ? '🔵 Base' : '🟣 Solana';
   const sizeText = isBase ? `${(position.size_sol || 0).toFixed(5)} ETH` : formatSol(position.size_sol);
+  const agentTag = position.agent_name ? `\nAgent: <b>${position.agent_name}</b>` : '';
 
   return `
-✅ Live buy executed${freshTag}
+✅ ${mode === 'live' ? 'Live buy' : 'Dry run buy'} executed${freshTag}${agentTag}
 
 📍 ${position.symbol || 'UNKNOWN'} #${position.id || 'N/A'} (${chainBadge})
 Token: ${token}
@@ -101,9 +102,10 @@ export function formatClosePosition(position) {
   const exitReason = position.exit_reason || 'MANUAL';
   const chainBadge = isBase ? '🔵 Base' : '🟣 Solana';
   const sizeText = isBase ? `${(position.size_sol || 0).toFixed(5)} ETH` : formatSol(position.size_sol);
+  const agentTag = position.agent_name ? `\nAgent: <b>${position.agent_name}</b>` : '';
 
   return `
-🏁 Live exit: ${exitReason}
+🏁 ${mode === 'live' ? 'Live exit' : 'Dry run exit'}: ${exitReason}${agentTag}
 
 📍 ${position.symbol || 'UNKNOWN'} #${position.id || 'N/A'} (${chainBadge})
 Token: ${token}

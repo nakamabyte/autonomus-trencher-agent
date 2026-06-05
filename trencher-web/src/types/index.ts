@@ -62,6 +62,7 @@ export interface PlatformMetrics {
     entry_signature?: string | null;
     strategy?: string | null;
     size_sol?: number;
+    agent_name?: string | null;
   }[];
   closed_positions?: {
     id: number;
@@ -78,6 +79,7 @@ export interface PlatformMetrics {
     strategy: string | null;
     entry_signature?: string | null;
     exit_signature?: string | null;
+    agent_name?: string | null;
   }[];
 }
 
