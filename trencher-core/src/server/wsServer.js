@@ -505,6 +505,62 @@ export function startWsServer(port = 4001) {
       return;
     }
 
+    const updateStrategyMatch = pathname.match(/^\/api\/agent\/([^\/]+)\/update-strategy$/);
+    if (updateStrategyMatch && req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', async () => {
+        try {
+          const payload = JSON.parse(body);
+          const agentId = updateStrategyMatch[1];
+          
+          const { db } = await import('../db/connection.js');
+          const agent = db.prepare('SELECT agent_secret_key FROM agent_dna WHERE id = ?').get(agentId);
+          if (!agent) {
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Agent not found' }));
+            return;
+          }
+
+          const agentKey = req.headers['x-agent-key'];
+          if (!agent.agent_secret_key || agent.agent_secret_key !== agentKey) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Unauthorized: invalid agent secret key' }));
+            return;
+          }
+
+          const { tpPercent, slPercent, whaleWallets } = payload;
+          if (tpPercent === undefined || slPercent === undefined) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Missing tpPercent or slPercent' }));
+            return;
+          }
+
+          const { updateAgentStrategy, listBreeds } = await import('../db/agentDna.js');
+          updateAgentStrategy(agentId, tpPercent, slPercent, whaleWallets);
+          
+          // Sync with wallet registry if provided
+          if (whaleWallets && Array.isArray(whaleWallets)) {
+            const { addWallet } = await import('../copytrade/walletRegistry.js');
+            for (const wallet of whaleWallets) {
+              if (wallet && typeof wallet === 'string') {
+                addWallet(wallet, `${agentId} Tracked`);
+              }
+            }
+          }
+          
+          broadcast('AGENT_DNA_UPDATE', listBreeds());
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true }));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+      return;
+    }
+
     // Deploy Agent API
     if (req.url === '/api/deploy' && req.method === 'POST') {
       if (!requireAuth()) return;
@@ -515,6 +571,15 @@ export function startWsServer(port = 4001) {
           const payload = JSON.parse(body);
           const { createDna, listBreeds, createAgentWallet } = await import('../db/agentDna.js');
           const newAgent = createDna(payload);
+          
+          if (payload.breed === 'whale_tracker' && payload.whaleWallets && Array.isArray(payload.whaleWallets)) {
+            const { addWallet } = await import('../copytrade/walletRegistry.js');
+            for (const wallet of payload.whaleWallets) {
+              if (wallet && typeof wallet === 'string') {
+                addWallet(wallet, `${newAgent.name} Tracked`);
+              }
+            }
+          }
           
           // Generate Solana Wallet for the newly deployed agent
           const agentWallet = createAgentWallet(newAgent.id);

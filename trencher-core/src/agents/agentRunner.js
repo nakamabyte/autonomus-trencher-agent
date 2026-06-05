@@ -75,7 +75,7 @@ export function startAgentTradingLoop(agentId, db, sharedSignalFeed, connection)
 
   const handler = async (signal) => {
     // Skip if agent is no longer active
-    const current = db.prepare('SELECT name, execution_mode, agent_wallet FROM agent_dna WHERE id = ?').get(agentId);
+    const current = db.prepare('SELECT * FROM agent_dna WHERE id = ?').get(agentId);
     if (!current || !['live', 'dry_run'].includes(current.execution_mode)) {
       stopAgentTradingLoop(agentId, sharedSignalFeed);
       return;
@@ -102,7 +102,7 @@ export function startAgentTradingLoop(agentId, db, sharedSignalFeed, connection)
     const decision = await evaluateSignalWithDna(signal, dna);
 
     if (decision.verdict === 'BUY' && decision.confidence >= (dna.llm_min_confidence || 50) / 100) {
-      await executeAgentTrade(agent, signal, decision, dna, db, balance);
+      await executeAgentTrade(current, signal, decision, dna, db, balance);
     }
 
     // Log to per-agent consciousness feed

@@ -263,10 +263,15 @@ export function initDb() {
 
       created_at_ms INTEGER NOT NULL,
       updated_at_ms INTEGER NOT NULL,
+      tp_percent REAL DEFAULT 100,
+      sl_percent REAL DEFAULT -20,
+      trailing_enabled INTEGER DEFAULT 1,
+      trailing_percent REAL DEFAULT 15,
       execution_mode TEXT DEFAULT 'dry_run'
     );
     CREATE INDEX IF NOT EXISTS idx_agent_dna_breed ON agent_dna(breed);
   `);
+  ensureColumn('agent_dna', 'whale_wallets', 'TEXT');
   ensureColumn('candidates', 'signal_key', 'TEXT');
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_candidates_signal_key ON candidates(signal_key) WHERE signal_key IS NOT NULL');
   ensureColumn('dry_run_positions', 'execution_mode', "TEXT DEFAULT 'dry_run'");
@@ -290,6 +295,11 @@ export function initDb() {
   ensureColumn('agent_dna', 'dna_config', 'TEXT');
   ensureColumn('agent_dna', 'encrypted_key', 'TEXT');
   ensureColumn('agent_dna', 'agent_secret_key', 'TEXT');
+  ensureColumn('agent_dna', 'tp_percent', 'REAL DEFAULT 100');
+  ensureColumn('agent_dna', 'sl_percent', 'REAL DEFAULT -20');
+  ensureColumn('agent_dna', 'trailing_enabled', 'INTEGER DEFAULT 1');
+  ensureColumn('agent_dna', 'trailing_percent', 'REAL DEFAULT 15');
+
   ensureColumn('dry_run_positions', 'agent_dna_id', 'TEXT');
   db.exec(`
     CREATE TABLE IF NOT EXISTS kol_accuracy (

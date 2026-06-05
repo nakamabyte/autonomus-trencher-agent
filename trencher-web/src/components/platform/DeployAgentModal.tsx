@@ -19,13 +19,7 @@ const DEPLOY_FEES: Record<string, number> = {
   commander: 0.2,
 };
 
-// Risk modifiers for DNA traits
-const RISK_MODIFIERS: Record<string, Partial<Record<string, number>>> = {
-  conservative: { speed: -10, aggression: -20, rug_defense: +20, exit_discipline: +15 },
-  balanced: { },
-  aggressive: { speed: +10, aggression: +15, rug_defense: -10, momentum_sensitivity: +10 },
-  degen: { speed: +20, aggression: +30, rug_defense: -30, momentum_sensitivity: +20, exit_discipline: -20 },
-};
+// Risk modifiers removed; TP and SL are now set explicitly by the user
 
 interface DeployAgentModalProps {
   isOpen: boolean;
@@ -36,7 +30,8 @@ interface DeployAgentModalProps {
 export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModalProps) {
   const [name, setName] = useState('');
   const [selectedBreed, setSelectedBreed] = useState<BreedKey>('scout');
-  const [riskMode, setRiskMode] = useState<'conservative' | 'balanced' | 'aggressive' | 'degen'>('balanced');
+  const [tpPercent, setTpPercent] = useState<number>(100);
+  const [slPercent, setSlPercent] = useState<number>(-20);
   const [entryPreference, setEntryPreference] = useState<'wait_for_dip' | 'immediate'>('wait_for_dip');
   const [exitPreference, setExitPreference] = useState<'trailing_tp' | 'fixed_tp'>('trailing_tp');
   const [rugFilter, setRugFilter] = useState<number>(0.20);
@@ -44,7 +39,31 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
   const [confirmData, setConfirmData] = useState<{ txBase64: string; confirmedFee: number; split: any; payload: any } | null>(null);
   const [alertData, setAlertData] = useState<{ title: string; message: string; type: 'error' | 'success'; txHash?: string; onOk?: () => void } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [whaleWallets, setWhaleWallets] = useState<string[]>([]);
+  const [walletInput, setWalletInput] = useState('');
   const { publicKey, sendTransaction } = useWallet();
+
+  const addWallets = (input: string) => {
+    const newWallets = input.split(/[,\n\s]+/).map(w => w.trim()).filter(Boolean);
+    if (newWallets.length > 0) {
+      setWhaleWallets(prev => {
+        const unique = new Set([...prev, ...newWallets]);
+        return Array.from(unique);
+      });
+      setWalletInput('');
+    }
+  };
+
+  const removeWallet = (walletToRemove: string) => {
+    setWhaleWallets(prev => prev.filter(w => w !== walletToRemove));
+  };
+
+  const handleWalletKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addWallets(walletInput);
+    }
+  };
 
   const fee = DEPLOY_FEES[selectedBreed] || 0.05;
 
@@ -54,13 +73,16 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
       const timer = setTimeout(() => {
         setName('');
         setSelectedBreed('scout');
-        setRiskMode('balanced');
+        setTpPercent(100);
+        setSlPercent(-20);
         setEntryPreference('wait_for_dip');
         setExitPreference('trailing_tp');
         setRugFilter(0.20);
         setIsDeploying(false);
         setConfirmData(null);
         setAlertData(null);
+        setWhaleWallets([]);
+        setWalletInput('');
       }, 0);
       return () => clearTimeout(timer);
     }
@@ -70,12 +92,6 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
 
   // Calculate preview traits
   const previewTraits = { ...breedConfig.traits } as Record<string, number>;
-  const modifiers = RISK_MODIFIERS[riskMode] || {};
-  for (const [trait, mod] of Object.entries(modifiers)) {
-    if (previewTraits[trait] !== undefined) {
-      previewTraits[trait] = Math.max(0, Math.min(100, previewTraits[trait] + (mod || 0)));
-    }
-  }
 
   const handleDeploy = async () => {
     if (!name.trim()) return;
@@ -87,9 +103,12 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
         name: name.trim(),
         breed: selectedBreed,
         traits: previewTraits,
+        tpPercent,
+        slPercent,
         entryPreference,
         exitPreference,
         rugFilter,
+        whaleWallets: selectedBreed === 'whale_tracker' ? whaleWallets : [],
       };
 
       // 1. Request transaction from backend
@@ -230,7 +249,6 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
                     disabled={!isAvailable}
                     onClick={() => {
                       setSelectedBreed(b.key);
-                      setRiskMode(b.style);
                     }}
                     style={{
                       background: isSelected ? `${b.color}15` : '#0d0d12',
@@ -264,43 +282,51 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
             </div>
           </div>
 
-          {/* Risk Mode */}
-          <div>
-            <label style={{ display: 'block', fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>
-              Risk Mode
-            </label>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              {(['conservative', 'balanced', 'aggressive', 'degen'] as const).map(mode => {
-                const isSelected = riskMode === mode;
-                const modeColors = {
-                  conservative: '#81C784',
-                  balanced: '#4FC3F7',
-                  aggressive: '#FFB347',
-                  degen: '#FF6B6B'
-                };
-                const color = modeColors[mode];
-                return (
-                  <button
-                    key={mode}
-                    onClick={() => setRiskMode(mode)}
-                    style={{
-                      flex: 1,
-                      background: isSelected ? `${color}15` : '#0d0d12',
-                      border: `1px solid ${isSelected ? color : '#1a1a28'}`,
-                      color: isSelected ? color : '#888',
-                      padding: '8px 0',
-                      borderRadius: '4px',
-                      fontSize: '10px',
-                      textTransform: 'capitalize',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      fontFamily: "'JetBrains Mono', monospace",
-                    }}
-                  >
-                    {mode}
-                  </button>
-                );
-              })}
+          {/* Strategy Overrides (TP & SL) */}
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>
+                Take Profit (%)
+              </label>
+              <input
+                type="number"
+                value={tpPercent}
+                onChange={e => setTpPercent(parseInt(e.target.value) || 0)}
+                style={{
+                  width: '100%',
+                  background: '#0d0d12',
+                  border: '1px solid #1a1a28',
+                  color: '#00C896',
+                  padding: '10px 12px',
+                  borderRadius: '4px',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '13px',
+                  outline: 'none',
+                  fontWeight: 'bold',
+                }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>
+                Stop Loss (%)
+              </label>
+              <input
+                type="number"
+                value={slPercent}
+                onChange={e => setSlPercent(parseInt(e.target.value) || 0)}
+                style={{
+                  width: '100%',
+                  background: '#0d0d12',
+                  border: '1px solid #1a1a28',
+                  color: '#FF6B6B',
+                  padding: '10px 12px',
+                  borderRadius: '4px',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '13px',
+                  outline: 'none',
+                  fontWeight: 'bold',
+                }}
+              />
             </div>
           </div>
 
@@ -373,6 +399,85 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
               })}
             </div>
           </div>
+
+          {/* Whale Tracker: Target Wallets */}
+          {selectedBreed === 'whale_tracker' && (
+            <div>
+              <label style={{ display: 'block', fontSize: '10px', color: '#00C896', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>
+                Tracked Wallets (Target Smart Money / Whales)
+              </label>
+              <div style={{
+                background: '#0d0d12',
+                border: '1px solid #1a1a28',
+                borderRadius: '4px',
+                padding: '8px',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '6px'
+              }}>
+                {whaleWallets.map(wallet => (
+                  <span key={wallet} style={{
+                    background: '#1a1a28',
+                    color: '#00C896',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    wordBreak: 'break-all'
+                  }}>
+                    {wallet}
+                    <button
+                      onClick={() => removeWallet(wallet)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#888',
+                        cursor: 'pointer',
+                        padding: '0 2px',
+                        fontSize: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginLeft: '4px'
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+                <input
+                  type="text"
+                  value={walletInput}
+                  onChange={e => setWalletInput(e.target.value)}
+                  onKeyDown={handleWalletKeyDown}
+                  onPaste={e => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData('text');
+                    addWallets(pasted);
+                  }}
+                  onBlur={() => addWallets(walletInput)}
+                  placeholder={whaleWallets.length === 0 ? "Paste wallets here, press Enter..." : "Add more..."}
+                  style={{
+                    flex: 1,
+                    minWidth: '150px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#fff',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: '11px',
+                    outline: 'none',
+                    padding: '4px'
+                  }}
+                />
+              </div>
+              <div style={{ fontSize: '9px', color: '#888', marginTop: '6px' }}>
+                These wallets will be added to the global tracked wallets list to be copied by your agent. You can input multiple wallets by separating them with commas or new lines.
+              </div>
+            </div>
+          )}
 
           {/* Rug Filter */}
           <div>
@@ -524,12 +629,14 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
             <div style={{ marginBottom: '32px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #1a1a24' }}>
                 <span style={{ color: '#888', fontSize: '14px' }}>Total fee</span>
-                <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '14px' }}>{confirmData.confirmedFee} SOL</span>
+                <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '14px' }}>{confirmData?.confirmedFee} SOL</span>
               </div>
-              
-              <div style={{ color: '#00C896', marginBottom: '12px', fontSize: '13px' }}>50% holder rewards: {confirmData.split.reward_pool} SOL</div>
-              <div style={{ color: '#FF6B6B', marginBottom: '12px', fontSize: '13px' }}>25% burn $AUTR: {confirmData.split.burn} SOL</div>
-              <div style={{ color: '#00BBF9', marginBottom: '12px', fontSize: '13px' }}>25% agent treasury: {confirmData.split.agent_treasury} SOL</div>
+              <div style={{ padding: '12px', background: '#0a0a10', borderRadius: '4px', border: '1px solid #1a1a28' }}>
+                <div style={{ color: '#00C896', marginBottom: '12px', fontSize: '13px' }}>50% holder rewards: {confirmData?.split?.reward_pool} SOL</div>
+                <div style={{ color: '#FF6B6B', marginBottom: '12px', fontSize: '13px' }}>25% burn $AUTR: {confirmData?.split?.burn} SOL</div>
+                <div style={{ color: '#00BBF9', marginBottom: '12px', fontSize: '13px' }}>25% agent treasury: {confirmData?.split?.agent_treasury} SOL</div>
+                <div style={{ color: '#F4B41A', fontSize: '13px' }}>0% dev fee (waived)</div>
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '16px' }}>
@@ -567,24 +674,29 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
           id="alert-modal" 
           isOpen={true} 
           onClose={() => {
-            const cb = alertData.onOk;
+            const cb = alertData?.onOk;
             setAlertData(null);
             if (cb) cb();
           }} 
-          title={alertData.title}
+          title={alertData?.title}
         >
           <div style={{ padding: '12px 8px', fontFamily: 'monospace', maxWidth: '360px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px' }}>
+              {alertData?.title}
+            </h2>
             <div style={{ 
-              color: alertData.type === 'error' ? '#FF6B6B' : '#00C896', 
-              marginBottom: '20px', 
-              lineHeight: 1.6,
-              fontSize: '14px',
-              whiteSpace: 'pre-wrap'
+              fontSize: '14px', 
+              color: alertData?.type === 'error' ? '#FF6B6B' : '#00C896', 
+              background: alertData?.type === 'error' ? 'rgba(255, 107, 107, 0.1)' : 'rgba(0, 200, 150, 0.1)',
+              padding: '16px',
+              borderRadius: '4px',
+              marginBottom: '24px',
+              lineHeight: 1.5
             }}>
-              {alertData.message}
+              {alertData?.message}
             </div>
 
-            {alertData.txHash && (
+            {alertData?.txHash && (
               <div style={{
                 background: '#0d0d12',
                 border: '1px solid #1a1a28',
@@ -596,20 +708,29 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
                 justifyContent: 'space-between',
                 gap: '8px'
               }}>
-                <div style={{
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  fontSize: '11px',
-                  color: '#888',
-                  fontFamily: 'monospace',
-                  flex: 1
-                }}>
-                  TX: {alertData.txHash}
+                <div 
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}
+                >
+                  <span style={{ fontSize: '11px', color: '#888' }}>TX:</span>
+                  <a 
+                    href={`https://explorer.solana.com/tx/${alertData.txHash}`} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    style={{
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      fontSize: '11px',
+                      color: '#00C896',
+                      textDecoration: 'none'
+                    }}
+                  >
+                    {alertData?.txHash}
+                  </a>
                 </div>
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(alertData.txHash!);
+                    if (alertData?.txHash) navigator.clipboard.writeText(alertData.txHash);
                     setCopied(true);
                     setTimeout(() => setCopied(false), 2000);
                   }}
@@ -635,7 +756,7 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
 
             <button 
               onClick={() => {
-                const cb = alertData.onOk;
+                const cb = alertData?.onOk;
                 setAlertData(null);
                 setCopied(false);
                 if (cb) cb();

@@ -157,6 +157,11 @@ export interface AgentDna {
   stealth: number;
   mutation_rate: number;
   survival_score: number;
+  tp_percent?: number;
+  sl_percent?: number;
+  trailing_enabled?: number;
+  trailing_percent?: number;
+  whale_wallets?: string;
   // Performance
   total_trades: number;
   win_rate: number;

@@ -1,8 +1,10 @@
 'use client';
 
+import React, { useState } from 'react';
 import type { AgentDna } from '@/types';
 import { BREEDS, DNA_TRAIT_LABELS, DNA_TRAIT_COLORS } from '@/constants/breeds';
 import { AgentModeToggle } from './AgentModeToggle';
+import { AgentSettingsModal } from './AgentSettingsModal';
 
 // ─── DNA Trait Keys to display on card ───────────────────────────
 const CARD_TRAITS: (keyof AgentDna)[] = [
@@ -75,8 +77,10 @@ export function AgentProfileCard({ agent, compact = false, onClick, hideViewProf
   const winRatePct  = Math.round(agent.win_rate * 100);
   const pnlColor    = pnlPositive ? '#00C896' : '#FF6B6B';
   const genLabel    = agent.generation === 0 ? 'Genesis' : `Gen ${agent.generation}`;
+  const [showSettings, setShowSettings] = useState(false);
 
   return (
+    <>
     <div
       id={`agent-card-${agent.id.slice(0, 8)}`}
       onClick={onClick}
@@ -162,9 +166,39 @@ export function AgentProfileCard({ agent, compact = false, onClick, hideViewProf
           </div>
         </div>
 
-        {/* Mode Toggle */}
+        {/* Mode Toggle & Settings */}
         {!compact && (
-          <div style={{ flexShrink: 0 }}>
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowSettings(true);
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '14px',
+                padding: '4px',
+                color: '#aaa',
+                opacity: 0.7,
+                transition: 'opacity 0.2s, color 0.2s',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.opacity = '1';
+                e.currentTarget.style.color = '#fff';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.opacity = '0.7';
+                e.currentTarget.style.color = '#aaa';
+              }}
+              title="Agent Settings"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </button>
             <AgentModeToggle agent={agent} />
           </div>
         )}
@@ -281,5 +315,10 @@ export function AgentProfileCard({ agent, compact = false, onClick, hideViewProf
         </div>
       )}
     </div>
+
+    {showSettings && (
+      <AgentSettingsModal agent={agent} onClose={() => setShowSettings(false)} />
+    )}
+    </>
   );
 }

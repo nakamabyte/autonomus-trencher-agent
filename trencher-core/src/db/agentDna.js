@@ -76,14 +76,16 @@ const stmtInsert = db.prepare(`
     momentum_sensitivity, social_signal_weight, liquidity_sensitivity,
     exit_discipline, stealth, mutation_rate, survival_score,
     entry_preference, exit_preference, rug_filter, dna_hash, mutation_history,
-    owner_address, execution_mode, agent_secret_key, created_at_ms, updated_at_ms
+    owner_address, execution_mode, agent_secret_key, created_at_ms, updated_at_ms,
+    tp_percent, sl_percent, trailing_enabled, trailing_percent, whale_wallets
   ) VALUES (
     @id, @name, @breed, @parent_a, @parent_b, @generation,
     @speed, @aggression, @rug_defense, @wallet_intelligence,
     @momentum_sensitivity, @social_signal_weight, @liquidity_sensitivity,
     @exit_discipline, @stealth, @mutation_rate, @survival_score,
     @entry_preference, @exit_preference, @rug_filter, @dna_hash, @mutation_history,
-    @owner_address, @execution_mode, @agent_secret_key, @created_at_ms, @updated_at_ms
+    @owner_address, @execution_mode, @agent_secret_key, @created_at_ms, @updated_at_ms,
+    @tp_percent, @sl_percent, @trailing_enabled, @trailing_percent, @whale_wallets
   )
 `);
 
@@ -101,7 +103,7 @@ const stmtListBreeds = db.prepare(`
     owner_address, for_sale, sale_price_sol, royalty_pct,
     copies_minted, copies_limit,
     execution_mode, agent_wallet, auto_activate,
-    created_at_ms, updated_at_ms
+    created_at_ms, updated_at_ms, tp_percent, sl_percent, trailing_enabled, trailing_percent, whale_wallets
   FROM agent_dna
   ORDER BY created_at_ms ASC
 `);
@@ -118,6 +120,15 @@ const stmtUpdatePerf = db.prepare(`
   WHERE id = @id
 `);
 
+const stmtUpdateStrategy = db.prepare(`
+  UPDATE agent_dna SET
+    tp_percent      = @tp_percent,
+    sl_percent      = @sl_percent,
+    whale_wallets   = @whale_wallets,
+    updated_at_ms   = @updated_at_ms
+  WHERE id = @id
+`);
+
 // ─── Public API ───────────────────────────────────────────────────
 
 /**
@@ -127,7 +138,7 @@ const stmtUpdatePerf = db.prepare(`
 export function createDna({
   name, breed, parentA = null, parentB = null, generation = 0, traits = {},
   ownerAddress = null, entryPreference = 'wait_for_dip', exitPreference = 'trailing_tp', rugFilter = 0.20,
-  executionMode = 'dry_run'
+  executionMode = 'dry_run', tpPercent = 100, slPercent = -20, trailingEnabled = 1, trailingPercent = 15
 } = {}) {
   const defaults = BREED_DNA_DEFAULTS[breed] || BREED_DNA_DEFAULTS.scout;
   const merged = { ...defaults, ...traits };
@@ -149,6 +160,11 @@ export function createDna({
     execution_mode: executionMode,
     agent_secret_key,
     created_at_ms: now, updated_at_ms: now,
+    tp_percent: tpPercent,
+    sl_percent: slPercent,
+    trailing_enabled: trailingEnabled ? 1 : 0,
+    trailing_percent: trailingPercent,
+    whale_wallets: (breed === 'whale_tracker' && payload.whaleWallets && Array.isArray(payload.whaleWallets)) ? payload.whaleWallets.join(',') : null
   });
 
   return stmtGetById.get(id);
@@ -179,6 +195,26 @@ export function updatePerformance(id, { total_trades, win_rate, total_pnl_sol, m
     rug_survival_rate: rug_survival_rate ?? 1,
     updated_at_ms:    Date.now(),
   });
+}
+
+/**
+ * Update the TP and SL strategy of an agent.
+ */
+export function updateAgentStrategy(id, tpPercent, slPercent, whaleWallets = null) {
+  const agent = getDna(id);
+  if (!agent) {
+    throw new Error('Agent not found');
+  }
+
+  stmtUpdateStrategy.run({
+    id,
+    tp_percent: tpPercent,
+    sl_percent: slPercent,
+    whale_wallets: whaleWallets ? whaleWallets.join(',') : null,
+    updated_at_ms: Date.now(),
+  });
+
+  return getDna(id);
 }
 
 /**
