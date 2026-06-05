@@ -23,6 +23,16 @@ function extractTokenInfo(r) {
 
 function mapDbDecision(r) {
   const info = extractTokenInfo(r);
+  
+  // Try to extract extra fields that were saved into candidate_json (or token_json) by agentRunner
+  const parseJson = (jsonStr) => {
+    if (jsonStr && jsonStr !== '{}' && jsonStr !== 'null') {
+      try { return JSON.parse(jsonStr); } catch (e) { }
+    }
+    return {};
+  };
+  const tokenData = parseJson(r.candidate_json) || parseJson(r.token_json) || {};
+
   return {
     timestamp: new Date(r.at_ms).toISOString().slice(11, 19),
     tier: 'T1',
@@ -31,17 +41,17 @@ function mapDbDecision(r) {
     mint: r.selected_mint,
     wallets_analyzed: 0,
     holder_count: 0,
-    bundle_wallets: Math.round((r.bundle_wallets || 0) * 100),
-    rug_probability: Math.round((r.rug_probability || 0) * 100),
-    smart_money_overlap: r.smart_money_overlap || 0,
-    runner_signal: r.runner_signal || null,
-    kol_signal: r.kol_signal || null,
+    bundle_wallets: Math.round((r.bundle_wallets ?? tokenData.bundler_ratio ?? 0) * 100),
+    rug_probability: Math.round((r.rug_probability ?? tokenData.rug_probability ?? 0) * 100),
+    smart_money_overlap: r.smart_money_overlap ?? tokenData.smart_money_overlap ?? 0,
+    runner_signal: r.runner_signal ?? tokenData.runner_signal ?? null,
+    kol_signal: r.kol_signal ?? tokenData.kol_signal ?? null,
     confidence: r.confidence,
     verdict: r.verdict,
     reason: r.reason,
     strategy: r.strategy_id,
     agent_name: r.agent_name || null,
-    entry_mcap: r.entry_mcap || null,
+    entry_mcap: r.entry_mcap ?? tokenData.mcap_usd ?? null,
   };
 }
 

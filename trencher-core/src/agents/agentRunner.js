@@ -30,7 +30,7 @@ function logAgentDecision(db, agentId, agentName, signal, decision, mode = 'live
       decision.verdict,
       decision.confidence,
       decision.reason,
-      '{}', '{}', '{}', '{}', '{}',
+      '{}', '{}', JSON.stringify(signal), '{}', '{}',
       agentId // Using strategy_id as agentId for now to differentiate
     );
 
