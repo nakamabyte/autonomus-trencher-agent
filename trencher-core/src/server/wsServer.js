@@ -63,7 +63,7 @@ export function startWsServer(port = 4001) {
     // CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key, x-agent-key');
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
@@ -553,6 +553,139 @@ export function startWsServer(port = 4001) {
 
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true }));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+      return;
+    }
+
+    // Withdraw from Agent Wallet API
+    const withdrawMatch = pathname.match(/^\/api\/agent\/([^\/]+)\/withdraw$/);
+    if (withdrawMatch && req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', async () => {
+        try {
+          const payload = JSON.parse(body);
+          const agentId = withdrawMatch[1];
+
+          const { db } = await import('../db/connection.js');
+          const agent = db.prepare('SELECT * FROM agent_dna WHERE id = ?').get(agentId);
+          if (!agent) {
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Agent not found' }));
+            return;
+          }
+
+          const agentKey = req.headers['x-agent-key'];
+          if (!agent.agent_secret_key || agent.agent_secret_key !== agentKey) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Unauthorized: invalid agent secret key' }));
+            return;
+          }
+
+          const { destinationAddress } = payload;
+          if (!destinationAddress || typeof destinationAddress !== 'string' || destinationAddress.trim().length < 32) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Invalid destination address' }));
+            return;
+          }
+
+          if (!agent.agent_wallet || !agent.encrypted_key) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Agent has no wallet configured' }));
+            return;
+          }
+
+          try {
+            const { Connection, PublicKey, Transaction, SystemProgram, Keypair } = await import('@solana/web3.js');
+            const { SOLANA_RPC_URL } = await import('../config.js');
+            const { decrypt } = await import('../security/encryption.js');
+            const bs58 = await import('bs58');
+
+            const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
+            const destPubkey = new PublicKey(destinationAddress.trim());
+            const fromPubkey = new PublicKey(agent.agent_wallet);
+
+            // Get current balance
+            const balanceLamports = await connection.getBalance(fromPubkey);
+            if (balanceLamports <= 0) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Agent wallet has zero balance' }));
+              return;
+            }
+
+            // Decrypt agent private key
+            const decryptedKey = decrypt(agent.encrypted_key);
+            let keypair;
+            try {
+              // Try as base58 first
+              const secretKey = bs58.default.decode(decryptedKey);
+              keypair = Keypair.fromSecretKey(secretKey);
+            } catch {
+              try {
+                // Try as JSON array
+                keypair = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(decryptedKey)));
+              } catch {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Failed to parse agent keypair' }));
+                return;
+              }
+            }
+
+            // Calculate amount: leave ~0.001 SOL for fees (5000 lamports fee + buffer)
+            const FEE_BUFFER = 5000;
+            const transferLamports = balanceLamports - FEE_BUFFER;
+            if (transferLamports <= 0) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Balance too low to cover transaction fees' }));
+              return;
+            }
+
+            const { blockhash } = await connection.getLatestBlockhash();
+            const tx = new Transaction({
+              recentBlockhash: blockhash,
+              feePayer: fromPubkey,
+            }).add(
+              SystemProgram.transfer({
+                fromPubkey,
+                toPubkey: destPubkey,
+                lamports: transferLamports,
+              })
+            );
+
+            tx.sign(keypair);
+            const signature = await connection.sendRawTransaction(tx.serialize());
+            await connection.confirmTransaction(signature, 'confirmed');
+
+            const amountSol = (transferLamports / 1e9).toFixed(6);
+            console.log(`[withdraw] ✅ Withdrew ${amountSol} SOL from ${agent.name} to ${destinationAddress} | Sig: ${signature}`);
+
+            // Broadcast updated DNA
+            const { listBreeds } = await import('../db/agentDna.js');
+            broadcast('AGENT_DNA_UPDATE', listBreeds());
+
+            const msg = `💸 <b>Agent Withdrawal</b>\n\n` +
+              `<b>Agent:</b> ${agent.name}\n` +
+              `<b>Amount:</b> ${amountSol} SOL\n` +
+              `<b>Destination:</b> <code>${destinationAddress}</code>\n` +
+              `<b>Tx:</b> <code>${signature}</code>`;
+            import('../telegram/send.js').then(({ sendTelegram }) => sendTelegram(msg)).catch(() => {});
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+              success: true,
+              signature,
+              amountSol: parseFloat(amountSol),
+              destination: destinationAddress,
+            }));
+          } catch (txErr) {
+            console.error('[withdraw] Transaction error:', txErr.message);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: txErr.message || 'Transaction failed' }));
+          }
         } catch (err) {
           res.writeHead(500, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: err.message }));

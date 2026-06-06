@@ -13,7 +13,7 @@ async function handleProxy(req: Request, { params }: { params: Promise<{ path: s
     const serverSecret = process.env.CLIENT_SECRET_KEY;
 
     const subPath = path.join('/');
-    const isAgentModeRoute = subPath.match(/^agent\/[^\/]+\/(set-mode|update-strategy|can-go-live|trades)$/);
+    const isAgentModeRoute = subPath.match(/^agent\/[^\/]+\/(set-mode|update-strategy|can-go-live|trades|withdraw)$/);
     const isPublicRoute = subPath.match(/^decisions$/) || subPath.match(/^agent\/[^\/]+\/decisions$/);
 
     let isAuthorized = !!session || (!!serverSecret && !!clientKey && clientKey === serverSecret) || !!isPublicRoute;

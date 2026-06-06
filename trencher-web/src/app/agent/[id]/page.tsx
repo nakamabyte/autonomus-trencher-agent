@@ -61,6 +61,66 @@ export default function AgentProfilePage() {
     fetchBalance();
   }, [fetchBalance]);
 
+  // ─── Withdraw Modal State ───────────────────────────────────────────────────
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawAddress, setWithdrawAddress] = useState('');
+  const [withdrawSecret, setWithdrawSecret] = useState('');
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
+  const [withdrawResult, setWithdrawResult] = useState<{
+    type: 'success' | 'error';
+    message: string;
+    signature?: string;
+    amountSol?: number;
+  } | null>(null);
+
+  const handleWithdraw = async () => {
+    if (!agent?.id || !withdrawAddress.trim() || !withdrawSecret.trim()) return;
+    setWithdrawLoading(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
+      const res = await fetch(`${API_URL}/api/agent/${agent.id}/withdraw`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-agent-key': withdrawSecret.trim(),
+        },
+        body: JSON.stringify({ destinationAddress: withdrawAddress.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setWithdrawResult({
+          type: 'success',
+          message: `Successfully withdrew ${data.amountSol?.toFixed(6)} SOL`,
+          signature: data.signature,
+          amountSol: data.amountSol,
+        });
+        // Refresh balance
+        setTimeout(() => fetchBalance(), 2000);
+      } else {
+        setWithdrawResult({
+          type: 'error',
+          message: data.error || 'Withdrawal failed. Please check your inputs.',
+        });
+      }
+    } catch (err: any) {
+      setWithdrawResult({
+        type: 'error',
+        message: err.message || 'Network error. Please try again.',
+      });
+    } finally {
+      setWithdrawLoading(false);
+    }
+  };
+
+  const closeWithdrawModal = () => {
+    setShowWithdrawModal(false);
+    setWithdrawAddress('');
+    setWithdrawSecret('');
+    setWithdrawResult(null);
+    setWithdrawLoading(false);
+  };
+  // ───────────────────────────────────────────────────────────────────────────
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#050508' }}>
       {/* Reusing Nav or Custom Header */}
@@ -246,6 +306,50 @@ export default function AgentProfilePage() {
                       <span style={{ fontSize: '12px', color: '#fff', fontWeight: 'bold', fontFamily: "'JetBrains Mono', monospace" }}>{balance.toFixed(4)} SOL</span>
                     </div>
                   )}
+
+                  {/* Withdraw Button — only shown when balance > 0 */}
+                  {balance !== null && balance > 0 && (
+                    <div style={{ marginTop: '12px' }}>
+                      <button
+                        id="withdraw-btn"
+                        onClick={() => setShowWithdrawModal(true)}
+                        style={{
+                          width: '100%',
+                          padding: '9px 0',
+                          background: 'linear-gradient(135deg, rgba(255,100,60,0.15) 0%, rgba(255,60,100,0.1) 100%)',
+                          border: '1px solid rgba(255,100,60,0.35)',
+                          borderRadius: '5px',
+                          color: '#FF6B3D',
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: '10px',
+                          fontWeight: 'bold',
+                          letterSpacing: '0.12em',
+                          textTransform: 'uppercase',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s',
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255,100,60,0.28) 0%, rgba(255,60,100,0.2) 100%)';
+                          e.currentTarget.style.borderColor = 'rgba(255,100,60,0.6)';
+                          e.currentTarget.style.boxShadow = '0 0 12px rgba(255,100,60,0.2)';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255,100,60,0.15) 0%, rgba(255,60,100,0.1) 100%)';
+                          e.currentTarget.style.borderColor = 'rgba(255,100,60,0.35)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 19V5M5 12l7-7 7 7"/>
+                        </svg>
+                        WITHDRAW
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -266,6 +370,328 @@ export default function AgentProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* ─── Withdraw Modal ─────────────────────────────────────────────────────── */}
+      {showWithdrawModal && (
+        <div
+          id="withdraw-modal-overlay"
+          onClick={e => { if (e.target === e.currentTarget) closeWithdrawModal(); }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.75)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '16px',
+          }}
+        >
+          <div
+            id="withdraw-modal"
+            style={{
+              background: 'linear-gradient(145deg, #0d0d15 0%, #080810 100%)',
+              border: '1px solid #1e1e2e',
+              borderRadius: '12px',
+              padding: '28px',
+              width: '100%',
+              maxWidth: '440px',
+              boxShadow: '0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,100,60,0.08)',
+              fontFamily: "'JetBrains Mono', monospace",
+            }}
+          >
+            {/* Result States */}
+            {withdrawResult ? (
+              withdrawResult.type === 'success' ? (
+                /* ── SUCCESS ── */
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{
+                    width: '56px', height: '56px', borderRadius: '50%',
+                    background: 'rgba(0,200,150,0.12)',
+                    border: '2px solid rgba(0,200,150,0.4)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    margin: '0 auto 16px',
+                  }}>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#00C896" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  </div>
+                  <div style={{ color: '#00C896', fontSize: '14px', fontWeight: 'bold', letterSpacing: '0.1em', marginBottom: '8px' }}>
+                    WITHDRAWAL SUCCESSFUL
+                  </div>
+                  <div style={{ color: '#aaa', fontSize: '11px', marginBottom: '20px', lineHeight: 1.6 }}>
+                    {withdrawResult.message}
+                  </div>
+                  {withdrawResult.signature && (
+                    <div style={{
+                      background: 'rgba(0,200,150,0.06)',
+                      border: '1px solid rgba(0,200,150,0.15)',
+                      borderRadius: '6px',
+                      padding: '10px',
+                      marginBottom: '20px',
+                    }}>
+                      <div style={{ fontSize: '9px', color: '#666', marginBottom: '4px', letterSpacing: '0.08em' }}>TRANSACTION SIGNATURE</div>
+                      <div
+                        style={{ fontSize: '10px', color: '#00C896', wordBreak: 'break-all', cursor: 'pointer' }}
+                        onClick={() => window.open(`https://solscan.io/tx/${withdrawResult.signature}`, '_blank')}
+                        title="View on Solscan"
+                      >
+                        {withdrawResult.signature}
+                      </div>
+                      <div style={{ fontSize: '9px', color: '#555', marginTop: '6px' }}>Click to view on Solscan ↗</div>
+                    </div>
+                  )}
+                  <button
+                    id="withdraw-success-close"
+                    onClick={closeWithdrawModal}
+                    style={{
+                      width: '100%', padding: '10px',
+                      background: 'rgba(0,200,150,0.12)',
+                      border: '1px solid rgba(0,200,150,0.3)',
+                      borderRadius: '6px', color: '#00C896',
+                      fontSize: '11px', fontWeight: 'bold', letterSpacing: '0.1em',
+                      cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    CLOSE
+                  </button>
+                </div>
+              ) : (
+                /* ── FAILED ── */
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{
+                    width: '56px', height: '56px', borderRadius: '50%',
+                    background: 'rgba(255,80,80,0.1)',
+                    border: '2px solid rgba(255,80,80,0.35)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    margin: '0 auto 16px',
+                  }}>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FF5050" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </div>
+                  <div style={{ color: '#FF5050', fontSize: '14px', fontWeight: 'bold', letterSpacing: '0.1em', marginBottom: '8px' }}>
+                    WITHDRAWAL FAILED
+                  </div>
+                  <div style={{
+                    background: 'rgba(255,80,80,0.06)',
+                    border: '1px solid rgba(255,80,80,0.15)',
+                    borderRadius: '6px', padding: '12px',
+                    fontSize: '11px', color: '#FF6B6B',
+                    marginBottom: '20px', lineHeight: 1.6, textAlign: 'left',
+                  }}>
+                    {withdrawResult.message}
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      id="withdraw-fail-retry"
+                      onClick={() => setWithdrawResult(null)}
+                      style={{
+                        flex: 1, padding: '10px',
+                        background: 'rgba(255,100,60,0.12)',
+                        border: '1px solid rgba(255,100,60,0.3)',
+                        borderRadius: '6px', color: '#FF6B3D',
+                        fontSize: '11px', fontWeight: 'bold', letterSpacing: '0.1em',
+                        cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace",
+                      }}
+                    >
+                      TRY AGAIN
+                    </button>
+                    <button
+                      id="withdraw-fail-close"
+                      onClick={closeWithdrawModal}
+                      style={{
+                        flex: 1, padding: '10px',
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid #1e1e2e',
+                        borderRadius: '6px', color: '#666',
+                        fontSize: '11px', fontWeight: 'bold', letterSpacing: '0.1em',
+                        cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace",
+                      }}
+                    >
+                      CLOSE
+                    </button>
+                  </div>
+                </div>
+              )
+            ) : (
+              /* ── FORM ── */
+              <>
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                  <div>
+                    <div style={{ color: '#FF6B3D', fontSize: '13px', fontWeight: 'bold', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 19V5M5 12l7-7 7 7"/>
+                      </svg>
+                      WITHDRAW FUNDS
+                    </div>
+                    <div style={{ fontSize: '9px', color: '#555', marginTop: '4px', letterSpacing: '0.05em' }}>
+                      Withdraw all SOL from agent wallet
+                    </div>
+                  </div>
+                  <button
+                    onClick={closeWithdrawModal}
+                    style={{
+                      background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: '4px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Balance Info */}
+                {balance !== null && (
+                  <div style={{
+                    background: 'rgba(255,100,60,0.06)',
+                    border: '1px solid rgba(255,100,60,0.15)',
+                    borderRadius: '8px', padding: '12px 14px',
+                    marginBottom: '18px',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  }}>
+                    <span style={{ fontSize: '10px', color: '#888' }}>Available Balance</span>
+                    <span style={{ fontSize: '14px', color: '#FF6B3D', fontWeight: 'bold' }}>{balance.toFixed(4)} SOL</span>
+                  </div>
+                )}
+
+                {/* Destination Address */}
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ fontSize: '9px', color: '#888', letterSpacing: '0.1em', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
+                    Destination Wallet Address
+                  </label>
+                  <input
+                    id="withdraw-destination"
+                    type="text"
+                    value={withdrawAddress}
+                    onChange={e => setWithdrawAddress(e.target.value)}
+                    placeholder="Enter Solana wallet address..."
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      background: 'rgba(0,0,0,0.4)',
+                      border: '1px solid #1e1e2e',
+                      borderRadius: '6px',
+                      color: '#ddd',
+                      fontSize: '11px',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      outline: 'none',
+                      transition: 'border-color 0.2s',
+                      boxSizing: 'border-box',
+                    }}
+                    onFocus={e => { e.currentTarget.style.borderColor = '#FF6B3D'; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = '#1e1e2e'; }}
+                  />
+                </div>
+
+                {/* Agent Secret Key */}
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ fontSize: '9px', color: '#888', letterSpacing: '0.1em', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
+                    Agent Secret Key <span style={{ color: '#FF5050' }}>*</span>
+                  </label>
+                  <input
+                    id="withdraw-secret"
+                    type="password"
+                    value={withdrawSecret}
+                    onChange={e => setWithdrawSecret(e.target.value)}
+                    placeholder="Enter agent secret key to confirm..."
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      background: 'rgba(0,0,0,0.4)',
+                      border: '1px solid #1e1e2e',
+                      borderRadius: '6px',
+                      color: '#ddd',
+                      fontSize: '11px',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      outline: 'none',
+                      transition: 'border-color 0.2s',
+                      boxSizing: 'border-box',
+                    }}
+                    onFocus={e => { e.currentTarget.style.borderColor = '#FF6B3D'; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = '#1e1e2e'; }}
+                    onKeyDown={e => { if (e.key === 'Enter' && withdrawAddress && withdrawSecret && !withdrawLoading) handleWithdraw(); }}
+                  />
+                  <div style={{ fontSize: '9px', color: '#555', marginTop: '5px' }}>
+                    Your agent secret key is required to authorize this transaction.
+                  </div>
+                </div>
+
+                {/* Warning */}
+                <div style={{
+                  background: 'rgba(255,200,0,0.05)',
+                  border: '1px solid rgba(255,200,0,0.12)',
+                  borderRadius: '6px',
+                  padding: '10px 12px',
+                  marginBottom: '18px',
+                  display: 'flex', gap: '8px', alignItems: 'flex-start',
+                }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFC800" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px' }}>
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                  <span style={{ fontSize: '9px', color: '#AA8800', lineHeight: 1.6 }}>
+                    This will withdraw the entire balance (minus network fees). This action cannot be undone.
+                  </span>
+                </div>
+
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={closeWithdrawModal}
+                    style={{
+                      flex: 1, padding: '11px',
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid #1e1e2e',
+                      borderRadius: '6px', color: '#666',
+                      fontSize: '11px', fontWeight: 'bold', letterSpacing: '0.1em',
+                      cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    CANCEL
+                  </button>
+                  <button
+                    id="withdraw-confirm-btn"
+                    onClick={handleWithdraw}
+                    disabled={!withdrawAddress.trim() || !withdrawSecret.trim() || withdrawLoading}
+                    style={{
+                      flex: 2, padding: '11px',
+                      background: (!withdrawAddress.trim() || !withdrawSecret.trim() || withdrawLoading)
+                        ? 'rgba(255,100,60,0.06)'
+                        : 'linear-gradient(135deg, rgba(255,100,60,0.25) 0%, rgba(255,60,100,0.18) 100%)',
+                      border: '1px solid rgba(255,100,60,0.35)',
+                      borderRadius: '6px',
+                      color: (!withdrawAddress.trim() || !withdrawSecret.trim() || withdrawLoading) ? '#555' : '#FF6B3D',
+                      fontSize: '11px', fontWeight: 'bold', letterSpacing: '0.1em',
+                      cursor: (!withdrawAddress.trim() || !withdrawSecret.trim() || withdrawLoading) ? 'not-allowed' : 'pointer',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {withdrawLoading ? (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
+                          <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        </svg>
+                        PROCESSING...
+                      </>
+                    ) : (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 19V5M5 12l7-7 7 7"/>
+                        </svg>
+                        CONFIRM WITHDRAW
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      {/* ──────────────────────────────────────────────────────────────────────── */}
     </div>
   );
 }
