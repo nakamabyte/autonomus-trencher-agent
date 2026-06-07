@@ -30,10 +30,8 @@ import { requestNumericFilterInput, requestStrategyNumericInput } from './input.
 export async function handleCallback(query) {
   const data = query.data || '';
   const chatId = query.message?.chat?.id || TELEGRAM_CHAT_ID;
-  if (String(chatId) !== String(TELEGRAM_CHAT_ID)) {
-    console.log(`[security] Blocked callback query from unauthorized chat: ${chatId}`);
-    return;
-  }
+  // Allow all group members to use button callbacks.
+  // (No TELEGRAM_CHAT_ID restriction — same policy as handleMessage.)
   await answerCallback(query);
   if (!data.startsWith('input:') && !data.startsWith('stratinput:')) {
     const { pendingNumericInputs } = await import('./input.js');

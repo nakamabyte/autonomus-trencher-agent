@@ -51,24 +51,52 @@ export function formatOpenPosition(position, decision = {}) {
   const mode = position.execution_mode || position.mode || 'live';
   const strategy = position.strategy_id || position.strategy || 'sniper';
   const isBase = strategy === 'base_sniper' || (position.snapshot_json && JSON.parse(position.snapshot_json).candidate?.chain === 'base');
-  
+
+  // Detect Social Scout / TG Alpha source
+  const snapshot    = position.snapshot_json ? (() => { try { return JSON.parse(position.snapshot_json); } catch { return {}; } })() : {};
+  const signalRoute = snapshot?.candidate?.signals?.route || position.route || '';
+  const isTgAlpha   = signalRoute === 'tg_fast_buy' || signalRoute === 'tg_alpha';
+  const sourceMeta  = snapshot?.candidate?.sourceMeta || {};
+
   const freshTag = strategy === 'fresh_launch'
     ? '\n⚠️ FRESH LAUNCH — high risk, pre-graduation'
     : '';
-  
+
   const txUrl = isBase ? `https://basescan.org/tx/${position.entry_signature}` : `https://solscan.io/tx/${position.entry_signature}`;
-  const tx = position.entry_signature 
-    ? `<a href="${txUrl}">${position.entry_signature.slice(0, 6)}...${position.entry_signature.slice(-4)}</a>` 
+  const tx = position.entry_signature
+    ? `<a href="${txUrl}">${position.entry_signature.slice(0, 6)}...${position.entry_signature.slice(-4)}</a>`
     : 'N/A';
-    
+
   const tokenUrl = isBase ? `https://dexscreener.com/base/${position.mint}` : `https://gmgn.ai/sol/token/${position.mint}`;
-  const token = position.mint 
-    ? `<a href="${tokenUrl}">${position.mint.slice(0, 6)}...${position.mint.slice(-4)}</a>` 
+  const token = position.mint
+    ? `<a href="${tokenUrl}">${position.mint.slice(0, 6)}...${position.mint.slice(-4)}</a>`
     : 'N/A';
 
   const chainBadge = isBase ? '🔵 Base' : '🟣 Solana';
   const sizeText = isBase ? `${(position.size_sol || 0).toFixed(5)} ETH` : formatSol(position.size_sol);
   const agentTag = position.agent_name ? `\nAgent: <b>${position.agent_name}</b>` : '';
+
+  if (isTgAlpha) {
+    // ── Social Scout / TG Alpha notification ─────────────────────────
+    const groupName  = sourceMeta.groupName  || sourceMeta.groupId  || 'Unknown Group';
+    const callerId   = sourceMeta.senderId   ? `<code>${sourceMeta.senderId}</code>` : 'Unknown';
+    const rawPreview = sourceMeta.rawMessage ? sourceMeta.rawMessage.slice(0, 120).replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
+
+    return `
+⚡ <b>TG ALPHA SCOUT — ${mode === 'live' ? 'LIVE BUY' : 'DRY RUN BUY'}</b>${freshTag}${agentTag}
+
+👥 <b>Group:</b> ${groupName}
+👤 <b>Caller:</b> ${callerId}
+
+🪙 <b>${position.symbol || 'UNKNOWN'}</b> #${position.id || 'N/A'} (${chainBadge})
+Token: ${token}
+Entry TX: ${tx}
+
+📊 <b>Entry MCap:</b> ${formatMcap(position.entry_mcap)}
+💰 <b>Size:</b> ${sizeText}
+📐 TP: ${position.tp_percent?.toFixed(1) || '0.0'}% · SL: ${position.sl_percent?.toFixed(1) || '0.0'}% · Trail: ${position.trailing_enabled ? position.trailing_percent?.toFixed(1) : 'off'}%
+${rawPreview ? `\n💬 <i>${rawPreview}${(sourceMeta.rawMessage?.length || 0) > 120 ? '…' : ''}</i>` : ''}`.trim();
+  }
 
   return `
 ✅ ${mode === 'live' ? 'Live buy' : 'Dry run buy'} executed${freshTag}${agentTag}
@@ -88,21 +116,47 @@ export function formatClosePosition(position) {
   const mode = position.execution_mode || position.mode || 'live';
   const strategy = position.strategy_id || position.strategy || 'sniper';
   const isBase = strategy === 'base_sniper' || (position.snapshot_json && JSON.parse(position.snapshot_json).candidate?.chain === 'base');
-  
+
+  // Detect Social Scout / TG Alpha source
+  const snapshot    = position.snapshot_json ? (() => { try { return JSON.parse(position.snapshot_json); } catch { return {}; } })() : {};
+  const signalRoute = snapshot?.candidate?.signals?.route || position.route || '';
+  const isTgAlpha   = signalRoute === 'tg_fast_buy' || signalRoute === 'tg_alpha';
+  const sourceMeta  = snapshot?.candidate?.sourceMeta || {};
+
   const txUrl = isBase ? `https://basescan.org/tx/${position.entry_signature}` : `https://solscan.io/tx/${position.entry_signature}`;
-  const tx = position.entry_signature 
-    ? `<a href="${txUrl}">${position.entry_signature.slice(0, 6)}...${position.entry_signature.slice(-4)}</a>` 
+  const tx = position.entry_signature
+    ? `<a href="${txUrl}">${position.entry_signature.slice(0, 6)}...${position.entry_signature.slice(-4)}</a>`
     : 'N/A';
-    
+
   const tokenUrl = isBase ? `https://dexscreener.com/base/${position.mint}` : `https://gmgn.ai/sol/token/${position.mint}`;
-  const token = position.mint 
-    ? `<a href="${tokenUrl}">${position.mint.slice(0, 6)}...${position.mint.slice(-4)}</a>` 
+  const token = position.mint
+    ? `<a href="${tokenUrl}">${position.mint.slice(0, 6)}...${position.mint.slice(-4)}</a>`
     : 'N/A';
 
   const exitReason = position.exit_reason || 'MANUAL';
   const chainBadge = isBase ? '🔵 Base' : '🟣 Solana';
   const sizeText = isBase ? `${(position.size_sol || 0).toFixed(5)} ETH` : formatSol(position.size_sol);
   const agentTag = position.agent_name ? `\nAgent: <b>${position.agent_name}</b>` : '';
+  const pnl = position.pnl_percent || 0;
+
+  if (isTgAlpha) {
+    // ── Social Scout / TG Alpha close notification ────────────────────
+    const groupName = sourceMeta.groupName || sourceMeta.groupId || 'Unknown Group';
+    const pnlEmoji  = pnl > 0 ? '🟢' : pnl < 0 ? '🔴' : '⚪';
+    const exitEmoji = exitReason === 'TP' ? '🎯 TP HIT' : exitReason === 'SL' ? '🛑 SL HIT' : exitReason === 'TRAIL' ? '📉 TRAILING' : `🏁 ${exitReason}`;
+
+    return `
+${pnlEmoji} <b>TG ALPHA SCOUT — ${exitEmoji}</b>${agentTag}
+
+👥 <b>Group:</b> ${groupName}
+🪙 <b>${position.symbol || 'UNKNOWN'}</b> #${position.id || 'N/A'} (${chainBadge})
+Token: ${token}
+
+📊 <b>Entry MCap:</b> ${formatMcap(position.entry_mcap)} → <b>Exit:</b> ${formatMcap(position.exit_mcap)}
+📈 <b>High:</b> ${formatMcap(position.high_water_mcap)}
+💰 <b>Size:</b> ${sizeText} · <b>PnL: ${pnl > 0 ? '+' : ''}${pnl.toFixed(1)}%</b>
+Mode: ${mode === 'live' ? '🔴 LIVE' : '🧪 DRY RUN'}`.trim();
+  }
 
   return `
 🏁 ${mode === 'live' ? 'Live exit' : 'Dry run exit'}: ${exitReason}${agentTag}
@@ -112,11 +166,12 @@ Token: ${token}
 Status: closed · Mode: ${mode} · Strategy: ${strategy}
 Entry TX: ${tx}
 Entry mcap: ${formatMcap(position.entry_mcap)} · High: ${formatMcap(position.high_water_mcap)}
-Size: ${sizeText} · PnL: ${(position.pnl_percent || 0).toFixed(1)}%
+Size: ${sizeText} · PnL: ${pnl.toFixed(1)}%
 TP: ${position.tp_percent?.toFixed(1) || '0.0'}% · SL: ${position.sl_percent?.toFixed(1) || '0.0'}% · Trail: ${position.trailing_enabled ? position.trailing_percent?.toFixed(1) : '0.0'}%
-Exit: ${exitReason} at ${formatMcap(position.exit_mcap)} (${(position.pnl_percent || 0).toFixed(1)}%)
+Exit: ${exitReason} at ${formatMcap(position.exit_mcap)} (${pnl.toFixed(1)}%)
 `.trim()
 }
+
 
 // ─── TELEGRAM: TP HIT ──────────────────────────────────────────────
 export function formatTpHit(position, tpLevel) {
