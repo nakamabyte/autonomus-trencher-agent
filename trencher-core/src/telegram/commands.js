@@ -102,21 +102,21 @@ Welcome! Trencher Agent is your personal AI robot that automatically finds and t
 <b>/learn 24h</b> — Force the AI to study the last 24 hours of market data
 
 <b>7️⃣ SOCIAL SCOUT — TG GROUP MANAGER</b>
-<b>/scout list</b> — Tampilkan semua grup yang dimonitor
-<b>/scout add &lt;group_id&gt;</b> — Mulai monitor grup TG (tersimpan saat restart)
-  <i>Contoh: /scout add -1001234567890</i>
-<b>/scout remove &lt;group_id&gt;</b> — Berhenti monitor grup
-<b>/scout learn &lt;group_id|all&gt;</b> — 🧠 Pelajari history chat (3 hari terakhir, 200 pesan)
-  <i>Contoh: /scout learn -1001234567890 --days 7</i>
-  <i>Contoh: /scout learn all  (semua grup sekaligus)</i>
-<b>/scout history &lt;group_id&gt;</b> — Lihat CA yang paling sering disebut di grup
+<b>/scout list</b> — Show all monitored Telegram groups
+<b>/scout add &lt;group_id&gt;</b> — Start monitoring a TG group (persists across restarts)
+  <i>Example: /scout add -1001234567890</i>
+<b>/scout remove &lt;group_id&gt;</b> — Stop monitoring a group
+<b>/scout learn &lt;group_id|all&gt;</b> — 🧠 Learn from chat history (last 3 days, 200 messages)
+  <i>Example: /scout learn -1001234567890 --days 7</i>
+  <i>Example: /scout learn all  (scan all monitored groups at once)</i>
+<b>/scout history &lt;group_id&gt;</b> — View the most frequently called token CAs in a group
 
-<i>💡 Tip: /scout learn menggunakan LLM untuk menganalisis pola grup dan menyimpan
-pengetahuannya ke /lessons — jalankan setelah menambah grup baru!</i>
+<i>💡 Tip: /scout learn uses LLM to analyze group patterns and saves
+knowledge to /lessons — run it after adding a new group!</i>
 
-<i>💡 Tip: Ketika SOCIAL_SCOUT_ENABLED=true dan TG_ALPHA_GROUPS kosong, bot berjalan dalam</i>
-<i><b>Discovery Mode</b>: setiap grup yang mengirim token CA akan dicatat ID dan namanya di server log.</i>
-<i>Gunakan /scout add untuk menambahkan grup tanpa mengubah .env.</i>
+<i>💡 Tip: When SOCIAL_SCOUT_ENABLED=true and TG_ALPHA_GROUPS is empty, the bot runs in</i>
+<i><b>Discovery Mode</b>: any group that sends a token CA will be logged with its ID and name.</i>
+<i>Use /scout add to add interesting groups without changing .env.</i>
 
 <b>8️⃣ SAFETY PAUSES (COOLDOWNS)</b>
 <b>/cooldowns</b> — See coins the bot is temporarily ignoring (because they crashed recently)
@@ -668,9 +668,9 @@ To deploy an agent, you need to pay SOL via the Trenchyard platform.
       }
 
       const statusMsg = await bot.sendMessage(chatId,
-        `🧠 <b>Social Scout — Belajar dari History</b>\n\n` +
-        `⏳ Memindai ${targetGroups.length} grup, rentang <b>${days} hari</b> terakhir...\n` +
-        `<i>Harap tunggu, proses ini memerlukan beberapa detik per grup.</i>`,
+        `🧠 <b>Social Scout — Learning from History</b>\n\n` +
+        `⏳ Scanning ${targetGroups.length} group(s), last <b>${days} day(s)</b>...\n` +
+        `<i>Please wait, this may take a few seconds per group.</i>`,
         { parse_mode: 'HTML' }
       );
 
@@ -735,25 +735,25 @@ To deploy an agent, you need to pay SOL via the Trenchyard platform.
       }
 
       // Format result summary
-      let summary = `🧠 <b>Social Scout — Hasil Belajar (${days} hari terakhir)</b>\n\n`;
+      let summary = `🧠 <b>Social Scout — Learning Results (last ${days} day(s))</b>\n\n`;
       for (const r of results) {
         const nameDisplay = r.groupName && r.groupName !== r.groupId ? `${escapeHtml(r.groupName)}` : `<code>${escapeHtml(r.groupId)}</code>`;
         if (r.error) {
-          summary += `❌ ${nameDisplay}\n<i>Gagal: ${escapeHtml(r.error)}</i>\n\n`;
+          summary += `❌ ${nameDisplay}\n<i>Error: ${escapeHtml(r.error)}</i>\n\n`;
           continue;
         }
         summary += `📡 <b>${nameDisplay}</b>\n`;
-        summary += `   📨 ${r.messagesScanned} pesan dipindai · 🪙 ${r.uniqueCa} CA unik ditemukan\n`;
+        summary += `   📨 ${r.messagesScanned} messages scanned · 🪙 ${r.uniqueCa} unique CAs found\n`;
 
         if (r.topCas.length > 0) {
           const top3 = r.topCas.slice(0, 3);
-          summary += `   🔥 CA paling sering: `;
+          summary += `   🔥 Most called CAs: `;
           summary += top3.map(c => `<code>${c.ca.slice(0, 8)}…</code>(×${c.count})`).join(', ');
           summary += '\n';
         }
 
         if (r.lessons.length > 0) {
-          summary += `   📝 <b>${r.lessons.length} lesson tersimpan</b>\n`;
+          summary += `   📝 <b>${r.lessons.length} lesson(s) saved</b>\n`;
           const firstLesson = r.lessons[0];
           const lessonText = String(firstLesson.insight || firstLesson.lesson || firstLesson).slice(0, 120);
           summary += `   <i>→ ${escapeHtml(lessonText)}</i>\n`;
@@ -777,7 +777,7 @@ To deploy an agent, you need to pay SOL via the Trenchyard platform.
     if (sub === 'history') {
       if (!groupArg) {
         return bot.sendMessage(chatId,
-          'Usage: <code>/scout history &lt;group_id&gt;</code>\n\nMenampilkan token CA yang paling sering disebut di grup tersebut.',
+          'Usage: <code>/scout history &lt;group_id&gt;</code>\n\nShows the most frequently called token CAs in a group.',
           { parse_mode: 'HTML' }
         );
       }
@@ -788,7 +788,7 @@ To deploy an agent, you need to pay SOL via the Trenchyard platform.
 
       if (!caList.length) {
         return bot.sendMessage(chatId,
-          `ℹ️ Belum ada data history untuk grup <code>${escapeHtml(groupArg)}</code>.\n\nJalankan <code>/scout learn ${escapeHtml(groupArg)}</code> terlebih dahulu.`,
+          `ℹ️ No history data yet for group <code>${escapeHtml(groupArg)}</code>.\n\nRun <code>/scout learn ${escapeHtml(groupArg)}</code> first.`,
           { parse_mode: 'HTML' }
         );
       }
@@ -799,16 +799,16 @@ To deploy an agent, you need to pay SOL via the Trenchyard platform.
       let msg = `🪙 <b>CA History — ${escapeHtml(gName)}</b>\n`;
       if (lastScan) {
         const scanDate = new Date(lastScan.scanned_at_ms).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-        msg += `<i>Scan terakhir: ${scanDate} (${lastScan.window_days} hari)</i>\n\n`;
+        msg += `<i>Last scan: ${scanDate} (${lastScan.window_days} day(s))</i>\n\n`;
       } else {
         msg += '\n';
       }
 
       for (const row of caList) {
         const age = Math.floor((Date.now() - row.first_seen_ms) / (60 * 60 * 1000));
-        const ageStr = age < 24 ? `${age}h lalu` : `${Math.floor(age / 24)}d lalu`;
+        const ageStr = age < 24 ? `${age}h ago` : `${Math.floor(age / 24)}d ago`;
         msg += `• <code>${row.ca}</code>\n`;
-        msg += `  🔁 ${row.mention_count}× disebut · pertama ${ageStr}\n`;
+        msg += `  🔁 ${row.mention_count}× called · first seen ${ageStr}\n`;
         if (row.sample_text) {
           msg += `  <i>"${escapeHtml(row.sample_text.slice(0, 80))}"</i>\n`;
         }
@@ -821,13 +821,13 @@ To deploy an agent, you need to pay SOL via the Trenchyard platform.
     // Default: show usage
     return bot.sendMessage(chatId,
       '📡 <b>Social Scout Group Manager</b>\n\n' +
-      '<b>/scout list</b> — Tampilkan semua grup yang dimonitor\n' +
-      '<b>/scout add &lt;group_id&gt;</b> — Mulai monitor grup\n' +
-      '<b>/scout remove &lt;group_id&gt;</b> — Berhenti monitor grup\n' +
-      '<b>/scout learn &lt;group_id|all&gt;</b> — Pelajari history chat grup (default 3 hari)\n' +
-      '  <i>Contoh: /scout learn -1001234567890 --days 7</i>\n' +
-      '<b>/scout history &lt;group_id&gt;</b> — Lihat CA yang sering disebut di grup\n\n' +
-      '<i>Perubahan langsung aktif dan tersimpan saat restart.</i>',
+      '<b>/scout list</b> — Show all monitored groups\n' +
+      '<b>/scout add &lt;group_id&gt;</b> — Start monitoring a group\n' +
+      '<b>/scout remove &lt;group_id&gt;</b> — Stop monitoring a group\n' +
+      '<b>/scout learn &lt;group_id|all&gt;</b> — Learn from group chat history (default 3 days)\n' +
+      '  <i>Example: /scout learn -1001234567890 --days 7</i>\n' +
+      '<b>/scout history &lt;group_id&gt;</b> — View frequently called CAs in a group\n\n' +
+      '<i>Changes take effect immediately and persist across restarts.</i>',
       { parse_mode: 'HTML' }
     );
   }
