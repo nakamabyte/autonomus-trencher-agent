@@ -131,6 +131,9 @@ export async function processCandidateFromSignals(signals) {
     price_delta_1h: candidate.trending?.price_change_1h || candidate.chart?.priceChangePct1h || 0,
     // Source tag: raw scan signals use 'raw_scan'; TG alpha will use 'tg_alpha'
     source: signal.source || 'raw_scan',
+    // sourceMeta carries groupId (and rawMessage, senderId) set by tgListener.js.
+    // Required for Social Scout win/loss tracking in positions.js close callback.
+    sourceMeta: signal.sourceMeta || null,
   });
 
 

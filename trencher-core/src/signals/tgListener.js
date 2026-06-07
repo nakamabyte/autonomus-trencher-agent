@@ -1,7 +1,8 @@
 /**
  * tgListener.js
  * Telegram user client that listens to curated alpha groups and routes
- * token calls into the sharedSignalFeed for Social Scout agents to consume.
+ * token calls through the full enrichment + LLM cascade
+ * (processCandidateFromSignals) before Social Scout agents evaluate them.
  *
  * Uses Opsi A from update-intruction.md:
  *   - gramjs TelegramClient with user session (not bot API)
@@ -19,7 +20,6 @@
  */
 
 import { parseTokenCall } from './tokenParser.js';
-import { sharedSignalFeed } from './sharedSignalFeed.js';
 import { db } from '../db/connection.js';
 
 // Per-group rate limiter (in-memory, resets on restart)
@@ -150,56 +150,80 @@ export function recordGroupTradeResult(groupId, isWin) {
 }
 
 /**
- * Process a parsed message: extract CAs and emit to sharedSignalFeed.
+ * Process a parsed message: extract CAs and pipe each one through the full
+ * enrichment + LLM cascade via processCandidateFromSignals().
+ *
+ * Guard rails (cheap checks) run first to avoid unnecessary API calls:
+ *   1. Group demote check
+ *   2. Rate limit check
+ *   3. De-dupe check (same CA from same group within 5 min)
+ *
+ * Then for each valid CA:
+ *   - processCandidateFromSignals() runs enrichment (GMGN, Jupiter, holders,
+ *     Twitter narrative) followed by the DeepSeek T1 → Grok T2 LLM cascade.
+ *   - The orchestrator's own sharedSignalFeed.broadcast() call propagates the
+ *     enriched signal (including real llm_confidence) to Social Scout agents.
+ *   - source: 'tg_alpha' and sourceMeta (groupId etc.) are preserved so that
+ *     agentRunner routing and positions.js win/loss tracking still work.
  */
 async function processMessage({ text, groupId, groupName, senderId, timestamp }) {
   if (!text) return;
 
-  // Skip if group is demoted
+  // Guard 1: skip demoted groups
   if (isGroupDemoted(groupId)) {
     console.log(`[TG] group ${groupId} is demoted, skipping message`);
     return;
   }
 
-  // Track total calls for this group
+  // Track total calls for this group (before rate-limit so the call is counted)
   trackGroupCall(groupId, groupName);
 
   const { addresses } = parseTokenCall(text);
   if (addresses.length === 0) return;
 
-  // Rate limit check (after parsing, before emitting)
+  // Guard 2: per-group hourly rate limit
   if (isGroupRateLimited(groupId)) {
     console.log(`[TG] group ${groupId} rate-limited (${MAX_TRADES_PER_HOUR}/h), skip`);
     return;
   }
 
   for (const ca of addresses) {
+    // Guard 3: de-dupe within 5-minute window
     if (isRecentDuplicate(groupId, ca)) {
       console.log(`[TG] dup skip: ${ca.slice(0, 8)} from group ${groupId}`);
       continue;
     }
 
-    console.log(`[TG] 📡 alpha call detected: ${ca.slice(0, 8)}... from group ${groupId}`);
+    console.log(`[TG] 📡 alpha call detected: ${ca.slice(0, 8)}... from group ${groupId} — routing through LLM cascade`);
 
-    // Emit to sharedSignalFeed with tg_alpha source tag
-    // Social Scout agents are the only breed that consumes this (filtered in agentRunner.js)
-    sharedSignalFeed.broadcast({
-      mint: ca,
-      symbol: null,  // unknown until enriched downstream
-      source: 'tg_alpha',
-      sourceMeta: {
-        groupId,
-        groupName,
-        rawMessage: text.slice(0, 200),
-        senderId: String(senderId),
-      },
-      priority: 'high',
-      timestamp,
-      // Liquidity floor will be enforced by evaluateSignalWithDna.js
-      // via liquidity_sensitivity DNA + dna.liquidity_floor_usd
-    });
+    // Route through the full pipeline: enrichment → LLM cascade → broadcast.
+    // Lazy import avoids circular dependency at module load time.
+    // A 60-second timeout ensures a slow external API does not stall the listener.
+    const pipelinePromise = (async () => {
+      const { processCandidateFromSignals } = await import('../pipeline/orchestrator.js');
+      await processCandidateFromSignals({
+        mint: ca,
+        route: 'tg_alpha',
+        source: 'tg_alpha',
+        sourceMeta: {
+          groupId,
+          groupName,
+          rawMessage: text.slice(0, 200),
+          senderId: String(senderId),
+        },
+      });
+    })();
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('LLM pipeline timeout (60s)')), 60_000)
+    );
+
+    Promise.race([pipelinePromise, timeoutPromise])
+      .then(() => console.log(`[TG] ✅ pipeline complete for ${ca.slice(0, 8)}...`))
+      .catch(err => console.error(`[TG] pipeline error for ${ca.slice(0, 8)}...:`, err.message));
   }
 }
+
 
 /**
  * Start the Telegram listener using gramjs TelegramClient (user session).
@@ -208,10 +232,57 @@ async function processMessage({ text, groupId, groupName, senderId, timestamp })
  *   1. Install gramjs: npm install telegram
  *   2. Generate a session string once: run the session-generator helper
  *   3. Set TG_API_ID, TG_API_HASH, TG_SESSION_STRING in .env
- *   4. Set TG_ALPHA_GROUPS to comma-separated group IDs/usernames
+ *   4. Optionally set TG_ALPHA_GROUPS to comma-separated group IDs/usernames
+ *      — leave empty to start in "discovery mode" (all groups logged, none traded)
  *
  * @returns {Promise<void>}
  */
+
+// ── Runtime group registry (in-memory, populated from .env + DB on startup) ──
+// Kept in a module-level Set so that /scout commands can mutate it live.
+const monitoredGroups = new Set();
+
+/**
+ * Persist a group addition/removal to the tg_group_performance table so it
+ * survives server restarts.
+ */
+function persistGroupMonitoring(groupId, enabled) {
+  try {
+    db.prepare(`
+      INSERT INTO tg_group_performance (group_id, group_name, monitored, total_calls, updated_at_ms)
+      VALUES (?, '', ?, 0, ?)
+      ON CONFLICT(group_id) DO UPDATE SET
+        monitored = excluded.monitored,
+        updated_at_ms = excluded.updated_at_ms
+    `).run(groupId, enabled ? 1 : 0, Date.now());
+  } catch (e) {
+    console.warn('[TG] could not persist group monitoring state:', e.message);
+  }
+}
+
+/**
+ * Return the control interface for the runtime group registry.
+ * Used by commands.js (/scout command) to add/remove/list groups live.
+ */
+export function getTgListenerControl() {
+  return {
+    add(groupId) {
+      monitoredGroups.add(String(groupId));
+      persistGroupMonitoring(String(groupId), true);
+    },
+    remove(groupId) {
+      monitoredGroups.delete(String(groupId));
+      persistGroupMonitoring(String(groupId), false);
+    },
+    list() {
+      return [...monitoredGroups];
+    },
+    has(groupId) {
+      return monitoredGroups.has(String(groupId));
+    },
+  };
+}
+
 export async function startTgListener() {
   if (process.env.SOCIAL_SCOUT_ENABLED !== 'true') {
     console.log('[TG] Social Scout disabled (SOCIAL_SCOUT_ENABLED != true), skipping listener');
@@ -227,22 +298,39 @@ export async function startTgListener() {
     return;
   }
 
-  const TARGET_GROUPS = (process.env.TG_ALPHA_GROUPS || '')
+  // ── Populate runtime group registry from .env ──────────────────────────────
+  const envGroups = (process.env.TG_ALPHA_GROUPS || '')
     .split(',')
     .map(g => g.trim())
     .filter(Boolean);
 
-  if (TARGET_GROUPS.length === 0) {
-    console.warn('[TG] No TG_ALPHA_GROUPS configured — TG listener disabled');
-    return;
+  for (const g of envGroups) monitoredGroups.add(g);
+
+  // ── Also load any groups previously added via /scout add command (from DB) ──
+  try {
+    const dbGroups = db.prepare(
+      "SELECT group_id FROM tg_group_performance WHERE monitored = 1"
+    ).all();
+    for (const row of dbGroups) monitoredGroups.add(row.group_id);
+  } catch {
+    // Table may not have monitored column on older installs — silently skip
   }
 
-  // Dynamically import gramjs to avoid breaking startup if not installed
+  const isDiscoveryMode = monitoredGroups.size === 0;
+  if (isDiscoveryMode) {
+    console.log('[TG] No groups configured — running in DISCOVERY MODE.');
+    console.log('[TG] All groups will be logged with their ID and name.');
+    console.log('[TG] Use /scout add <group_id> in Telegram to start monitoring a group.');
+  } else {
+    console.log(`[TG] Listener starting — monitoring ${monitoredGroups.size} group(s):`, [...monitoredGroups]);
+  }
+
+  // ── Dynamically import gramjs to avoid breaking startup if not installed ────
   let TelegramClient, StringSession, NewMessage;
   try {
-    const tg = await import('telegram');
+    const tg       = await import('telegram');
     const sessions = await import('telegram/sessions/index.js');
-    const events = await import('telegram/events/index.js');
+    const events   = await import('telegram/events/index.js');
     TelegramClient = tg.TelegramClient;
     StringSession  = sessions.StringSession;
     NewMessage     = events.NewMessage;
@@ -260,24 +348,57 @@ export async function startTgListener() {
   );
 
   await client.connect();
-  console.log(`[TG] listener active on ${TARGET_GROUPS.length} groups:`, TARGET_GROUPS);
+  console.log('[TG] gramjs client connected.');
 
   client.addEventHandler(async (event) => {
     try {
       const msg = event.message;
       if (!msg?.message) return;
 
-      const chatId = String(msg.chatId || msg.peerId?.channelId || msg.peerId?.chatId || '');
+      const chatId   = String(msg.chatId || msg.peerId?.channelId || msg.peerId?.chatId || '');
+      const senderId = String(msg.fromId?.userId || msg.senderId || 'unknown');
 
-      // Only process messages from configured target groups
-      const isTarget = TARGET_GROUPS.some(g => chatId.includes(g) || g.includes(chatId));
-      if (!isTarget) return;
+      // ── Resolve group name (lazily via getEntity) ──────────────────────────
+      let groupName = '';
+      try {
+        const entity = await client.getEntity(msg.peerId);
+        groupName = entity?.title || entity?.username || entity?.firstName || '';
+      } catch { /* non-fatal */ }
+
+      // ── Discovery log: print every group seen with ID + name ───────────────
+      const isMonitored = monitoredGroups.size === 0
+        ? false
+        : [...monitoredGroups].some(g => chatId.includes(g) || g.includes(chatId));
+
+      if (!isMonitored) {
+        // Only act if the message contains a possible CA (32-44 char base58 token)
+        const hasPossibleCa = /[1-9A-HJ-NP-Za-km-z]{32,44}/.test(msg.message);
+        if (hasPossibleCa) {
+          console.log(
+            `[TG] 🔍 UNMONITORED group — ID: ${chatId} | Name: "${groupName}" | ` +
+            `Use: /scout add ${chatId}`
+          );
+          // Queue group for Telegram approval notification (hourly batch, max 5 per hour)
+          try {
+            db.prepare(`
+              INSERT INTO tg_group_pending (group_id, group_name, status, first_seen_ms, last_notified_ms)
+              VALUES (?, ?, 'pending', ?, 0)
+              ON CONFLICT(group_id) DO UPDATE SET
+                group_name = CASE WHEN excluded.group_name != '' THEN excluded.group_name ELSE group_name END
+              WHERE status = 'pending'
+            `).run(chatId, groupName, Date.now());
+          } catch (e) {
+            console.warn('[TG] could not queue pending group:', e.message);
+          }
+        }
+        return;
+      }
 
       await processMessage({
         text: msg.message,
         groupId: chatId,
-        groupName: '', // resolved lazily — not critical
-        senderId: String(msg.fromId?.userId || msg.senderId || 'unknown'),
+        groupName,
+        senderId,
         timestamp: Date.now(),
       });
     } catch (err) {
@@ -285,3 +406,4 @@ export async function startTgListener() {
     }
   }, new NewMessage({}));
 }
+

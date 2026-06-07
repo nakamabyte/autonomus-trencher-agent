@@ -225,6 +225,17 @@ export function initDb() {
       trust_level TEXT DEFAULT 'active',
       updated_at_ms INTEGER
     );
+
+    -- Pending group approval queue: groups detected in discovery mode
+    -- status: 'pending' | 'approved' | 'rejected'
+    CREATE TABLE IF NOT EXISTS tg_group_pending (
+      group_id   TEXT PRIMARY KEY,
+      group_name TEXT DEFAULT '',
+      status     TEXT DEFAULT 'pending',
+      first_seen_ms     INTEGER NOT NULL,
+      last_notified_ms  INTEGER DEFAULT 0,
+      notification_count INTEGER DEFAULT 0
+    );
     CREATE INDEX IF NOT EXISTS idx_alerts_status ON price_alerts(status, expires_at_ms);
     CREATE INDEX IF NOT EXISTS idx_candidates_mint ON candidates(mint);
     CREATE INDEX IF NOT EXISTS idx_positions_status ON dry_run_positions(status);
@@ -341,6 +352,9 @@ export function initDb() {
   ensureColumn('agent_dna', 'sl_percent', 'REAL DEFAULT -20');
   ensureColumn('agent_dna', 'trailing_enabled', 'INTEGER DEFAULT 1');
   ensureColumn('agent_dna', 'trailing_percent', 'REAL DEFAULT 15');
+
+  // Social Scout: persist which groups were added via /scout add command
+  ensureColumn('tg_group_performance', 'monitored', 'INTEGER DEFAULT 0');
 
   ensureColumn('dry_run_positions', 'agent_dna_id', 'TEXT');
   db.exec(`

@@ -130,6 +130,56 @@ export async function handleCallback(query) {
   if (kind === 'tp') return updatePositionRule(chatId, Number(id), 'tp_percent', Number(value), query);
   if (kind === 'sl') return updatePositionRule(chatId, Number(id), 'sl_percent', Number(value), query);
   if (kind === 'trail') return toggleTrailing(chatId, Number(id), query);
+
+  // ── Social Scout pending group approval ─────────────────────────────────
+  // callback_data format: scout_approve:<group_id>  |  scout_reject:<group_id>
+  if (data.startsWith('scout_approve:') || data.startsWith('scout_reject:')) {
+    const isApprove = data.startsWith('scout_approve:');
+    const groupId   = data.replace(/^scout_(approve|reject):/, '');
+
+    const { db: _db } = await import('../db/connection.js');
+
+    // Check that this group is still pending (avoid double-click issues)
+    const row = _db.prepare('SELECT group_id, group_name, status FROM tg_group_pending WHERE group_id = ?').get(groupId);
+    if (!row || row.status !== 'pending') {
+      const alreadyMsg = row?.status === 'approved'
+        ? `✅ Already added to Social Scout.`
+        : `❌ Already rejected.`;
+      return editMenuMessage(query, alreadyMsg, {});
+    }
+
+    const groupName = row.group_name || groupId;
+
+    if (isApprove) {
+      // Mark approved in DB
+      _db.prepare("UPDATE tg_group_pending SET status = 'approved' WHERE group_id = ?").run(groupId);
+
+      // Add to runtime monitored set (persisted to tg_group_performance via getTgListenerControl)
+      const { getTgListenerControl } = await import('../signals/tgListener.js');
+      getTgListenerControl().add(groupId);
+
+      return editMenuMessage(query,
+        `✅ <b>Group Added to Social Scout</b>\n\n` +
+        `📌 <b>${groupName}</b>\n` +
+        `🆔 <code>${groupId}</code>\n\n` +
+        `The agent will now monitor this group for alpha calls.\n` +
+        `Use /scout list to view all monitored groups.`,
+        {}
+      );
+    } else {
+      // Mark rejected in DB — will never appear again
+      _db.prepare("UPDATE tg_group_pending SET status = 'rejected' WHERE group_id = ?").run(groupId);
+
+      return editMenuMessage(query,
+        `❌ <b>Group Rejected</b>\n\n` +
+        `📌 <b>${groupName}</b>\n` +
+        `🆔 <code>${groupId}</code>\n\n` +
+        `This group will not be monitored and won't appear in future notifications.`,
+        {}
+      );
+    }
+  }
+
   return null;
 }
 

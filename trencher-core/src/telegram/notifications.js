@@ -182,3 +182,43 @@ export function formatCooldownSkip(symbol, mint, remainingMinutes) {
 ⏱ ${remainingMinutes}m remaining
 `.trim()
 }
+
+// ─── HOURLY SCAN SUMMARY ────────────────────────────────────────────
+// stats: Array<{ name, breed, mode, analyzed, buy, skip }>
+export function formatScanSummary(stats, periodLabel = 'last hour') {
+  if (!stats || stats.length === 0) {
+    return `📡 <b>Scan Update</b>\n\nNo active agents at the moment.`
+  }
+
+  const breedEmoji = {
+    sniper:        '🎯',
+    degen:         '🎰',
+    bunker:        '🛡',
+    whale_tracker: '🐳',
+    scout:         '👁',
+    social_scout:  '📡',
+    drill_sergeant:'⚔️',
+  }
+
+  const modeLabel = (mode) => mode === 'dry_run' ? '🧪' : '🔴'
+
+  const lines = stats.map(s => {
+    const emoji = breedEmoji[s.breed] || '🤖'
+    const mode  = modeLabel(s.mode)
+    const buyTag = s.buy > 0 ? ` • <b>${s.buy} BUY 🟢</b>` : ''
+    return `${emoji} ${mode} <b>${s.name}</b>\n   📊 ${s.analyzed} analyzed • ${s.skip} skipped${buyTag}`
+  })
+
+  const totalAnalyzed = stats.reduce((a, s) => a + s.analyzed, 0)
+  const totalBuy      = stats.reduce((a, s) => a + s.buy, 0)
+
+  return [
+    `📡 <b>Agent Scan Update</b> — ${periodLabel}`,
+    ``,
+    lines.join('\n\n'),
+    ``,
+    `──────────────────`,
+    `🔢 Total: <b>${totalAnalyzed}</b> signals analyzed, <b>${totalBuy}</b> BUY executed`,
+    `<i>Autonomous Trencher Agent</i>`,
+  ].join('\n')
+}

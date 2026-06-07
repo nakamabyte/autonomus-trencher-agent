@@ -5,6 +5,48 @@ import { isOnCooldown, setCooldown, getCooldownRemaining } from '../utils/mintCo
 
 const activeAgents = new Map(); // agentId -> loop handle
 
+// ── Per-agent scan stats counter (reset every hour by the hourly cron notifier) ──
+// Structure: Map<agentId, { name, breed, mode, analyzed, buy, skip }>
+const agentScanStats = new Map();
+
+/**
+ * Increment scan counters for a given agent.
+ * @param {string} agentId
+ * @param {string} agentName
+ * @param {string} breed
+ * @param {string} mode
+ * @param {'buy'|'skip'} verdict
+ */
+function incrementScanStat(agentId, agentName, breed, mode, verdict) {
+  let stat = agentScanStats.get(agentId);
+  if (!stat) {
+    stat = { name: agentName, breed, mode, analyzed: 0, buy: 0, skip: 0 };
+    agentScanStats.set(agentId, stat);
+  }
+  stat.name = agentName; // keep fresh
+  stat.breed = breed;
+  stat.mode = mode;
+  stat.analyzed++;
+  if (verdict === 'buy') stat.buy++;
+  else stat.skip++;
+}
+
+/**
+ * Snapshot current scan stats for all agents, then reset counters.
+ * Called by the hourly cron in telegramInterface.js.
+ * @returns {Array<{ name, breed, mode, analyzed, buy, skip }>}
+ */
+export function snapshotAndResetScanStats() {
+  const snapshot = [];
+  for (const [, stat] of agentScanStats) {
+    snapshot.push({ ...stat });
+    stat.analyzed = 0;
+    stat.buy = 0;
+    stat.skip = 0;
+  }
+  return snapshot;
+}
+
 // Helper to check balance
 async function getWalletBalance(connection, walletAddress) {
   try {
@@ -116,11 +158,15 @@ export function startAgentTradingLoop(agentId, db, sharedSignalFeed, connection)
     // Evaluate signal using this agent's DNA config
     const decision = await evaluateSignalWithDna(signal, dna);
 
-    if (decision.verdict === 'BUY' && decision.confidence >= (dna.llm_min_confidence || 50) / 100) {
+    const isBuy = decision.verdict === 'BUY' && decision.confidence >= (dna.llm_min_confidence || 50) / 100;
+    if (isBuy) {
       await executeAgentTrade(current, signal, decision, dna, db, balance);
       // Set per-agent cooldown after confirmed BUY
       setCooldown(signal.mint, 'agent_buy', null, agentId);
     }
+
+    // Track scan stats for hourly Telegram summary
+    incrementScanStat(agentId, current.name, current.breed, current.execution_mode, isBuy ? 'buy' : 'skip');
 
     // Log to per-agent consciousness feed
     logAgentDecision(db, agentId, current.name, signal, decision, current.execution_mode);

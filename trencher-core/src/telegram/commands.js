@@ -101,7 +101,17 @@ Welcome! Trencher Agent is your personal AI robot that automatically finds and t
 <b>/lessons</b> — Read what the AI has learned from its past mistakes and wins
 <b>/learn 24h</b> — Force the AI to study the last 24 hours of market data
 
-<b>7️⃣ SAFETY PAUSES (COOLDOWNS)</b>
+<b>7️⃣ SOCIAL SCOUT — TG GROUP MANAGER</b>
+<b>/scout list</b> — Show all groups currently being monitored
+<b>/scout add &lt;group_id&gt;</b> — Start monitoring a TG group (survives restart)
+  <i>Example: /scout add -1001234567890</i>
+<b>/scout remove &lt;group_id&gt;</b> — Stop monitoring a TG group
+
+<i>💡 Tip: When SOCIAL_SCOUT_ENABLED=true and TG_ALPHA_GROUPS is empty, the bot runs in</i>
+<i><b>Discovery Mode</b>: any group that sends a token CA will be logged in the server console with</i>
+<i>its ID and name. Use /scout add to add interesting groups without touching .env.</i>
+
+<b>8️⃣ SAFETY PAUSES (COOLDOWNS)</b>
 <b>/cooldowns</b> — See coins the bot is temporarily ignoring (because they crashed recently)
 <b>/cooldown_clear &lt;mint&gt;</b> — Tell the bot it's okay to buy a coin again
   <i>Example: /cooldown_clear BuFWUx...</i>
@@ -546,6 +556,91 @@ To deploy an agent, you need to pay SOL via the Trenchyard platform.
     setSetting(key, value === 'off' ? '0' : value);
     return bot.sendMessage(chatId, filtersText(), { parse_mode: 'HTML' });
   }
+
+  // ── /scout — runtime Social Scout group manager ──────────────────────────
+  if (text.startsWith('/scout')) {
+    const parts    = text.trim().split(/\s+/);
+    const sub      = parts[1]; // list | add | remove
+    const groupArg = parts[2];
+
+    // Lazy import to avoid circular deps at startup
+    const { getTgListenerControl } = await import('../signals/tgListener.js');
+    const scout = getTgListenerControl();
+
+    if (sub === 'list') {
+      const groups = scout.list();
+      if (groups.length === 0) {
+        return bot.sendMessage(chatId,
+          '📡 <b>Social Scout Groups</b>\n\nNo groups monitored yet.\n\n' +
+          'Use <code>/scout add &lt;group_id&gt;</code> to add one.\n\n' +
+          '<i>Tip: Run in Discovery Mode (empty TG_ALPHA_GROUPS) to find group IDs in server logs.</i>',
+          { parse_mode: 'HTML' }
+        );
+      }
+
+      // Fetch name + stats from DB for each group
+      const { db: _db } = await import('../db/connection.js');
+      const lines = groups.map(gid => {
+        const row = _db.prepare(
+          'SELECT group_name, total_calls, traded, wins, win_rate, trust_level FROM tg_group_performance WHERE group_id = ?'
+        ).get(gid);
+        const name     = row?.group_name ? ` (${row.group_name})` : '';
+        const calls    = row?.total_calls ?? 0;
+        const traded   = row?.traded ?? 0;
+        const wr       = traded > 0 ? `${(row.win_rate * 100).toFixed(0)}% WR` : 'no trades yet';
+        const trust    = row?.trust_level === 'demoted' ? ' ⛔ demoted' : '';
+        return `• <code>${gid}</code>${name}\n  📨 ${calls} calls · 🔁 ${traded} trades · ${wr}${trust}`;
+      });
+
+      return bot.sendMessage(chatId,
+        `📡 <b>Social Scout — Monitored Groups (${groups.length})</b>\n\n${lines.join('\n\n')}\n\n` +
+        `<i>Remove: /scout remove &lt;group_id&gt;</i>`,
+        { parse_mode: 'HTML' }
+      );
+    }
+
+    if (sub === 'add') {
+      if (!groupArg) {
+        return bot.sendMessage(chatId,
+          'Usage: <code>/scout add &lt;group_id&gt;</code>\n\nExample: <code>/scout add -1001234567890</code>\n\n' +
+          '<i>Tip: Group IDs appear in server logs when Discovery Mode is active.</i>',
+          { parse_mode: 'HTML' }
+        );
+      }
+      scout.add(groupArg);
+      return bot.sendMessage(chatId,
+        `✅ <b>Group added to Social Scout</b>\n\n<code>${escapeHtml(groupArg)}</code>\n\n` +
+        `The agent will now monitor this group for token calls.\n` +
+        `Use /scout list to see all monitored groups.`,
+        { parse_mode: 'HTML' }
+      );
+    }
+
+    if (sub === 'remove') {
+      if (!groupArg) {
+        return bot.sendMessage(chatId, 'Usage: <code>/scout remove &lt;group_id&gt;</code>', { parse_mode: 'HTML' });
+      }
+      if (!scout.has(groupArg)) {
+        return bot.sendMessage(chatId, `⚠️ Group <code>${escapeHtml(groupArg)}</code> is not in the monitored list.`, { parse_mode: 'HTML' });
+      }
+      scout.remove(groupArg);
+      return bot.sendMessage(chatId,
+        `🗑 <b>Group removed from Social Scout</b>\n\n<code>${escapeHtml(groupArg)}</code>\n\n` +
+        `The agent will no longer process token calls from this group.`,
+        { parse_mode: 'HTML' }
+      );
+    }
+
+    // Default: show usage
+    return bot.sendMessage(chatId,
+      '📡 <b>Social Scout Group Manager</b>\n\n' +
+      '<b>/scout list</b> — Show all monitored groups with stats\n' +
+      '<b>/scout add &lt;group_id&gt;</b> — Start monitoring a group\n' +
+      '<b>/scout remove &lt;group_id&gt;</b> — Stop monitoring a group\n\n' +
+      '<i>Changes take effect immediately and survive restarts.</i>',
+      { parse_mode: 'HTML' }
+    );
+  }
 }
 
 export async function sendCandidate(chatId, id) {
@@ -682,6 +777,7 @@ export function setupTelegram() {
     { command: 'history', description: 'Show last 10 trades' },
     { command: 'exportdb', description: 'Download sqlite database' },
     { command: 'twitter', description: 'Enable/disable auto Twitter post' },
+    { command: 'scout', description: 'Manage Social Scout TG alpha groups (list/add/remove)' },
   ]).catch(err => console.log(`[telegram] commands ${err.message}`));
 
   bot.on('callback_query', query => handleCallback(query).catch(err => console.log(`[callback] ${err.message}`)));
