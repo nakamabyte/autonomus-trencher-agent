@@ -1,5 +1,5 @@
 import { bot } from './bot.js';
-import { TELEGRAM_CHAT_ID } from '../config.js';
+import { TELEGRAM_CHAT_ID, TELEGRAM_ADMIN_IDS } from '../config.js';
 import { now, json } from '../utils.js';
 import { escapeHtml, fmtPct } from '../format.js';
 import { db } from '../db/connection.js';
@@ -45,6 +45,17 @@ export async function handleMessage(msg) {
   }
   const text = (msg.text || '').trim();
   const chatId = msg.chat.id;
+  const fromId = String(msg.from?.id || '');
+
+  // If TELEGRAM_ADMIN_IDS is configured, enforce it for all commands.
+  // This protects against other group members running commands when the
+  // bot is added to a group chat.
+  const isGroupChat = msg.chat.type === 'group' || msg.chat.type === 'supergroup';
+  if (isGroupChat && TELEGRAM_ADMIN_IDS.size > 0 && !TELEGRAM_ADMIN_IDS.has(fromId)) {
+    // Non-admins in a group: silently ignore (don't reveal bot presence)
+    return;
+  }
+
   if (await consumeNumericFilterInput(chatId, text, msg.message_id)) return;
   if (!text.startsWith('/')) return;
   if (text.startsWith('/start')) {
