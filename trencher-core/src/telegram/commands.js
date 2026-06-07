@@ -674,18 +674,48 @@ To deploy an agent, you need to pay SOL via the Trenchyard platform.
         { parse_mode: 'HTML' }
       );
 
-      // Lazy import gramjs client via tgListener
+      // Get gramjs client: first try the shared active client,
+      // then fall back to creating a fresh connection from env vars.
       let tgClient = null;
+      let ownedClient = false; // track if we created the client (need to disconnect after)
+
       try {
         const { getActiveTgClient } = await import('../signals/tgListener.js');
         tgClient = getActiveTgClient();
       } catch (e) {
-        console.error('[scout learn] Failed to get gramjs client:', e.message);
+        console.warn('[scout learn] getActiveTgClient error:', e.message);
+      }
+
+      // Fallback: create a fresh gramjs client from env vars
+      if (!tgClient) {
+        try {
+          const { TelegramClient } = await import('telegram');
+          const { StringSession } = await import('telegram/sessions/StringSession.js');
+
+          const apiId      = parseInt(process.env.TG_API_ID  || '0');
+          const apiHash    = process.env.TG_API_HASH         || '';
+          const sessionStr = process.env.TG_SESSION_STRING   || '';
+
+          if (!apiId || !apiHash || !sessionStr) {
+            throw new Error('TG_API_ID / TG_API_HASH / TG_SESSION_STRING not set in env');
+          }
+
+          const freshClient = new TelegramClient(
+            new StringSession(sessionStr), apiId, apiHash,
+            { connectionRetries: 3, autoReconnect: false }
+          );
+          await freshClient.connect();
+          tgClient    = freshClient;
+          ownedClient = true;
+          console.log('[scout learn] Created fallback gramjs client for /scout learn');
+        } catch (e) {
+          console.error('[scout learn] Fallback client creation failed:', e.message);
+        }
       }
 
       if (!tgClient) {
         return bot.editMessageText(
-          '❌ <b>Koneksi Telegram tidak aktif.</b>\nPastikan Social Scout listener sudah berjalan (SOCIAL_SCOUT_ENABLED=true dan session valid).',
+          '❌ <b>Telegram connection unavailable.</b>\nMake sure <code>SOCIAL_SCOUT_ENABLED=true</code>, <code>TG_SESSION_STRING</code>, <code>TG_API_ID</code>, and <code>TG_API_HASH</code> are set in Railway Variables.',
           { chat_id: chatId, message_id: statusMsg.message_id, parse_mode: 'HTML' }
         );
       }
@@ -731,7 +761,12 @@ To deploy an agent, you need to pay SOL via the Trenchyard platform.
         summary += '\n';
       }
 
-      summary += `<i>Gunakan /lessons untuk melihat semua pengetahuan yang telah dikumpulkan.\nGunakan /scout history &lt;group_id&gt; untuk melihat CA history suatu grup.</i>`;
+      summary += `<i>Use /lessons to see all collected knowledge.\nUse /scout history &lt;group_id&gt; to view CA history for a group.</i>`;
+
+      // Disconnect fallback client if we created it for this request
+      if (ownedClient && tgClient?.disconnect) {
+        tgClient.disconnect().catch(() => {});
+      }
 
       return bot.editMessageText(summary, {
         chat_id: chatId, message_id: statusMsg.message_id, parse_mode: 'HTML'
