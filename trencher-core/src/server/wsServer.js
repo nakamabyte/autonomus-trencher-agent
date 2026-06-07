@@ -586,63 +586,74 @@ export function startWsServer(port = 4001) {
             return;
           }
 
-          const { destinationAddress } = payload;
-          if (!destinationAddress || typeof destinationAddress !== 'string' || destinationAddress.trim().length < 32) {
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Invalid destination address' }));
-            return;
-          }
-
-          if (!agent.agent_wallet || !agent.encrypted_key) {
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Agent has no wallet configured' }));
-            return;
-          }
-
-          try {
-            const { Connection, PublicKey, Transaction, SystemProgram, Keypair } = await import('@solana/web3.js');
-            const { SOLANA_RPC_URL } = await import('../config.js');
-            const { decrypt } = await import('../security/encryption.js');
-            const bs58 = await import('bs58');
-
-            const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
-            const destPubkey = new PublicKey(destinationAddress.trim());
-            const fromPubkey = new PublicKey(agent.agent_wallet);
-
-            // Get current balance
-            const balanceLamports = await connection.getBalance(fromPubkey);
-            if (balanceLamports <= 0) {
+            const { destinationAddress, amountSol } = payload;
+            if (!destinationAddress || typeof destinationAddress !== 'string' || destinationAddress.trim().length < 32) {
               res.writeHead(400, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ error: 'Agent wallet has zero balance' }));
+              res.end(JSON.stringify({ error: 'Invalid destination address' }));
               return;
             }
 
-            // Decrypt agent private key
-            const decryptedKey = decrypt(agent.encrypted_key);
-            let keypair;
+            if (!agent.agent_wallet || !agent.encrypted_key) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Agent has no wallet configured' }));
+              return;
+            }
+
             try {
-              // Try as base58 first
-              const secretKey = bs58.default.decode(decryptedKey);
-              keypair = Keypair.fromSecretKey(secretKey);
-            } catch {
-              try {
-                // Try as JSON array
-                keypair = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(decryptedKey)));
-              } catch {
-                res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Failed to parse agent keypair' }));
+              const { Connection, PublicKey, Transaction, SystemProgram, Keypair } = await import('@solana/web3.js');
+              const { SOLANA_RPC_URL } = await import('../config.js');
+              const { decrypt } = await import('../security/encryption.js');
+              const bs58 = await import('bs58');
+
+              const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
+              const destPubkey = new PublicKey(destinationAddress.trim());
+              const fromPubkey = new PublicKey(agent.agent_wallet);
+
+              // Get current balance
+              const balanceLamports = await connection.getBalance(fromPubkey);
+              if (balanceLamports <= 0) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Agent wallet has zero balance' }));
                 return;
               }
-            }
 
-            // Calculate amount: leave ~0.001 SOL for fees (5000 lamports fee + buffer)
-            const FEE_BUFFER = 5000;
-            const transferLamports = balanceLamports - FEE_BUFFER;
-            if (transferLamports <= 0) {
-              res.writeHead(400, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ error: 'Balance too low to cover transaction fees' }));
-              return;
-            }
+              // Decrypt agent private key
+              const decryptedKey = decrypt(agent.encrypted_key);
+              let keypair;
+              try {
+                // Try as base58 first
+                const secretKey = bs58.default.decode(decryptedKey);
+                keypair = Keypair.fromSecretKey(secretKey);
+              } catch {
+                try {
+                  // Try as JSON array
+                  keypair = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(decryptedKey)));
+                } catch {
+                  res.writeHead(500, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify({ error: 'Failed to parse agent keypair' }));
+                  return;
+                }
+              }
+
+              // Calculate amount: leave ~0.001 SOL for fees (5000 lamports fee + buffer)
+              const FEE_BUFFER = 5000;
+              let transferLamports = balanceLamports - FEE_BUFFER;
+
+              if (amountSol && Number(amountSol) > 0) {
+                const requestedLamports = Math.floor(Number(amountSol) * 1e9);
+                if (requestedLamports > transferLamports) {
+                  res.writeHead(400, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify({ error: 'Insufficient balance for this amount + fees' }));
+                  return;
+                }
+                transferLamports = requestedLamports;
+              }
+
+              if (transferLamports <= 0) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Balance too low to cover transaction fees' }));
+                return;
+              }
 
             const { blockhash } = await connection.getLatestBlockhash();
             const tx = new Transaction({

@@ -64,6 +64,7 @@ export default function AgentProfilePage() {
   // ─── Withdraw Modal State ───────────────────────────────────────────────────
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawAddress, setWithdrawAddress] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawSecret, setWithdrawSecret] = useState('');
   const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [withdrawResult, setWithdrawResult] = useState<{
@@ -78,13 +79,17 @@ export default function AgentProfilePage() {
     setWithdrawLoading(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
+      const amountNum = withdrawAmount.trim() ? parseFloat(withdrawAmount) : undefined;
       const res = await fetch(`${API_URL}/api/agent/${agent.id}/withdraw`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-agent-key': withdrawSecret.trim(),
         },
-        body: JSON.stringify({ destinationAddress: withdrawAddress.trim() }),
+        body: JSON.stringify({ 
+          destinationAddress: withdrawAddress.trim(),
+          amountSol: amountNum 
+        }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -115,6 +120,7 @@ export default function AgentProfilePage() {
   const closeWithdrawModal = () => {
     setShowWithdrawModal(false);
     setWithdrawAddress('');
+    setWithdrawAmount('');
     setWithdrawSecret('');
     setWithdrawResult(null);
     setWithdrawLoading(false);
@@ -630,6 +636,37 @@ export default function AgentProfilePage() {
                   />
                 </div>
 
+                {/* Withdraw Amount */}
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ fontSize: '9px', color: '#888', letterSpacing: '0.1em', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
+                    Amount (SOL) — Leave empty for MAX
+                  </label>
+                  <input
+                    id="withdraw-amount"
+                    type="number"
+                    step="0.0001"
+                    min="0"
+                    value={withdrawAmount}
+                    onChange={e => setWithdrawAmount(e.target.value)}
+                    placeholder="e.g. 0.5"
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      background: 'rgba(0,0,0,0.4)',
+                      border: '1px solid #1e1e2e',
+                      borderRadius: '6px',
+                      color: '#ddd',
+                      fontSize: '11px',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      outline: 'none',
+                      transition: 'border-color 0.2s',
+                      boxSizing: 'border-box',
+                    }}
+                    onFocus={e => { e.currentTarget.style.borderColor = '#FF6B3D'; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = '#1e1e2e'; }}
+                  />
+                </div>
+
                 {/* Agent Secret Key */}
                 <div style={{ marginBottom: '20px' }}>
                   <label style={{ fontSize: '9px', color: '#888', letterSpacing: '0.1em', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
@@ -677,7 +714,7 @@ export default function AgentProfilePage() {
                     <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                   </svg>
                   <span style={{ fontSize: '9px', color: '#AA8800', lineHeight: 1.6 }}>
-                    This will withdraw the entire balance (minus network fees). This action cannot be undone.
+                    This will withdraw the specified amount (or entire balance if empty) minus network fees. This action cannot be undone.
                   </span>
                 </div>
 
