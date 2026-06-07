@@ -229,21 +229,21 @@ function formatScoutCallUpdate({ ca, groupId, groupName, senderId, text, pipelin
   const decEmoji = decision === 'BUY' ? '🟢 BUY' : decision === 'ESCALATE' ? '🟡 ESCALATE' : '🔴 SKIP';
 
   const lines = [
-    `📡 <b>TG Alpha Call — Analisis Selesai</b>`,
+    `📡 <b>TG Alpha Call — Analysis Complete</b>`,
     ``,
-    `👥 <b>Grup:</b> ${escapeHtml(gName)}`,
+    `👥 <b>Group:</b> ${escapeHtml(gName)}`,
     `👤 <b>Caller ID:</b> <code>${escapeHtml(String(senderId))}</code>`,
     `🪙 <b>Token${symbol ? ` ${escapeHtml(symbol)}` : ticker}:</b>`,
     `   <a href="${gmgnUrl}"><code>${ca}</code></a>`,
     ``,
-    `📊 <b>Hasil LLM:</b> ${decEmoji} · Confidence: <b>${confidence}</b>${runner}${kolSignal}`,
+    `📊 <b>LLM Result:</b> ${decEmoji} · Confidence: <b>${confidence}</b>${runner}${kolSignal}`,
     ``,
     `📈 <b>Metrics:</b>`,
     `   MCap: <b>${mcap}</b> · Liquidity: <b>${liquidity}</b>`,
     `   Holders: <b>${holders}</b> · Age: <b>${age}</b>`,
     reasoning ? `\n💬 <i>${reasoning}</i>` : null,
     ``,
-    `💬 <b>Pesan asli:</b>`,
+    `💬 <b>Original message:</b>`,
     `<i>${preview}${text.length > 150 ? '…' : ''}</i>`,
   ].filter(Boolean).join('\n');
 
