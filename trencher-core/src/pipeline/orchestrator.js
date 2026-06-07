@@ -130,10 +130,10 @@ export async function processCandidateFromSignals(signals) {
     price_delta_5m: candidate.trending?.price_change_5m || candidate.chart?.priceChangePct5m || 0,
     price_delta_1h: candidate.trending?.price_change_1h || candidate.chart?.priceChangePct1h || 0,
     // Source tag: raw scan signals use 'raw_scan'; TG alpha will use 'tg_alpha'
-    source: signal.source || 'raw_scan',
+    source: signals.source || 'raw_scan',
     // sourceMeta carries groupId (and rawMessage, senderId) set by tgListener.js.
     // Required for Social Scout win/loss tracking in positions.js close callback.
-    sourceMeta: signal.sourceMeta || null,
+    sourceMeta: signals.sourceMeta || null,
   });
 
 
@@ -179,7 +179,22 @@ export async function processCandidateFromSignals(signals) {
       },
     });
   }
-  } catch (err) { console.log(`[orchestrator] processCandidateFromSignals failed: ${err.message}`);  }
+  // Return enriched candidate data + LLM decision for caller to use
+  // (e.g. tgListener can update the scout alert notification with real metrics)
+  return {
+    decision:            currentDecision.verdict,
+    confidence:          currentDecision.confidence ? currentDecision.confidence / 100 : null,
+    reasoning:           currentDecision.reason || null,
+    runner_signal:       candidate.twitterNarrative?.runnerSignal || currentDecision.runner_signal || null,
+    runner_account:      currentDecision.runner_account || null,
+    kol_signal:          currentDecision.kol_signal || candidate.twitterNarrative?.topHandle || null,
+    symbol:              candidate.token.symbol || null,
+    mcap_usd:            candidate.metrics.marketCapUsd || null,
+    liquidity_usd:       candidate.metrics.liquidityUsd || null,
+    holders:             candidate.metrics.holderCount || null,
+    token_age_minutes:   candidate.metrics.tokenAgeMinutes || null,
+  };
+  } catch (err) { console.log(`[orchestrator] processCandidateFromSignals failed: ${err.message}`); return null; }
 }
 
 export async function handleApprovedBuy(selectedRow, decision, batchId, rows = [], triggerCandidateId = null) {

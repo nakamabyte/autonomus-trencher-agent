@@ -236,6 +236,31 @@ export function initDb() {
       last_notified_ms  INTEGER DEFAULT 0,
       notification_count INTEGER DEFAULT 0
     );
+
+    -- Group learn history: record of each /scout learn scan
+    CREATE TABLE IF NOT EXISTS tg_group_history (
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      group_id         TEXT NOT NULL,
+      group_name       TEXT,
+      scanned_at_ms    INTEGER NOT NULL,
+      messages_scanned INTEGER DEFAULT 0,
+      ca_found         INTEGER DEFAULT 0,
+      unique_ca        INTEGER DEFAULT 0,
+      lessons_json     TEXT,
+      window_days      INTEGER DEFAULT 3
+    );
+
+    -- Per-group CA mention history: tracks which tokens were mentioned and how often
+    CREATE TABLE IF NOT EXISTS tg_group_ca_history (
+      group_id       TEXT NOT NULL,
+      ca             TEXT NOT NULL,
+      first_seen_ms  INTEGER NOT NULL,
+      mention_count  INTEGER DEFAULT 1,
+      last_seen_ms   INTEGER NOT NULL,
+      sample_text    TEXT,
+      PRIMARY KEY (group_id, ca)
+    );
+    CREATE INDEX IF NOT EXISTS idx_tg_ca_history_group ON tg_group_ca_history(group_id, mention_count DESC);
     CREATE INDEX IF NOT EXISTS idx_alerts_status ON price_alerts(status, expires_at_ms);
     CREATE INDEX IF NOT EXISTS idx_candidates_mint ON candidates(mint);
     CREATE INDEX IF NOT EXISTS idx_positions_status ON dry_run_positions(status);

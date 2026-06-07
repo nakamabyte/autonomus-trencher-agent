@@ -102,14 +102,21 @@ Welcome! Trencher Agent is your personal AI robot that automatically finds and t
 <b>/learn 24h</b> — Force the AI to study the last 24 hours of market data
 
 <b>7️⃣ SOCIAL SCOUT — TG GROUP MANAGER</b>
-<b>/scout list</b> — Show all groups currently being monitored
-<b>/scout add &lt;group_id&gt;</b> — Start monitoring a TG group (survives restart)
-  <i>Example: /scout add -1001234567890</i>
-<b>/scout remove &lt;group_id&gt;</b> — Stop monitoring a TG group
+<b>/scout list</b> — Tampilkan semua grup yang dimonitor
+<b>/scout add &lt;group_id&gt;</b> — Mulai monitor grup TG (tersimpan saat restart)
+  <i>Contoh: /scout add -1001234567890</i>
+<b>/scout remove &lt;group_id&gt;</b> — Berhenti monitor grup
+<b>/scout learn &lt;group_id|all&gt;</b> — 🧠 Pelajari history chat (3 hari terakhir, 200 pesan)
+  <i>Contoh: /scout learn -1001234567890 --days 7</i>
+  <i>Contoh: /scout learn all  (semua grup sekaligus)</i>
+<b>/scout history &lt;group_id&gt;</b> — Lihat CA yang paling sering disebut di grup
 
-<i>💡 Tip: When SOCIAL_SCOUT_ENABLED=true and TG_ALPHA_GROUPS is empty, the bot runs in</i>
-<i><b>Discovery Mode</b>: any group that sends a token CA will be logged in the server console with</i>
-<i>its ID and name. Use /scout add to add interesting groups without touching .env.</i>
+<i>💡 Tip: /scout learn menggunakan LLM untuk menganalisis pola grup dan menyimpan
+pengetahuannya ke /lessons — jalankan setelah menambah grup baru!</i>
+
+<i>💡 Tip: Ketika SOCIAL_SCOUT_ENABLED=true dan TG_ALPHA_GROUPS kosong, bot berjalan dalam</i>
+<i><b>Discovery Mode</b>: setiap grup yang mengirim token CA akan dicatat ID dan namanya di server log.</i>
+<i>Gunakan /scout add untuk menambahkan grup tanpa mengubah .env.</i>
 
 <b>8️⃣ SAFETY PAUSES (COOLDOWNS)</b>
 <b>/cooldowns</b> — See coins the bot is temporarily ignoring (because they crashed recently)
@@ -631,13 +638,161 @@ To deploy an agent, you need to pay SOL via the Trenchyard platform.
       );
     }
 
+    // ── /scout learn <group_id|all> [--days N] ──────────────────────
+    if (sub === 'learn') {
+      if (process.env.SOCIAL_SCOUT_ENABLED !== 'true') {
+        return bot.sendMessage(chatId,
+          '❌ <b>Social Scout tidak aktif.</b>\nSet <code>SOCIAL_SCOUT_ENABLED=true</code> di .env dan pastikan TG_SESSION_STRING sudah dikonfigurasi.',
+          { parse_mode: 'HTML' }
+        );
+      }
+
+      // Parse --days flag
+      const rawArgs = parts.slice(2);
+      const daysIdx = rawArgs.indexOf('--days');
+      const customDays = daysIdx !== -1 ? parseInt(rawArgs[daysIdx + 1] || '3') : 3;
+      const days = Math.min(Math.max(customDays, 1), 30); // clamp 1–30
+
+      // Determine target groups
+      let targetGroups = [];
+      if (!groupArg || groupArg === 'all') {
+        targetGroups = scout.list();
+        if (targetGroups.length === 0) {
+          return bot.sendMessage(chatId,
+            '⚠️ Belum ada grup yang dimonitor.\nGunakan <code>/scout add &lt;group_id&gt;</code> terlebih dahulu.',
+            { parse_mode: 'HTML' }
+          );
+        }
+      } else {
+        targetGroups = [groupArg];
+      }
+
+      const statusMsg = await bot.sendMessage(chatId,
+        `🧠 <b>Social Scout — Belajar dari History</b>\n\n` +
+        `⏳ Memindai ${targetGroups.length} grup, rentang <b>${days} hari</b> terakhir...\n` +
+        `<i>Harap tunggu, proses ini memerlukan beberapa detik per grup.</i>`,
+        { parse_mode: 'HTML' }
+      );
+
+      // Lazy import gramjs client via tgListener
+      let tgClient = null;
+      try {
+        const { getActiveTgClient } = await import('../signals/tgListener.js');
+        tgClient = getActiveTgClient();
+      } catch (e) {
+        console.error('[scout learn] Failed to get gramjs client:', e.message);
+      }
+
+      if (!tgClient) {
+        return bot.editMessageText(
+          '❌ <b>Koneksi Telegram tidak aktif.</b>\nPastikan Social Scout listener sudah berjalan (SOCIAL_SCOUT_ENABLED=true dan session valid).',
+          { chat_id: chatId, message_id: statusMsg.message_id, parse_mode: 'HTML' }
+        );
+      }
+
+      const { learnGroupHistory } = await import('../signals/tgGroupLearner.js');
+
+      const results = [];
+      for (const gid of targetGroups) {
+        const row = db.prepare('SELECT group_name FROM tg_group_performance WHERE group_id = ?').get(gid);
+        const gName = row?.group_name || gid;
+        try {
+          const r = await learnGroupHistory(tgClient, gid, gName, { days, limit: 200 });
+          results.push(r);
+        } catch (err) {
+          results.push({ groupId: gid, groupName: gName, error: err.message, messagesScanned: 0, caFound: 0, uniqueCa: 0, topCas: [], lessons: [] });
+        }
+      }
+
+      // Format result summary
+      let summary = `🧠 <b>Social Scout — Hasil Belajar (${days} hari terakhir)</b>\n\n`;
+      for (const r of results) {
+        const nameDisplay = r.groupName && r.groupName !== r.groupId ? `${escapeHtml(r.groupName)}` : `<code>${escapeHtml(r.groupId)}</code>`;
+        if (r.error) {
+          summary += `❌ ${nameDisplay}\n<i>Gagal: ${escapeHtml(r.error)}</i>\n\n`;
+          continue;
+        }
+        summary += `📡 <b>${nameDisplay}</b>\n`;
+        summary += `   📨 ${r.messagesScanned} pesan dipindai · 🪙 ${r.uniqueCa} CA unik ditemukan\n`;
+
+        if (r.topCas.length > 0) {
+          const top3 = r.topCas.slice(0, 3);
+          summary += `   🔥 CA paling sering: `;
+          summary += top3.map(c => `<code>${c.ca.slice(0, 8)}…</code>(×${c.count})`).join(', ');
+          summary += '\n';
+        }
+
+        if (r.lessons.length > 0) {
+          summary += `   📝 <b>${r.lessons.length} lesson tersimpan</b>\n`;
+          const firstLesson = r.lessons[0];
+          const lessonText = String(firstLesson.insight || firstLesson.lesson || firstLesson).slice(0, 120);
+          summary += `   <i>→ ${escapeHtml(lessonText)}</i>\n`;
+        }
+        summary += '\n';
+      }
+
+      summary += `<i>Gunakan /lessons untuk melihat semua pengetahuan yang telah dikumpulkan.\nGunakan /scout history &lt;group_id&gt; untuk melihat CA history suatu grup.</i>`;
+
+      return bot.editMessageText(summary, {
+        chat_id: chatId, message_id: statusMsg.message_id, parse_mode: 'HTML'
+      });
+    }
+
+    // ── /scout history <group_id> ────────────────────────────────────
+    if (sub === 'history') {
+      if (!groupArg) {
+        return bot.sendMessage(chatId,
+          'Usage: <code>/scout history &lt;group_id&gt;</code>\n\nMenampilkan token CA yang paling sering disebut di grup tersebut.',
+          { parse_mode: 'HTML' }
+        );
+      }
+
+      const { getGroupCaHistory, getLastLearnSummary } = await import('../signals/tgGroupLearner.js');
+      const caList = getGroupCaHistory(groupArg, 15);
+      const lastScan = getLastLearnSummary(groupArg);
+
+      if (!caList.length) {
+        return bot.sendMessage(chatId,
+          `ℹ️ Belum ada data history untuk grup <code>${escapeHtml(groupArg)}</code>.\n\nJalankan <code>/scout learn ${escapeHtml(groupArg)}</code> terlebih dahulu.`,
+          { parse_mode: 'HTML' }
+        );
+      }
+
+      const gRow = db.prepare('SELECT group_name FROM tg_group_performance WHERE group_id = ?').get(groupArg);
+      const gName = gRow?.group_name || groupArg;
+
+      let msg = `🪙 <b>CA History — ${escapeHtml(gName)}</b>\n`;
+      if (lastScan) {
+        const scanDate = new Date(lastScan.scanned_at_ms).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        msg += `<i>Scan terakhir: ${scanDate} (${lastScan.window_days} hari)</i>\n\n`;
+      } else {
+        msg += '\n';
+      }
+
+      for (const row of caList) {
+        const age = Math.floor((Date.now() - row.first_seen_ms) / (60 * 60 * 1000));
+        const ageStr = age < 24 ? `${age}h lalu` : `${Math.floor(age / 24)}d lalu`;
+        msg += `• <code>${row.ca}</code>\n`;
+        msg += `  🔁 ${row.mention_count}× disebut · pertama ${ageStr}\n`;
+        if (row.sample_text) {
+          msg += `  <i>"${escapeHtml(row.sample_text.slice(0, 80))}"</i>\n`;
+        }
+        msg += '\n';
+      }
+
+      return bot.sendMessage(chatId, msg, { parse_mode: 'HTML', disable_web_page_preview: true });
+    }
+
     // Default: show usage
     return bot.sendMessage(chatId,
       '📡 <b>Social Scout Group Manager</b>\n\n' +
-      '<b>/scout list</b> — Show all monitored groups with stats\n' +
-      '<b>/scout add &lt;group_id&gt;</b> — Start monitoring a group\n' +
-      '<b>/scout remove &lt;group_id&gt;</b> — Stop monitoring a group\n\n' +
-      '<i>Changes take effect immediately and survive restarts.</i>',
+      '<b>/scout list</b> — Tampilkan semua grup yang dimonitor\n' +
+      '<b>/scout add &lt;group_id&gt;</b> — Mulai monitor grup\n' +
+      '<b>/scout remove &lt;group_id&gt;</b> — Berhenti monitor grup\n' +
+      '<b>/scout learn &lt;group_id|all&gt;</b> — Pelajari history chat grup (default 3 hari)\n' +
+      '  <i>Contoh: /scout learn -1001234567890 --days 7</i>\n' +
+      '<b>/scout history &lt;group_id&gt;</b> — Lihat CA yang sering disebut di grup\n\n' +
+      '<i>Perubahan langsung aktif dan tersimpan saat restart.</i>',
       { parse_mode: 'HTML' }
     );
   }
@@ -777,7 +932,7 @@ export function setupTelegram() {
     { command: 'history', description: 'Show last 10 trades' },
     { command: 'exportdb', description: 'Download sqlite database' },
     { command: 'twitter', description: 'Enable/disable auto Twitter post' },
-    { command: 'scout', description: 'Manage Social Scout TG alpha groups (list/add/remove)' },
+    { command: 'scout', description: 'Manage Social Scout TG alpha groups (list/add/remove/learn/history)' },
   ]).catch(err => console.log(`[telegram] commands ${err.message}`));
 
   bot.on('callback_query', query => handleCallback(query).catch(err => console.log(`[callback] ${err.message}`)));

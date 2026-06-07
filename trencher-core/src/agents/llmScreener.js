@@ -614,6 +614,90 @@ export async function runAnalysis(payload) {
   }
 }
 
+// ─── Group History Learner (mode: group_learn) ─────────────────────
+/**
+ * Analisis riwayat chat grup TG alpha menggunakan LLM untuk mengekstrak
+ * pola alpha, pola scam, dan gaya komunikasi grup.
+ *
+ * @param {{
+ *   groupId: string,
+ *   groupName: string,
+ *   days: number,
+ *   messagesScanned: number,
+ *   caFound: number,
+ *   uniqueCa: number,
+ *   topCas: Array<{ca, count, sample}>,
+ *   narrativeSamples: string[]
+ * }} payload
+ * @returns {Promise<{ lessons: Array<{insight: string, category: string, confidence: string}>, summary: string }>}
+ */
+export async function runGroupLearnAnalysis(payload) {
+  const systemPrompt = `You are TRENCHER-T2 in GROUP_LEARN mode.
+
+You are analyzing the message history of a Telegram alpha group that the Social Scout agent monitors.
+Your goal is to extract ACTIONABLE intelligence about how this group operates.
+
+Analyze the provided data and output a JSON object with:
+1. "lessons" — an array of 3–6 actionable insights about this group
+2. "summary" — a 2-sentence summary of the group's signal quality and style
+3. "group_style" — one of: "high_signal", "mixed", "low_signal", "pump_dump"
+4. "recommended_trust" — one of: "trust", "monitor", "demote"
+
+Each lesson object:
+{
+  "insight": "Actionable lesson under 150 chars",
+  "category": "pattern | token | kol | timing | risk",
+  "confidence": "high | medium | low"
+}
+
+ANALYSIS GUIDELINES:
+- If top CAs are mentioned many times (>3), they may be recurring shilled tokens — flag them
+- Look at narrative samples for language patterns: hype vs analysis-based
+- Groups that use phrases like "100x guaranteed", "aping hard", "CT alpha" without substance = pump_dump
+- Groups with contract addresses + chart analysis + entry reasoning = high_signal
+- If few unique CAs but many messages = possible single-token pump group
+- Short narrative samples with emojis only = low signal quality
+- Flag if the group seems to be re-sharing other group's signals (aggregator risk)
+
+OUTPUT FORMAT: Valid JSON only. No text outside JSON.
+{
+  "mode": "group_learn",
+  "group_style": "...",
+  "recommended_trust": "...",
+  "summary": "...",
+  "lessons": [...]
+}`;
+
+  try {
+    const response = await t2Client.chat.completions.create({
+      model: LLM_T2_MODEL,
+      max_tokens: 1000,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: JSON.stringify({
+          command: 'group_learn',
+          ...payload,
+        }) }
+      ]
+    });
+
+    const raw = response.choices[0].message.content;
+    const cleaned = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    return parsed;
+  } catch (err) {
+    console.error('[LLM-T2] Group learn analysis failed:', err.message);
+    // Fallback: return empty lessons so caller doesn't crash
+    return {
+      mode: 'group_learn',
+      group_style: 'mixed',
+      recommended_trust: 'monitor',
+      summary: 'LLM analysis tidak tersedia. Data CA telah disimpan ke database.',
+      lessons: [],
+    };
+  }
+}
+
 // ─── Main Cascade Screener ─────────────────────────────────────────
 export async function screenCandidates(candidates) {
   if (!candidates || candidates.length === 0) {

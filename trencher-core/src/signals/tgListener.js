@@ -21,6 +21,8 @@
 
 import { parseTokenCall } from './tokenParser.js';
 import { db } from '../db/connection.js';
+import { sendTelegram } from '../telegram/send.js';
+import { escapeHtml } from '../format.js';
 
 // Per-group rate limiter (in-memory, resets on restart)
 // Structure: Map<groupId, { count: number, windowStartMs: number }>
@@ -166,6 +168,88 @@ export function recordGroupTradeResult(groupId, isWin) {
  *   - source: 'tg_alpha' and sourceMeta (groupId etc.) are preserved so that
  *     agentRunner routing and positions.js win/loss tracking still work.
  */
+/**
+ * Format notifikasi awal saat CA terdeteksi dari grup alpha.
+ * Dikirim SEGERA sebelum pipeline LLM — user dapat pantau real-time.
+ */
+function formatScoutCallAlert({ ca, groupId, groupName, senderId, text }) {
+  const gName  = groupName || groupId;
+  const caShort = `${ca.slice(0, 6)}...${ca.slice(-4)}`;
+  const gmgnUrl = `https://gmgn.ai/sol/token/${ca}`;
+  const dexUrl  = `https://dexscreener.com/search?q=${ca}`;
+
+  // Ekstrak nama/ticker dari pesan jika ada (pola: $TICKER atau TICKER)
+  const tickerMatch = text.match(/\$([A-Z]{2,10})/) || text.match(/\b([A-Z]{2,8})\b/);
+  const ticker = tickerMatch ? ` ($${tickerMatch[1]})` : '';
+
+  const preview = text.slice(0, 200).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  return [
+    `📡 <b>TG Alpha Call Detected!</b>`,
+    ``,
+    `👥 <b>Grup:</b> ${escapeHtml(gName)}`,
+    `👤 <b>Caller ID:</b> <code>${escapeHtml(String(senderId))}</code>`,
+    `🪙 <b>Token${ticker}:</b>`,
+    `   <code>${ca}</code>`,
+    `   <a href="${gmgnUrl}">GMGN</a> · <a href="${dexUrl}">DexScreener</a>`,
+    ``,
+    `💬 <b>Pesan:</b>`,
+    `<i>${preview}${text.length > 200 ? '…' : ''}</i>`,
+    ``,
+    `⏳ <i>Menganalisis dengan LLM… tunggu update otomatis.</i>`,
+  ].join('\n');
+}
+
+/**
+ * Format update notifikasi setelah pipeline LLM selesai.
+ */
+function formatScoutCallUpdate({ ca, groupId, groupName, senderId, text, pipelineResult }) {
+  const gName  = groupName || groupId;
+  const caShort = `${ca.slice(0, 6)}...${ca.slice(-4)}`;
+  const gmgnUrl = `https://gmgn.ai/sol/token/${ca}`;
+  const dexUrl  = `https://dexscreener.com/search?q=${ca}`;
+
+  const tickerMatch = text.match(/\$([A-Z]{2,10})/) || text.match(/\b([A-Z]{2,8})\b/);
+  const ticker = tickerMatch ? ` ($${tickerMatch[1]})` : '';
+
+  const preview = text.slice(0, 150).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // Ambil hasil dari pipeline jika tersedia
+  const decision   = pipelineResult?.decision   || 'SKIP';
+  const confidence = pipelineResult?.confidence ? `${(pipelineResult.confidence * 100).toFixed(0)}%` : 'N/A';
+  const mcap       = pipelineResult?.mcap_usd   ? `$${(pipelineResult.mcap_usd / 1000).toFixed(1)}K` : 'N/A';
+  const liquidity  = pipelineResult?.liquidity_usd ? `$${(pipelineResult.liquidity_usd / 1000).toFixed(1)}K` : 'N/A';
+  const holders    = pipelineResult?.holders    ?? 'N/A';
+  const age        = pipelineResult?.token_age_minutes ? `${pipelineResult.token_age_minutes}m` : 'N/A';
+  const reasoning  = pipelineResult?.reasoning  ? escapeHtml(String(pipelineResult.reasoning).slice(0, 200)) : null;
+  const symbol     = pipelineResult?.symbol     || '';
+  const runner     = pipelineResult?.runner_signal ? `\n🎯 Runner: <b>${pipelineResult.runner_signal}</b>${pipelineResult.runner_account ? ` • ${pipelineResult.runner_account}` : ''}` : '';
+  const kolSignal  = pipelineResult?.kol_signal  ? `\n👁 KOL: <b>${pipelineResult.kol_signal}</b>` : '';
+
+  const decEmoji = decision === 'BUY' ? '🟢 BUY' : decision === 'ESCALATE' ? '🟡 ESCALATE' : '🔴 SKIP';
+
+  const lines = [
+    `📡 <b>TG Alpha Call — Analisis Selesai</b>`,
+    ``,
+    `👥 <b>Grup:</b> ${escapeHtml(gName)}`,
+    `👤 <b>Caller ID:</b> <code>${escapeHtml(String(senderId))}</code>`,
+    `🪙 <b>Token${symbol ? ` ${escapeHtml(symbol)}` : ticker}:</b>`,
+    `   <a href="${gmgnUrl}"><code>${ca}</code></a>`,
+    ``,
+    `📊 <b>Hasil LLM:</b> ${decEmoji} · Confidence: <b>${confidence}</b>${runner}${kolSignal}`,
+    ``,
+    `📈 <b>Metrics:</b>`,
+    `   MCap: <b>${mcap}</b> · Liquidity: <b>${liquidity}</b>`,
+    `   Holders: <b>${holders}</b> · Age: <b>${age}</b>`,
+    reasoning ? `\n💬 <i>${reasoning}</i>` : null,
+    ``,
+    `💬 <b>Pesan asli:</b>`,
+    `<i>${preview}${text.length > 150 ? '…' : ''}</i>`,
+  ].filter(Boolean).join('\n');
+
+  return lines;
+}
+
 async function processMessage({ text, groupId, groupName, senderId, timestamp }) {
   if (!text) return;
 
@@ -196,12 +280,22 @@ async function processMessage({ text, groupId, groupName, senderId, timestamp })
 
     console.log(`[TG] 📡 alpha call detected: ${ca.slice(0, 8)}... from group ${groupId} — routing through LLM cascade`);
 
+    // ── Notifikasi AWAL: kirim segera sebelum pipeline ────────────────
+    let alertMsgId = null;
+    try {
+      const alertText = formatScoutCallAlert({ ca, groupId, groupName, senderId, text });
+      const sent = await sendTelegram(alertText);
+      alertMsgId = sent?.message_id || null;
+    } catch (notifErr) {
+      console.warn(`[TG] Failed to send scout alert:`, notifErr.message);
+    }
+
     // Route through the full pipeline: enrichment → LLM cascade → broadcast.
     // Lazy import avoids circular dependency at module load time.
     // A 60-second timeout ensures a slow external API does not stall the listener.
     const pipelinePromise = (async () => {
       const { processCandidateFromSignals } = await import('../pipeline/orchestrator.js');
-      await processCandidateFromSignals({
+      const result = await processCandidateFromSignals({
         mint: ca,
         route: 'tg_alpha',
         source: 'tg_alpha',
@@ -212,6 +306,7 @@ async function processMessage({ text, groupId, groupName, senderId, timestamp })
           senderId: String(senderId),
         },
       });
+      return result;
     })();
 
     const timeoutPromise = new Promise((_, reject) =>
@@ -219,7 +314,31 @@ async function processMessage({ text, groupId, groupName, senderId, timestamp })
     );
 
     Promise.race([pipelinePromise, timeoutPromise])
-      .then(() => console.log(`[TG] ✅ pipeline complete for ${ca.slice(0, 8)}...`))
+      .then(async (pipelineResult) => {
+        console.log(`[TG] ✅ pipeline complete for ${ca.slice(0, 8)}...`);
+
+        // ── Update notifikasi dengan hasil LLM ──────────────────────
+        if (alertMsgId) {
+          try {
+            const { bot } = await import('../telegram/bot.js');
+            const { TELEGRAM_CHAT_ID, TELEGRAM_TOPIC_ID } = await import('../config.js');
+            const updatedText = formatScoutCallUpdate({
+              ca, groupId, groupName, senderId, text,
+              pipelineResult: pipelineResult || null,
+            });
+            await bot.editMessageText(updatedText, {
+              chat_id: TELEGRAM_CHAT_ID,
+              message_id: alertMsgId,
+              parse_mode: 'HTML',
+              disable_web_page_preview: true,
+              ...(TELEGRAM_TOPIC_ID ? { message_thread_id: Number(TELEGRAM_TOPIC_ID) } : {}),
+            });
+          } catch (editErr) {
+            // Non-fatal: message may have been deleted or too old to edit
+            console.warn(`[TG] Could not update alert message:`, editErr.message);
+          }
+        }
+      })
       .catch(err => console.error(`[TG] pipeline error for ${ca.slice(0, 8)}...:`, err.message));
   }
 }
@@ -281,6 +400,17 @@ export function getTgListenerControl() {
       return monitoredGroups.has(String(groupId));
     },
   };
+}
+
+// ── Active gramjs client (set after connect, reused by /scout learn) ──
+let _activeClient = null;
+
+/**
+ * Return the active gramjs TelegramClient after startTgListener() has connected.
+ * Returns null if Social Scout is disabled or not yet connected.
+ */
+export function getActiveTgClient() {
+  return _activeClient;
 }
 
 export async function startTgListener() {
@@ -348,6 +478,7 @@ export async function startTgListener() {
   );
 
   await client.connect();
+  _activeClient = client;
   console.log('[TG] gramjs client connected.');
 
   client.addEventHandler(async (event) => {
