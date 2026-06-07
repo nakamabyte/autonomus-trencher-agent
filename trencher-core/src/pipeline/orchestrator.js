@@ -110,18 +110,29 @@ export async function processCandidateFromSignals(signals) {
   updateCandidateStatus(candidateId, currentDecision.verdict.toLowerCase());
 
   // Broadcast enriched signal to all listening custom agents (agentRunner.js)
+  // Include all fields needed by evaluateSignalWithDna.js DNA scoring
   sharedSignalFeed.broadcast({
     mint: candidate.token.mint,
     symbol: candidate.token.symbol,
     name: candidate.token.name,
     mcap_usd: candidate.metrics.marketCapUsd,
+    liquidity_usd: candidate.metrics.liquidityUsd,
     rug_probability: candidate.trending?.rug_ratio || 0,
     bundler_ratio: candidate.trending?.bundler_rate || 0,
     smart_money_overlap: candidate.metrics.trendingSmartDegenCount || 0,
     llm_confidence: (currentDecision.confidence || 0) / 100,
     runner_signal: candidate.signals.route,
-    kol_signal: candidate.twitterNarrative?.mentionCount > 0 ? "YES" : null,
+    // Pass specific KOL handle (e.g. "@Ga__ke") instead of generic "YES"
+    // so that evaluateSignalWithDna can apply social_signal_weight accurately
+    kol_signal: candidate.twitterNarrative?.topHandle || candidate.twitterNarrative?.topMentionHandle || null,
+    kol_count: candidate.twitterNarrative?.mentionCount || 0,
+    // Price momentum fields for momentum_sensitivity DNA trait
+    price_delta_5m: candidate.trending?.price_change_5m || candidate.chart?.priceChangePct5m || 0,
+    price_delta_1h: candidate.trending?.price_change_1h || candidate.chart?.priceChangePct1h || 0,
+    // Source tag: raw scan signals use 'raw_scan'; TG alpha will use 'tg_alpha'
+    source: signal.source || 'raw_scan',
   });
+
 
   if (selectedRow && !selectedThisCandidate) {
     const selectedDecisionId = storeDecision(selectedRow.id, selectedRow.candidate, batchDecision);

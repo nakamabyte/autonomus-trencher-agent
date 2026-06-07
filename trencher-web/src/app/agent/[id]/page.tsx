@@ -217,11 +217,58 @@ export default function AgentProfilePage() {
                 </div>
               </div>
 
+              {/* Social Scout: TG Groups Panel */}
+              {agent.breed === 'social_scout' && (() => {
+                let dnaConfig: any = {};
+                try { dnaConfig = JSON.parse(agent.dna_config || '{}'); } catch {}
+                const groups: string[] = dnaConfig.tgGroups || [];
+                return (
+                  <div style={{ background: '#0a0a0f', padding: '16px', borderRadius: '6px', border: '1px solid rgba(0,187,249,0.25)' }}>
+                    <div style={{ color: '#00BBF9', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>📡 TG Alpha Groups</span>
+                      <span style={{ fontSize: '8px', background: 'rgba(0,187,249,0.1)', padding: '2px 6px', borderRadius: '4px', color: '#00BBF9' }}>
+                        {groups.length} CONFIGURED
+                      </span>
+                    </div>
+                    {groups.length === 0 ? (
+                      <div style={{ fontSize: '11px', color: '#555', fontFamily: "'JetBrains Mono', monospace", fontStyle: 'italic' }}>
+                        No TG groups configured. Set TG_ALPHA_GROUPS in your .env file.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {groups.map((g: string) => (
+                          <div key={g} style={{
+                            background: 'rgba(0,187,249,0.05)',
+                            border: '1px solid rgba(0,187,249,0.15)',
+                            borderRadius: '4px',
+                            padding: '6px 10px',
+                            fontSize: '11px',
+                            fontFamily: "'JetBrains Mono', monospace",
+                            color: '#00BBF9',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}>
+                            <span>{g}</span>
+                            <span style={{ fontSize: '9px', color: '#555' }}>ACTIVE</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ marginTop: '12px', fontSize: '9px', color: '#555', lineHeight: '1.6', borderTop: '1px solid #1a1a28', paddingTop: '10px' }}>
+                      Groups with &lt;35% win rate after 20 trades are auto-demoted.
+                      Rate limit: {dnaConfig.tg_max_trades_per_group_hour || 5} trades/group/hour.
+                    </div>
+                  </div>
+                );
+              })()}
+
               {agent.agent_wallet && (
                 <div style={{ background: '#0a0a0f', padding: '16px', borderRadius: '6px', border: '1px dashed #00C89640' }}>
                   <div style={{ color: '#00C896', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
                     <span>Agent Wallet</span>
                     <span style={{ fontSize: '8px', background: 'rgba(0,200,150,0.1)', padding: '2px 6px', borderRadius: '4px' }}>FUNDING ADDRESS</span>
+
                   </div>
                   <div 
                     onClick={() => {

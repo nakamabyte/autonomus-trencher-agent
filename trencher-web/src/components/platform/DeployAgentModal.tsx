@@ -14,7 +14,7 @@ const WalletMultiButton = dynamic(
 
 const DEPLOY_FEES: Record<string, number> = {
   scout: 0.025, degen: 0.025, canary: 0.025,
-  sniper: 0.05, bunker: 0.05, whale_tracker: 0.05, drill_sergeant: 0.05,
+  sniper: 0.05, bunker: 0.05, whale_tracker: 0.05, drill_sergeant: 0.05, social_scout: 0.05,
   mole: 0.1, berserker: 0.1, reaper: 0.1, ghost: 0.1,
   commander: 0.2,
 };
@@ -41,6 +41,8 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
   const [copied, setCopied] = useState(false);
   const [whaleWallets, setWhaleWallets] = useState<string[]>([]);
   const [walletInput, setWalletInput] = useState('');
+  const [tgGroups, setTgGroups] = useState<string[]>([]);
+  const [tgGroupInput, setTgGroupInput] = useState('');
   const { publicKey, sendTransaction } = useWallet();
 
   const addWallets = (input: string) => {
@@ -83,6 +85,8 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
         setAlertData(null);
         setWhaleWallets([]);
         setWalletInput('');
+        setTgGroups([]);
+        setTgGroupInput('');
       }, 0);
       return () => clearTimeout(timer);
     }
@@ -109,6 +113,7 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
         exitPreference,
         rugFilter,
         whaleWallets: selectedBreed === 'whale_tracker' ? whaleWallets : [],
+        tgGroups: selectedBreed === 'social_scout' ? tgGroups : [],
       };
 
       // 1. Request transaction from backend
@@ -475,6 +480,75 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
               </div>
               <div style={{ fontSize: '9px', color: '#888', marginTop: '6px' }}>
                 These wallets will be added to the global tracked wallets list to be copied by your agent. You can input multiple wallets by separating them with commas or new lines.
+              </div>
+            </div>
+          )}
+
+          {/* Social Scout: TG Alpha Groups */}
+          {selectedBreed === 'social_scout' && (
+            <div>
+              <label style={{ display: 'block', fontSize: '10px', color: '#00BBF9', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>
+                📡 TG Alpha Groups (Group IDs or @usernames)
+              </label>
+              <div style={{
+                background: '#0d0d12',
+                border: '1px solid rgba(0,187,249,0.3)',
+                borderRadius: '4px',
+                padding: '8px',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '6px'
+              }}>
+                {tgGroups.map(group => (
+                  <span key={group} style={{
+                    background: 'rgba(0,187,249,0.1)',
+                    color: '#00BBF9',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}>
+                    {group}
+                    <button
+                      onClick={() => setTgGroups(prev => prev.filter(g => g !== group))}
+                      style={{
+                        background: 'none', border: 'none', color: '#888',
+                        cursor: 'pointer', padding: '0 2px', fontSize: '10px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '4px'
+                      }}
+                    >✕</button>
+                  </span>
+                ))}
+                <input
+                  type="text"
+                  value={tgGroupInput}
+                  onChange={e => setTgGroupInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ',') {
+                      e.preventDefault();
+                      const vals = tgGroupInput.split(/[,\n\s]+/).map(v => v.trim()).filter(Boolean);
+                      if (vals.length) { setTgGroups(prev => [...new Set([...prev, ...vals])]); setTgGroupInput(''); }
+                    }
+                  }}
+                  onBlur={() => {
+                    const vals = tgGroupInput.split(/[,\n\s]+/).map(v => v.trim()).filter(Boolean);
+                    if (vals.length) { setTgGroups(prev => [...new Set([...prev, ...vals])]); setTgGroupInput(''); }
+                  }}
+                  placeholder={tgGroups.length === 0 ? "-100123456789 or @groupname" : "Add more..."}
+                  style={{
+                    flex: 1, minWidth: '180px', background: 'transparent', border: 'none',
+                    color: '#00BBF9', fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: '11px', outline: 'none', padding: '4px'
+                  }}
+                />
+              </div>
+              <div style={{ fontSize: '9px', color: '#888', marginTop: '6px', lineHeight: '1.5' }}>
+                Enter numeric group IDs (e.g. <code style={{color:'#00BBF9'}}>-100123456789</code>) or @usernames.
+                Your agent will monitor these groups and auto-trade calls that pass DNA filters.
+                Groups with &lt;35% win rate are auto-demoted after 20 trades.
               </div>
             </div>
           )}

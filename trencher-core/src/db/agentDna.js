@@ -12,6 +12,7 @@ const STRATEGY_TO_BREED = {
   degen:         'degen',
   copytrade:     'whale_tracker',
   base_sniper:   'sniper',
+  social_scout:  'social_scout',  // New: TG alpha group breed
 };
 
 // Default DNA traits per breed (0-100)
@@ -54,6 +55,22 @@ const BREED_DNA_DEFAULTS = {
   commander:   { speed: 65, aggression: 55, rug_defense: 70, wallet_intelligence: 85, momentum_sensitivity: 65, social_signal_weight: 60, liquidity_sensitivity: 70, exit_discipline: 80, stealth: 55, mutation_rate: 10, survival_score: 75 },
   ghost:       { speed: 70, aggression: 50, rug_defense: 60, wallet_intelligence: 75, momentum_sensitivity: 65, social_signal_weight: 30, liquidity_sensitivity: 65, exit_discipline: 75, stealth: 98, mutation_rate: 12, survival_score: 70 },
   canary:      { speed: 80, aggression: 25, rug_defense: 90, wallet_intelligence: 80, momentum_sensitivity: 75, social_signal_weight: 70, liquidity_sensitivity: 85, exit_discipline: 60, stealth: 45, mutation_rate: 5, survival_score: 78 },
+
+  // Social Scout: human-curated TG alpha signal source
+  // Combines human judgment (pre-filtered calls) with machine discipline (strict exit)
+  social_scout: {
+    speed: 85,               // react cepat ke call baru dari TG
+    aggression: 70,          // signal sudah di-vet manusia, boleh agresif
+    rug_defense: 80,         // tetap cek rug walau dari alpha group
+    wallet_intelligence: 60,
+    momentum_sensitivity: 75,
+    social_signal_weight: 95, // TRAIT KUNCI: bobot tinggi ke TG alpha / KOL signal
+    liquidity_sensitivity: 70,
+    exit_discipline: 90,      // disiplin exit = edge utama vs human trader
+    stealth: 50,
+    mutation_rate: 40,
+    survival_score: 100,
+  },
 };
 
 export function computeDnaHash(breed, traits, generation) {

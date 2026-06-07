@@ -181,4 +181,6 @@ export interface AgentDna {
   agent_wallet?: string;
   execution_mode?: string;
   auto_activate?: boolean;
+  dna_config?: string;       // JSON string with extended config (tgGroups, etc.)
+  agent_secret_key?: string;
 }

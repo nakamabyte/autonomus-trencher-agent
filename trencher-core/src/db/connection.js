@@ -204,12 +204,27 @@ export function initDb() {
       expires_at_ms INTEGER NOT NULL
     );
     CREATE TABLE IF NOT EXISTS mint_cooldowns (
-      mint TEXT PRIMARY KEY,
+      mint TEXT NOT NULL,
+      agent_id TEXT NOT NULL DEFAULT '__global__',
       closed_at_ms INTEGER NOT NULL,
       exit_reason TEXT NOT NULL,
-      cooldown_until_ms INTEGER NOT NULL
+      cooldown_until_ms INTEGER NOT NULL,
+      PRIMARY KEY (mint, agent_id)
     );
     CREATE INDEX IF NOT EXISTS idx_cooldowns_until ON mint_cooldowns(cooldown_until_ms);
+
+    -- Tracking win rate per TG alpha group (for Social Scout auto-demote)
+    CREATE TABLE IF NOT EXISTS tg_group_performance (
+      group_id TEXT PRIMARY KEY,
+      group_name TEXT,
+      total_calls INTEGER DEFAULT 0,
+      traded INTEGER DEFAULT 0,
+      wins INTEGER DEFAULT 0,
+      losses INTEGER DEFAULT 0,
+      win_rate REAL DEFAULT 0,
+      trust_level TEXT DEFAULT 'active',
+      updated_at_ms INTEGER
+    );
     CREATE INDEX IF NOT EXISTS idx_alerts_status ON price_alerts(status, expires_at_ms);
     CREATE INDEX IF NOT EXISTS idx_candidates_mint ON candidates(mint);
     CREATE INDEX IF NOT EXISTS idx_positions_status ON dry_run_positions(status);
@@ -274,6 +289,33 @@ export function initDb() {
   ensureColumn('agent_dna', 'whale_wallets', 'TEXT');
   ensureColumn('candidates', 'signal_key', 'TEXT');
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_candidates_signal_key ON candidates(signal_key) WHERE signal_key IS NOT NULL');
+
+  // Migrate mint_cooldowns: upgrade from single PK (mint) to composite PK (mint, agent_id)
+  // This is needed for per-agent cooldown support (Sprint 2)
+  try {
+    const cols = db.prepare('PRAGMA table_info(mint_cooldowns)').all().map(r => r.name);
+    if (!cols.includes('agent_id')) {
+      db.exec(`
+        ALTER TABLE mint_cooldowns RENAME TO mint_cooldowns_old;
+        CREATE TABLE mint_cooldowns (
+          mint TEXT NOT NULL,
+          agent_id TEXT NOT NULL DEFAULT '__global__',
+          closed_at_ms INTEGER NOT NULL,
+          exit_reason TEXT NOT NULL,
+          cooldown_until_ms INTEGER NOT NULL,
+          PRIMARY KEY (mint, agent_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_cooldowns_until ON mint_cooldowns(cooldown_until_ms);
+        INSERT INTO mint_cooldowns (mint, agent_id, closed_at_ms, exit_reason, cooldown_until_ms)
+          SELECT mint, '__global__', closed_at_ms, exit_reason, cooldown_until_ms FROM mint_cooldowns_old;
+        DROP TABLE mint_cooldowns_old;
+      `);
+      console.log('[db] Migrated mint_cooldowns to composite PK (mint, agent_id)');
+    }
+  } catch (e) {
+    console.error('[db] mint_cooldowns migration error (non-fatal):', e.message);
+  }
+
   ensureColumn('dry_run_positions', 'execution_mode', "TEXT DEFAULT 'dry_run'");
   ensureColumn('dry_run_positions', 'entry_signature', 'TEXT');
   ensureColumn('dry_run_positions', 'exit_signature', 'TEXT');
@@ -531,6 +573,41 @@ export function initDb() {
     max_mcap_usd: 300000,
     position_size_eth: 0.005,
     gas_priority: "medium"
+  }), ts);
+
+  // Social Scout: trades from human-curated TG alpha groups
+  stratInsert.run('social_scout', 'Social Scout', 0, JSON.stringify({
+    entry_mode: 'immediate',
+    min_source_count: 1,
+    require_fee_claim: false,
+    token_age_max_ms: 7200000,
+    min_mcap_usd: 10000,
+    max_mcap_usd: 120000,
+    min_fee_claim_sol: 0,
+    min_gmgn_total_fee_sol: 0,
+    min_holders: 0,
+    max_top20_holder_percent: 100,
+    min_saved_wallet_holders: 0,
+    max_ath_distance_pct: 0,
+    min_graduated_volume_usd: 0,
+    trending_min_volume_usd: 0,
+    trending_min_swaps: 0,
+    trending_max_rug_ratio: 0.2,
+    trending_max_bundler_rate: 0.4,
+    position_size_sol: 0.1,
+    max_open_positions: 3,
+    tp_percent: 80,
+    sl_percent: -15,
+    trailing_enabled: true,
+    trailing_percent: 20,
+    partial_tp: false,
+    partial_tp_at_percent: 0,
+    partial_tp_sell_percent: 0,
+    max_hold_ms: 3600000,
+    use_llm: true,
+    llm_min_confidence: 75,
+    liquidity_floor_usd: 10000,
+    tg_max_trades_per_group_hour: 5,
   }), ts);
 }
 

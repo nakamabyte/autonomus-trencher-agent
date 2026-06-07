@@ -5,7 +5,7 @@ import React from 'react';
 // Visual identity: accent color, icon (SVG), and description.
 
 export type BreedKey =
-  | 'scout' | 'sniper' | 'bunker' | 'degen' | 'whale_tracker'
+  | 'scout' | 'sniper' | 'bunker' | 'degen' | 'whale_tracker' | 'social_scout'
   | 'mole' | 'drill' | 'berserker' | 'reaper' | 'commander'
   | 'ghost' | 'canary';
 
@@ -27,6 +27,9 @@ export interface BreedConfig {
     rug_defense: number;
     wallet_intelligence: number;
     momentum_sensitivity: number;
+    social_signal_weight?: number;
+    liquidity_sensitivity?: number;
+    exit_discipline?: number;
   };
 }
 
@@ -99,7 +102,21 @@ export const BREEDS: Record<BreedKey, BreedConfig> = {
     phase: 1,
     style: 'balanced',
     description: 'Mirrors elite wallets in real-time. Copy the best.',
-    traits: { speed: 60, aggression: 50, rug_defense: 70, wallet_intelligence: 95, momentum_sensitivity: 60 },
+    traits: { speed: 60, aggression: 50, rug_defense: 70, wallet_intelligence: 95, momentum_sensitivity: 60, social_signal_weight: 35, liquidity_sensitivity: 70, exit_discipline: 60 },
+  },
+  social_scout: {
+    key: 'social_scout',
+    name: 'Social Scout',
+    subtitle: 'TG Alpha Group Intel',
+    icon: <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>,
+    color: '#00BBF9',
+    bgColor: 'rgba(0,187,249,0.05)',
+    borderColor: 'rgba(0,187,249,0.25)',
+    strategyId: 'social_scout',
+    phase: 1,
+    style: 'aggressive',
+    description: 'Monitors curated Telegram alpha groups. Human curation + machine discipline.',
+    traits: { speed: 85, aggression: 70, rug_defense: 80, wallet_intelligence: 60, momentum_sensitivity: 75, social_signal_weight: 95, liquidity_sensitivity: 70, exit_discipline: 90 },
   },
   mole: {
     key: 'mole',

@@ -319,10 +319,25 @@ export async function refreshPosition(position, { autoExit = true, jupiterPnl = 
           `).run(kol, isWin ? 1 : 0, isWin ? 1.0 : 0.0, now());
           console.log(`[kol] updated accuracy for ${kol}: win=${isWin}`);
         }
+
+        // 2.9 Social Scout: Per-TG-group win rate tracking (Sprint 4)
+        // sourceMeta.groupId is written by tgListener.js into the signal broadcast
+        const sourceMeta = snapshot.signal?.sourceMeta || snapshot.sourceMeta;
+        if (sourceMeta?.groupId) {
+          const isWin = finalPnlPercent > 0;
+          try {
+            const { recordGroupTradeResult } = await import('../signals/tgListener.js');
+            recordGroupTradeResult(sourceMeta.groupId, isWin);
+            console.log(`[tg] updated group ${sourceMeta.groupId} win=${isWin} (${finalPnlPercent.toFixed(1)}%)`);
+          } catch (tgErr) {
+            console.error('[tg] recordGroupTradeResult error:', tgErr.message);
+          }
+        }
       } catch (err) {
         console.error('[kol] Error updating kol accuracy:', err.message);
       }
     }
+
   }
   return {
     ...position,

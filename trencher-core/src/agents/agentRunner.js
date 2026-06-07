@@ -1,6 +1,7 @@
 import { evaluateSignalWithDna } from './evaluateSignalWithDna.js';
 import { executeAgentTrade } from './executeAgentTrade.js';
 import { Connection, PublicKey } from '@solana/web3.js';
+import { isOnCooldown, setCooldown, getCooldownRemaining } from '../utils/mintCooldown.js';
 
 const activeAgents = new Map(); // agentId -> loop handle
 
@@ -81,8 +82,22 @@ export function startAgentTradingLoop(agentId, db, sharedSignalFeed, connection)
       return;
     }
 
+    // ── Signal source routing ──────────────────────────────────────────────
+    // Only social_scout agents process TG alpha signals.
+    // All other breeds only process raw_scan signals.
+    const signalSource = signal.source || 'raw_scan';
+    if (signalSource === 'tg_alpha' && current.breed !== 'social_scout') return;
+    if (signalSource !== 'tg_alpha' && current.breed === 'social_scout') return;
+
     if (current.execution_mode === 'live' && !current.agent_wallet) {
       console.log(`[agent] ${agent.name} has no wallet, pausing`);
+      return;
+    }
+
+    // ── Per-agent mint cooldown check ──────────────────────────────────────
+    if (isOnCooldown(signal.mint, agentId)) {
+      const remaining = getCooldownRemaining(signal.mint, agentId);
+      console.log(`[agent] ${agent.name} COOLDOWN skip ${signal.symbol || signal.mint.slice(0, 8)} — ${remaining}m left`);
       return;
     }
 
@@ -103,6 +118,8 @@ export function startAgentTradingLoop(agentId, db, sharedSignalFeed, connection)
 
     if (decision.verdict === 'BUY' && decision.confidence >= (dna.llm_min_confidence || 50) / 100) {
       await executeAgentTrade(current, signal, decision, dna, db, balance);
+      // Set per-agent cooldown after confirmed BUY
+      setCooldown(signal.mint, 'agent_buy', null, agentId);
     }
 
     // Log to per-agent consciousness feed

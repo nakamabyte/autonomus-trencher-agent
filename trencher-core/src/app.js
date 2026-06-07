@@ -33,9 +33,15 @@ export async function startTrencherAgent() {
   const connection = new Connection(SOLANA_RPC_URL);
   resumeActiveAgents(db, sharedSignalFeed, connection);
   
+  // Start TG alpha group listener for Social Scout breed
+  // Disabled if SOCIAL_SCOUT_ENABLED != 'true' or TG credentials missing
+  const { startTgListener } = await import('./signals/tgListener.js');
+  startTgListener().catch(err => console.error('[TG] listener startup failed:', err.message));
+  
   // Start funding watcher to auto-activate newly funded agents
   // DISABLED: User manually activates agents via UI, preventing 429 Too Many Requests errors.
   // startFundingWatcher(connection, db, sharedSignalFeed);
+
   
   // Start WebSocket server and passive state manager
   // NOTE: consciousness stream (CONSCIOUSNESS_DECISION) is broadcast
