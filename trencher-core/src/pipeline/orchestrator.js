@@ -43,9 +43,25 @@ export async function processCandidateFromSignals(signals) {
     return;
   }
 
-  const strat = activeStrategy();
+  // ── TG Alpha signals always use the social_scout strategy ──────────
+  // The global active strategy (e.g. degen) has filters designed for
+  // on-chain signals: min_source_count=2, token_age_max_ms=100s,
+  // trending_min_volume_usd=2000 — all of which TG alpha calls fail.
+  // social_scout is purpose-built for human-curated TG group signals.
+  const isTgAlpha = signals.source === 'tg_alpha' || signals.route === 'tg_alpha';
+  const strat = isTgAlpha
+    ? (strategyById('social_scout') || activeStrategy())
+    : activeStrategy();
+
+  if (isTgAlpha) {
+    console.log(`[orchestrator] tg_alpha signal — using social_scout strategy for ${signals.mint.slice(0, 8)}...`);
+  }
+
   const { getBreedForStrategy } = await import('../db/agentDna.js');
-  const breed = getBreedForStrategy(strat.id);
+  // For tg_alpha, look for social_scout breed agents; fall back to degen
+  const breed = isTgAlpha
+    ? (getBreedForStrategy('social_scout') || getBreedForStrategy(strat.id))
+    : getBreedForStrategy(strat.id);
   const { db } = await import('../db/connection.js');
   const matchedAgents = db.prepare('SELECT id FROM agent_dna WHERE breed = ?').all(breed);
   const { canOpenMorePositionsForAgent, openPositionCountForAgent } = await import('../db/positions.js');
@@ -63,7 +79,7 @@ export async function processCandidateFromSignals(signals) {
     return;
   }
 
-  const candidate = await buildCandidate(signals);
+  const candidate = await buildCandidate({ ...signals, _strategyOverride: isTgAlpha ? strat : null });
   const signature = signals.signature || null;
   const candidateId = upsertCandidate(candidate, signature);
   if (!candidate.filters.passed) {

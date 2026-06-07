@@ -1,5 +1,5 @@
 import { now, firstPositiveNumber, marketCapFromGmgn, tokenPriceFromGmgn, lamToSol } from '../utils.js';
-import { activeStrategy } from '../db/settings.js';
+import { activeStrategy, strategyById } from '../db/settings.js';
 import { fetchGmgnTokenInfo } from '../enrichment/gmgn.js';
 import { fetchJupiterAsset, fetchJupiterHolders, fetchJupiterChartContext } from '../enrichment/jupiter.js';
 import { fetchSavedWalletExposure } from '../enrichment/wallets.js';
@@ -28,8 +28,8 @@ export function signalLabel(signals = {}) {
   ].filter(Boolean).join(' + ') || signals.route || 'unknown';
 }
 
-export function filterCandidate(candidate) {
-  const strat = activeStrategy();
+export function filterCandidate(candidate, stratOverride = null) {
+  const strat = stratOverride || activeStrategy();
   const failures = [];
   const mcap = candidate.metrics.marketCapUsd;
   const totalFees = candidate.metrics.gmgnTotalFeesSol;
@@ -122,8 +122,8 @@ export function filterCandidate(candidate) {
   return { passed: failures.length === 0, failures, strategy: strat.id };
 }
 
-export async function buildCandidate({ mint, fee = null, signature = null, graduatedCoin = null, trendingToken = null, freshToken = null, route, chain = 'solana' }) {
-  const strat = activeStrategy();
+export async function buildCandidate({ mint, fee = null, signature = null, graduatedCoin = null, trendingToken = null, freshToken = null, route, chain = 'solana', _strategyOverride = null }) {
+  const strat = _strategyOverride || activeStrategy();
   let freshEnrichmentData = null;
   
   if (freshToken && strat.id === 'fresh_launch') {
@@ -229,6 +229,6 @@ export async function buildCandidate({ mint, fee = null, signature = null, gradu
     freshEnrichment: freshEnrichmentData,
     createdAtMs: now(),
   };
-  candidate.filters = filterCandidate(candidate);
+  candidate.filters = filterCandidate(candidate, _strategyOverride);
   return candidate;
 }

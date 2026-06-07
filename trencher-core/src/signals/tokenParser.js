@@ -21,6 +21,10 @@ const BLOCKLIST = new Set([
   'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
 ]);
 
+// Detect EVM address (0x + 40 hex chars). These appear in mixed-chain TG groups
+// and must NOT be parsed as Solana CAs.
+const EVM_ADDRESS_REGEX = /\b0x[0-9a-fA-F]{40}\b/g;
+
 /**
  * Parse a Telegram message and extract token identifiers.
  *
@@ -32,19 +36,23 @@ const BLOCKLIST = new Set([
 export function parseTokenCall(text) {
   if (!text || typeof text !== 'string') return { addresses: [], tickers: [] };
 
+  // Strip EVM addresses first to prevent false-positives in Solana CA parser
+  // (e.g. 0x28a0ec7231... from BNB chain calls in mixed-chain TG groups)
+  const cleanText = text.replace(EVM_ADDRESS_REGEX, '[EVM_ADDR]');
+
   const found = new Set();
 
   // 1. pump.fun links — highest reliability
   let m;
   const pumpRegex = new RegExp(PUMP_LINK_REGEX.source, 'gi');
-  while ((m = pumpRegex.exec(text)) !== null) {
+  while ((m = pumpRegex.exec(cleanText)) !== null) {
     const ca = m[1];
     if (!BLOCKLIST.has(ca)) found.add(ca);
   }
 
   // 2. Bare contract addresses (32-44 chars base58)
   const caRegex = new RegExp(SOLANA_CA_REGEX.source, 'g');
-  while ((m = caRegex.exec(text)) !== null) {
+  while ((m = caRegex.exec(cleanText)) !== null) {
     const ca = m[0];
     if (ca.length >= 32 && !BLOCKLIST.has(ca)) {
       found.add(ca);
