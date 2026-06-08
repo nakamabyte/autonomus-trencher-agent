@@ -1,12 +1,12 @@
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js'
 
 const VALID_BREEDS = [
-  'scout', 'degen', 'canary', 'sniper', 'bunker', 'whale_tracker', 
+  'scout', 'social_scout', 'degen', 'canary', 'sniper', 'bunker', 'whale_tracker', 
   'drill_sergeant', 'mole', 'berserker', 'reaper', 'ghost', 'commander'
 ]
 
 const DEPLOY_FEES: Record<string, number> = {
-  scout: 0.025, degen: 0.025, canary: 0.025,
+  scout: 0.025, social_scout: 0.025, degen: 0.025, canary: 0.025,
   sniper: 0.05, bunker: 0.05, whale_tracker: 0.05, drill_sergeant: 0.05,
   mole: 0.1, berserker: 0.1, reaper: 0.1, ghost: 0.1,
   commander: 0.2,

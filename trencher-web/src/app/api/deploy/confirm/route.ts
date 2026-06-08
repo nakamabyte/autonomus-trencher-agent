@@ -10,10 +10,10 @@ export async function POST(req: Request) {
     // 1. Wait for confirmation via signature status polling
     let confirmed = false;
     const start = Date.now();
-    while (Date.now() - start < 45000) { // 45 seconds timeout
+    while (Date.now() - start < 90000) { // 90 seconds timeout
       const statusRes = await connection.getSignatureStatus(signature);
       const status = statusRes?.value;
-      if (status && (status.confirmationStatus === 'confirmed' || status.confirmationStatus === 'finalized')) {
+      if (status && (status.confirmationStatus === 'processed' || status.confirmationStatus === 'confirmed' || status.confirmationStatus === 'finalized')) {
         confirmed = true;
         break;
       }
