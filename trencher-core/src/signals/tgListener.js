@@ -200,7 +200,7 @@ function formatScoutCallAlert({ ca, groupId, groupName, senderId, text }) {
     `👤 <b>Caller ID:</b> <code>${escapeHtml(String(senderId))}</code>`,
     `🪙 <b>Token${ticker}:</b>`,
     `   <code>${ca}</code>`,
-    `   <a href="${gmgnUrl}">GMGN</a> · <a href="${dexUrl}">DexScreener</a>`,
+    `   <a href="${gmgnUrl}">GMGN</a>`,
     ``,
     `💬 <b>Pesan:</b>`,
     `<i>${preview}${text.length > 200 ? '…' : ''}</i>`,
@@ -293,41 +293,17 @@ async function processMessage({ text, groupId, groupName, senderId, timestamp })
     if (FAST_BUY_GROUPS.has(String(groupId))) {
       console.log(`[TG] ⚡ FAST BUY — group ${groupId} is trusted, skipping LLM for ${ca.slice(0, 8)}...`);
 
-      // Send immediate alert
-      const gmgnUrl = `https://gmgn.ai/sol/token/${ca}`;
-      const dexUrl  = `https://dexscreener.com/search?q=${ca}`;
-      const preview = (text || '').slice(0, 180).replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      const alertText = [
-        `⚡ <b>TG Fast Buy — Signal Detected</b>`,
-        ``,
-        `👥 <b>Group:</b> ${escapeHtml(groupName || groupId)}`,
-        `👤 <b>Caller ID:</b> <code>${escapeHtml(String(senderId))}</code>`,
-        `🪙 <b>Token:</b> <a href="${gmgnUrl}"><code>${ca}</code></a>`,
-        `   <a href="${dexUrl}">DexScreener</a>`,
-        ``,
-        `💬 <i>${preview}${text.length > 180 ? '…' : ''}</i>`,
-        ``,
-        `⏳ <i>Executing fast buy (no LLM analysis)…</i>`,
-      ].join('\n');
-
-      let fastAlertMsgId = null;
-      try {
-        const sent = await sendTelegram(alertText);
-        fastAlertMsgId = sent?.message_id || null;
-      } catch (e) {
-        console.warn('[TG] Fast buy alert failed:', e.message);
-      }
-
       // Execute fast buy directly — bypass orchestrator entirely
       ;(async () => {
         try {
-          const { createDryRunPosition, tradingMode, canOpenMorePositions } = await import('../db/positions.js');
+          const { createDryRunPosition, tradingMode, canOpenMorePositions } = await import('../execution/positions.js');
           const { upsertCandidate } = await import('../db/candidates.js');
-          const { strategyById } = await import('../db/settings.js');
           const { fetchGmgnTokenInfo } = await import('../enrichment/gmgn.js');
           const { fetchJupiterAsset } = await import('../enrichment/jupiter.js');
           const { now } = await import('../utils.js');
           const { isOnCooldown } = await import('../utils/mintCooldown.js');
+          const { db } = await import('../db/connection.js');
+          const { sendTelegram } = await import('./telegram.js');
 
           if (isOnCooldown(ca)) {
             console.log(`[TG-FastBuy] ${ca.slice(0, 8)}... is on cooldown, skip`);
@@ -339,7 +315,7 @@ async function processMessage({ text, groupId, groupName, senderId, timestamp })
             return;
           }
 
-          // Minimal enrichment: get token name/symbol for the position record
+          // Fetch token info BEFORE sending the alert
           const [gmgn, jupAsset] = await Promise.allSettled([
             fetchGmgnTokenInfo(ca, true, 'solana').catch(() => null),
             fetchJupiterAsset(ca).catch(() => null),
@@ -352,8 +328,57 @@ async function processMessage({ text, groupId, groupName, senderId, timestamp })
           const mcapUsd  = gmgnData?.market_cap || jupData?.mcap || 0;
           const liqUsd   = gmgnData?.liquidity   || jupData?.liquidity || 0;
           const priceUsd = gmgnData?.price_usd   || jupData?.usdPrice || 0;
+          const vol24h   = gmgnData?.volume_24h  || 0;
+          const priceChange = gmgnData?.price_change_percent24h || 0;
 
-          const strat = strategyById('social_scout') || { id: 'social_scout', tp_percent: 60, sl_percent: 25, trailing_enabled: true, trailing_percent: 20, max_hold_ms: 14400000 };
+          // Format currency helpers
+          const formatCurrency = (val) => {
+            if (!val) return '$0';
+            if (val >= 1000000) return `$${(val / 1000000).toFixed(1)}M`;
+            if (val >= 1000) return `$${(val / 1000).toFixed(1)}K`;
+            if (val < 0.01) return `$${val.toFixed(6)}`;
+            return `$${val.toFixed(2)}`;
+          };
+          const formatPct = (val) => `${val > 0 ? '+' : ''}${(val * 100).toFixed(1)}%`;
+
+          // Send immediate alert with stats
+          const gmgnUrl = `https://gmgn.ai/sol/token/${ca}`;
+          const dexUrl  = `https://dexscreener.com/search?q=${ca}`;
+          const preview = (text || '').slice(0, 180).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          const alertText = [
+            `⚡ <b>TG Fast Buy — Signal Detected</b>`,
+            ``,
+            `👥 <b>Group:</b> ${escapeHtml(groupName || groupId)}`,
+            `👤 <b>Caller ID:</b> <code>${escapeHtml(String(senderId))}</code>`,
+            `🪙 <b>Token:</b> ${escapeHtml(name)} ($${escapeHtml(symbol)})`,
+            `   <a href="${gmgnUrl}"><code>${ca}</code></a>`,
+            ``,
+            `💬 <i>${preview}${text.length > 180 ? '…' : ''}</i>`,
+            ``,
+            `📊 <b>Stats</b>`,
+            ` ├ USD   $${priceUsd < 0.01 ? priceUsd.toFixed(6) : priceUsd.toFixed(4)} (${formatPct(priceChange)})`,
+            ` ├ MC    ${formatCurrency(mcapUsd)}`,
+            ` ├ Vol   ${formatCurrency(vol24h)}`,
+            ` ├ LP    ${formatCurrency(liqUsd)}`,
+            ``,
+            `⏳ <i>Executing fast buy (no LLM analysis)…</i>`,
+          ].join('\n');
+
+          let fastAlertMsgId = null;
+          try {
+            const sent = await sendTelegram(alertText);
+            fastAlertMsgId = sent?.message_id || null;
+          } catch (e) {
+            console.warn('[TG] Fast buy alert failed:', e.message);
+          }
+
+          // Get active social_scout agents
+          const activeScouts = db.prepare(`SELECT * FROM agent_dna WHERE breed = 'social_scout' AND execution_mode IN ('live', 'dry_run')`).all();
+          
+          if (activeScouts.length === 0) {
+             console.log(`[TG-FastBuy] No active social_scout agents found. Skipping buy for ${ca.slice(0, 8)}...`);
+             return;
+          }
 
           // Build a minimal candidate object for the position record
           const candidate = {
@@ -369,80 +394,81 @@ async function processMessage({ text, groupId, groupName, senderId, timestamp })
             sourceMeta: { groupId, groupName, rawMessage: text.slice(0, 200), senderId: String(senderId) },
           };
 
-          const candidateId = upsertCandidate(candidate, null);
+          // Open position for EACH active scout
+          for (const scout of activeScouts) {
+            const fastBuyDecision = {
+              verdict: 'BUY',
+              confidence: 100,
+              reason: `Fast Buy: trusted group ${groupId} (${groupName || ''}) — direct signal, no LLM`,
+              selected_mint: ca,
+              selected_candidate_id: candidateId,
+              tp_percent:  scout.tp_percent  ?? 60,
+              sl_percent:  scout.sl_percent  ?? 25,
+              trailing_enabled: scout.trailing_enabled === 1 || scout.trailing_enabled === true,
+              trailing_percent: scout.trailing_percent ?? 20,
+            };
 
-          const fastBuyDecision = {
-            verdict: 'BUY',
-            confidence: 100,
-            reason: `Fast Buy: trusted group ${groupId} (${groupName || ''}) — direct signal, no LLM`,
-            selected_mint: ca,
-            selected_candidate_id: candidateId,
-            tp_percent:  strat.tp_percent  ?? 60,
-            sl_percent:  strat.sl_percent  ?? 25,
-            trailing_enabled: strat.trailing_enabled ?? true,
-            trailing_percent: strat.trailing_percent ?? 20,
-          };
+            const mode = scout.execution_mode;
+            let positionId = null;
 
-          const mode = tradingMode();
-          let positionId = null;
+            if (mode === 'dry_run') {
+              positionId = await createDryRunPosition(candidateId, candidate, fastBuyDecision, 'tg_fast_buy', scout.id);
+              console.log(`[TG-FastBuy] ✅ dry_run position #${positionId} opened for ${symbol} by ${scout.name}`);
 
-          if (mode === 'dry_run') {
-            positionId = await createDryRunPosition(candidateId, candidate, fastBuyDecision, 'tg_fast_buy', null);
-            console.log(`[TG-FastBuy] ✅ dry_run position #${positionId} opened for ${symbol} (${ca.slice(0,8)}...)`);
+              // Send position open notification (uses TG Alpha Scout format from notifications.js)
+              const { sendPositionOpen } = await import('../telegram/send.js');
+              await sendPositionOpen(positionId).catch(e => console.warn('[TG-FastBuy] sendPositionOpen failed:', e.message));
 
-            // Send position open notification (uses TG Alpha Scout format from notifications.js)
-            const { sendPositionOpen } = await import('../telegram/send.js');
-            await sendPositionOpen(positionId).catch(e => console.warn('[TG-FastBuy] sendPositionOpen failed:', e.message));
+              // Update the initial alert to show position was opened
+              if (fastAlertMsgId) {
+                const { bot } = await import('../telegram/bot.js');
+                const { TELEGRAM_CHAT_ID, TELEGRAM_TOPIC_ID } = await import('../config.js');
+                const badge = '🧪 DRY RUN BUY';
+                await bot.editMessageText(
+                  `⚡ <b>TG Fast Buy — Signal Executed</b>\n\n` +
+                  `👥 <b>Group:</b> ${escapeHtml(groupName || groupId)}\n` +
+                  `🪙 <b>Token:</b> <a href="${gmgnUrl}"><code>${ca}</code></a>\n` +
+                  `📛 <b>Symbol:</b> ${escapeHtml(symbol)}\n` +
+                  `💎 <b>MCap:</b> $${mcapUsd ? (mcapUsd / 1000).toFixed(1) + 'K' : 'N/A'} · Liq: $${liqUsd ? (liqUsd / 1000).toFixed(1) + 'K' : 'N/A'}\n\n` +
+                  `✅ <b>${badge}</b> initiated by ${scout.name}\n` +
+                  `<i>Full details sent separately ↑</i>`,
+                  {
+                    chat_id: TELEGRAM_CHAT_ID,
+                    message_id: fastAlertMsgId,
+                    parse_mode: 'HTML',
+                    disable_web_page_preview: true,
+                    ...(TELEGRAM_TOPIC_ID ? { message_thread_id: Number(TELEGRAM_TOPIC_ID) } : {}),
+                  }
+                ).catch(e => console.warn('[TG-FastBuy] edit alert failed:', e.message));
+              }
 
-            // Update the initial alert to show position was opened
-            if (fastAlertMsgId) {
-              const { bot } = await import('../telegram/bot.js');
-              const { TELEGRAM_CHAT_ID, TELEGRAM_TOPIC_ID } = await import('../config.js');
-              await bot.editMessageText(
-                `⚡ <b>TG Fast Buy — Signal Executed</b>\n\n` +
-                `👥 <b>Group:</b> ${escapeHtml(groupName || groupId)}\n` +
-                `🪙 <b>Token:</b> <a href="${gmgnUrl}"><code>${ca}</code></a>\n` +
-                `📛 <b>Symbol:</b> ${escapeHtml(symbol)}\n` +
-                `💎 <b>MCap:</b> $${mcapUsd ? (mcapUsd / 1000).toFixed(1) + 'K' : 'N/A'} · Liq: $${liqUsd ? (liqUsd / 1000).toFixed(1) + 'K' : 'N/A'}\n\n` +
-                `✅ <b>🧪 DRY RUN BUY</b> — Position #${positionId}\n` +
-                `<i>Full details sent separately ↑</i>`,
-                {
-                  chat_id: TELEGRAM_CHAT_ID,
-                  message_id: fastAlertMsgId,
-                  parse_mode: 'HTML',
-                  disable_web_page_preview: true,
-                  ...(TELEGRAM_TOPIC_ID ? { message_thread_id: Number(TELEGRAM_TOPIC_ID) } : {}),
-                }
-              ).catch(e => console.warn('[TG-FastBuy] edit alert failed:', e.message));
-            }
+            } else if (mode === 'live') {
+              const { executeLiveBuy } = await import('../execution/router.js');
+              const selectedRow = { id: candidateId, candidate };
+              await executeLiveBuy(selectedRow, fastBuyDecision, scout.id, [selectedRow], candidateId, null);
+              console.log(`[TG-FastBuy] ✅ LIVE buy executed for ${symbol} by ${scout.name}`);
 
-
-          } else if (mode === 'live') {
-            const { executeLiveBuy } = await import('../execution/router.js');
-            const selectedRow = { id: candidateId, candidate };
-            await executeLiveBuy(selectedRow, fastBuyDecision, null, [selectedRow], candidateId, null);
-            console.log(`[TG-FastBuy] ✅ LIVE buy executed for ${symbol} (${ca.slice(0,8)}...)`);
-
-            // Update the initial alert for live mode (sendPositionOpen is called inside executeLiveBuy)
-            if (fastAlertMsgId) {
-              const { bot } = await import('../telegram/bot.js');
-              const { TELEGRAM_CHAT_ID, TELEGRAM_TOPIC_ID } = await import('../config.js');
-              await bot.editMessageText(
-                `⚡ <b>TG Fast Buy — Signal Executed</b>\n\n` +
-                `👥 <b>Group:</b> ${escapeHtml(groupName || groupId)}\n` +
-                `🪙 <b>Token:</b> <a href="${gmgnUrl}"><code>${ca}</code></a>\n` +
-                `📛 <b>Symbol:</b> ${escapeHtml(symbol)}\n` +
-                `💎 <b>MCap:</b> $${mcapUsd ? (mcapUsd / 1000).toFixed(1) + 'K' : 'N/A'} · Liq: $${liqUsd ? (liqUsd / 1000).toFixed(1) + 'K' : 'N/A'}\n\n` +
-                `✅ <b>🔴 LIVE BUY EXECUTED</b>\n` +
-                `<i>Full details sent separately ↑</i>`,
-                {
-                  chat_id: TELEGRAM_CHAT_ID,
-                  message_id: fastAlertMsgId,
-                  parse_mode: 'HTML',
-                  disable_web_page_preview: true,
-                  ...(TELEGRAM_TOPIC_ID ? { message_thread_id: Number(TELEGRAM_TOPIC_ID) } : {}),
-                }
-              ).catch(e => console.warn('[TG-FastBuy] edit alert failed:', e.message));
+              // Update the initial alert for live mode
+              if (fastAlertMsgId) {
+                const { bot } = await import('../telegram/bot.js');
+                const { TELEGRAM_CHAT_ID, TELEGRAM_TOPIC_ID } = await import('../config.js');
+                await bot.editMessageText(
+                  `⚡ <b>TG Fast Buy — Signal Executed</b>\n\n` +
+                  `👥 <b>Group:</b> ${escapeHtml(groupName || groupId)}\n` +
+                  `🪙 <b>Token:</b> <a href="${gmgnUrl}"><code>${ca}</code></a>\n` +
+                  `📛 <b>Symbol:</b> ${escapeHtml(symbol)}\n` +
+                  `💎 <b>MCap:</b> $${mcapUsd ? (mcapUsd / 1000).toFixed(1) + 'K' : 'N/A'} · Liq: $${liqUsd ? (liqUsd / 1000).toFixed(1) + 'K' : 'N/A'}\n\n` +
+                  `✅ <b>🔴 LIVE BUY EXECUTED</b> by ${scout.name}\n` +
+                  `<i>Full details sent separately ↑</i>`,
+                  {
+                    chat_id: TELEGRAM_CHAT_ID,
+                    message_id: fastAlertMsgId,
+                    parse_mode: 'HTML',
+                    disable_web_page_preview: true,
+                    ...(TELEGRAM_TOPIC_ID ? { message_thread_id: Number(TELEGRAM_TOPIC_ID) } : {}),
+                  }
+                ).catch(e => console.warn('[TG-FastBuy] edit alert failed:', e.message));
+              }
             }
           }
         } catch (err) {
