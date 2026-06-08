@@ -141,6 +141,8 @@ const stmtUpdateStrategy = db.prepare(`
   UPDATE agent_dna SET
     tp_percent      = @tp_percent,
     sl_percent      = @sl_percent,
+    trailing_enabled = @trailing_enabled,
+    trailing_percent = @trailing_percent,
     whale_wallets   = @whale_wallets,
     updated_at_ms   = @updated_at_ms
   WHERE id = @id
@@ -217,7 +219,7 @@ export function updatePerformance(id, { total_trades, win_rate, total_pnl_sol, m
 /**
  * Update the TP and SL strategy of an agent.
  */
-export function updateAgentStrategy(id, tpPercent, slPercent, whaleWallets = null) {
+export function updateAgentStrategy(id, tpPercent, slPercent, whaleWallets = null, trailingEnabled = true, trailingPercent = 15) {
   const agent = getDna(id);
   if (!agent) {
     throw new Error('Agent not found');
@@ -227,6 +229,8 @@ export function updateAgentStrategy(id, tpPercent, slPercent, whaleWallets = nul
     id,
     tp_percent: tpPercent,
     sl_percent: slPercent,
+    trailing_enabled: trailingEnabled ? 1 : 0,
+    trailing_percent: trailingPercent,
     whale_wallets: whaleWallets ? whaleWallets.join(',') : null,
     updated_at_ms: Date.now(),
   });

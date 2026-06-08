@@ -12,6 +12,10 @@ interface AgentSettingsModalProps {
 export function AgentSettingsModal({ agent, onClose }: AgentSettingsModalProps) {
   const [tpPercent, setTpPercent] = useState<number | ''>(agent.tp_percent ?? 100);
   const [slPercent, setSlPercent] = useState<number | ''>(agent.sl_percent ?? -20);
+  const [trailingEnabled, setTrailingEnabled] = useState<boolean>(
+    agent.trailing_enabled === 1 || (agent.trailing_enabled as any) === true
+  );
+  const [trailingPercent, setTrailingPercent] = useState<number | ''>(agent.trailing_percent ?? 10);
   const [whaleWallets, setWhaleWallets] = useState<string[]>(agent.whale_wallets ? agent.whale_wallets.split(',').map(w => w.trim()).filter(Boolean) : []);
   const [walletInput, setWalletInput] = useState('');
   const [secretKey, setSecretKey] = useState<string>('');
@@ -48,7 +52,7 @@ export function AgentSettingsModal({ agent, onClose }: AgentSettingsModalProps) 
   };
 
   const handleUpdate = async () => {
-    if (!secretKey.trim() || tpPercent === '' || slPercent === '') {
+    if (!secretKey.trim() || tpPercent === '' || slPercent === '' || (trailingEnabled && trailingPercent === '')) {
       setErrorMsg('All fields are required.');
       return;
     }
@@ -63,6 +67,8 @@ export function AgentSettingsModal({ agent, onClose }: AgentSettingsModalProps) 
         body: JSON.stringify({ 
           tpPercent, 
           slPercent,
+          trailingEnabled,
+          trailingPercent: trailingEnabled ? trailingPercent : 10,
           whaleWallets: agent.breed === 'whale_tracker' ? whaleWallets : []
         }),
       });
@@ -155,6 +161,46 @@ export function AgentSettingsModal({ agent, onClose }: AgentSettingsModalProps) 
                   }}
                 />
               </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'center', background: '#0d0d12', padding: '12px', borderRadius: '4px', border: '1px solid #1a1a28' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                <input
+                  type="checkbox"
+                  checked={trailingEnabled}
+                  onChange={e => setTrailingEnabled(e.target.checked)}
+                  style={{ width: '16px', height: '16px', accentColor: '#00C896', cursor: 'pointer' }}
+                />
+                <label style={{ fontSize: '10px', color: '#fff', textTransform: 'uppercase', letterSpacing: '1px', cursor: 'pointer' }} onClick={() => setTrailingEnabled(!trailingEnabled)}>
+                  Enable Trailing Stop
+                </label>
+              </div>
+              
+              {trailingEnabled && (
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
+                  <label style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    Trailing Drop (%)
+                  </label>
+                  <input
+                    type="number"
+                    value={trailingPercent}
+                    onChange={e => setTrailingPercent(e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
+                    style={{
+                      width: '60px',
+                      background: '#1a1a28',
+                      border: '1px solid #2a2a38',
+                      color: '#00BBF9',
+                      padding: '8px 10px',
+                      borderRadius: '4px',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: '13px',
+                      outline: 'none',
+                      fontWeight: 'bold',
+                      textAlign: 'center'
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
             {agent.breed === 'whale_tracker' && (

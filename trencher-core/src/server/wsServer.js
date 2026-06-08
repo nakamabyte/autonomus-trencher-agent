@@ -529,7 +529,7 @@ export function startWsServer(port = 4001) {
             return;
           }
 
-          const { tpPercent, slPercent, whaleWallets } = payload;
+          const { tpPercent, slPercent, whaleWallets, trailingEnabled, trailingPercent } = payload;
           if (tpPercent === undefined || slPercent === undefined) {
             res.writeHead(400, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Missing tpPercent or slPercent' }));
@@ -537,7 +537,7 @@ export function startWsServer(port = 4001) {
           }
 
           const { updateAgentStrategy, listBreeds } = await import('../db/agentDna.js');
-          updateAgentStrategy(agentId, tpPercent, slPercent, whaleWallets);
+          updateAgentStrategy(agentId, tpPercent, slPercent, whaleWallets, trailingEnabled, trailingPercent);
           
           // Sync with wallet registry if provided
           if (whaleWallets && Array.isArray(whaleWallets)) {

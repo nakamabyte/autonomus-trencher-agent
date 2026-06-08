@@ -134,9 +134,9 @@ export async function refreshPosition(position, { autoExit = true, jupiterPnl = 
   let dynamicTrailingPercent = Number(position.trailing_percent);
   const highWaterPnlPercent = (highWaterMcap / Number(position.entry_mcap) - 1) * 100;
   if (highWaterPnlPercent > 100) {
-    dynamicTrailingPercent = Math.max(dynamicTrailingPercent, 30); // Loosen to 30% if we are up > 2x to let it run
+    dynamicTrailingPercent = Math.max(dynamicTrailingPercent, 10); // Tighten to 10% if we are up > 2x to lock in profit
   } else if (highWaterPnlPercent > 50 && highWaterPnlPercent <= 100) {
-    dynamicTrailingPercent = 20; // Standard 20% for good gains
+    dynamicTrailingPercent = 10; // Standard 10% for good gains
   } else if (highWaterPnlPercent > 20 && highWaterPnlPercent <= 50) {
     dynamicTrailingPercent = 10; // Tighten to 10% for small gains to prevent total loss
   }
