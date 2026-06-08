@@ -52,6 +52,9 @@ export function logDecision(candidate, analysis, verdict, confidence, reason, ti
     reason,
     strategy:            candidate?.signals?.strategy   ?? candidate?.strategy            ?? candidate?.route ?? null,
     entry_mcap:          analysis?.market_cap_usd       ?? analysis?.metrics?.mcap_usd ?? null,
+    caller_handle:       candidate?.sourceMeta?.callerMeta?.callerHandle ?? null,
+    caller_trust:        candidate?.sourceMeta?.callerMeta?.trustTier ?? null,
+    author_type:         candidate?.sourceMeta?.callerMeta?.authorType ?? null,
   };
 
   // Print to console with color coding
@@ -118,6 +121,13 @@ function printDecision(entry) {
   );
   if (entry.kol_signal) {
     console.log(chalk.gray('KOL signal:          ') + chalk.magenta(entry.kol_signal));
+  }
+  if (entry.caller_handle) {
+    console.log(chalk.gray('Caller:              ') + chalk.white(entry.caller_handle));
+    if (entry.author_type === 'human') {
+      console.log(chalk.gray('Card by:             ') + chalk.white('Rick/Phanes (bot)'));
+    }
+    console.log(chalk.gray('Caller trust:        ') + chalk.yellow(`Tier ${entry.caller_trust || 'B'}`));
   }
   console.log(
     chalk.gray('Confidence:          ') +

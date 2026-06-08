@@ -564,8 +564,18 @@ async function runTier2(candidates, tier1Result) {
          }
          dynamicPrompt += kolText;
       }
+
+      // Fetch Active Lessons from Social Scout
+      const lessons = db.prepare("SELECT lesson FROM learning_lessons WHERE status = 'active'").all();
+      if (lessons.length > 0) {
+         let lessonsText = '\n\nDYNAMIC SOCIAL LESSONS (Apply these to your screening):\n';
+         for (const lessonRow of lessons) {
+           lessonsText += `- ${lessonRow.lesson}\n`;
+         }
+         dynamicPrompt += lessonsText;
+      }
     } catch (e) {
-      console.error('[LLM-T2] failed to append KOL weights:', e.message);
+      console.error('[LLM-T2] failed to append dynamic prompt data:', e.message);
     }
     const enriched = candidates.map(c => ({
       ...c,

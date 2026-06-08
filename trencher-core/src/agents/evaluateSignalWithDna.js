@@ -56,8 +56,24 @@ export async function evaluateSignalWithDna(signal, dna) {
   }
 
   if (hasTgAlpha) {
-    // Human-curated TG alpha: full social weight boost
-    adjustedConfidence += socialWeight * 0.10;
+    // ── 3.5 Caller Reputation (Trust Tier) ──────────────────────────────────────
+    const callerTrustTier = signal.sourceMeta?.callerMeta?.trustTier || 'B';
+    
+    if (callerTrustTier === 'F') {
+      return { verdict: 'SKIP', confidence: signal.llm_confidence || 0, reason: `DNA skip — caller is Tier F (untrusted)` };
+    }
+
+    // Human-curated TG alpha: base social weight boost
+    let boost = socialWeight * 0.10;
+    
+    // Adjust boost based on reputation
+    if (callerTrustTier === 'A') {
+      boost += 0.10; // Extra boost for Tier A
+    } else if (callerTrustTier === 'C') {
+      boost -= 0.15; // Penalty for Tier C
+    }
+    
+    adjustedConfidence += boost;
   } else if (hasKol) {
     // Specific KOL handle detected (e.g. "@Ga__ke")
     adjustedConfidence += socialWeight * 0.07;

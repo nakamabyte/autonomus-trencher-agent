@@ -361,6 +361,11 @@ export async function refreshPosition(position, { autoExit = true, jupiterPnl = 
 }
 
 export async function monitorPositions() {
+  // Run Outcome Tracker for TG calls in background
+  import('../signals/outcomeTracker.js').then(({ monitorCallOutcomes }) => {
+    monitorCallOutcomes().catch(e => console.error('[OutcomeTracker] error:', e.message));
+  }).catch(() => {});
+
   const positions = openPositions();
   let walletPnlData = {};
   const pubkey = liveWalletPubkey();

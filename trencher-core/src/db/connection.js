@@ -261,6 +261,39 @@ export function initDb() {
       PRIMARY KEY (group_id, ca)
     );
     CREATE INDEX IF NOT EXISTS idx_tg_ca_history_group ON tg_group_ca_history(group_id, mention_count DESC);
+    -- Caller Attribution and Trust
+    CREATE TABLE IF NOT EXISTS tg_calls (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      caller_handle TEXT NOT NULL,
+      caller_id TEXT NOT NULL,
+      token_ca TEXT NOT NULL,
+      timestamp_ms INTEGER NOT NULL,
+      linked_card TEXT,
+      group_id TEXT,
+      mcap_at_call REAL,
+      resolved_at_ms INTEGER,
+      outcome_status TEXT
+    );
+    
+    -- Add columns if they don't exist (for existing databases)
+    try {
+      db.prepare("ALTER TABLE tg_calls ADD COLUMN mcap_at_call REAL").run();
+      db.prepare("ALTER TABLE tg_calls ADD COLUMN resolved_at_ms INTEGER").run();
+      db.prepare("ALTER TABLE tg_calls ADD COLUMN outcome_status TEXT").run();
+    } catch(e) {
+      // Columns already exist
+    }
+
+    CREATE TABLE IF NOT EXISTS tg_caller_trust (
+      caller_handle TEXT PRIMARY KEY,
+      caller_id TEXT,
+      tier TEXT DEFAULT 'B',
+      win_count INTEGER DEFAULT 0,
+      loss_count INTEGER DEFAULT 0,
+      trust_score REAL DEFAULT 0.5,
+      updated_at_ms INTEGER
+    );
+
     CREATE INDEX IF NOT EXISTS idx_alerts_status ON price_alerts(status, expires_at_ms);
     CREATE INDEX IF NOT EXISTS idx_candidates_mint ON candidates(mint);
     CREATE INDEX IF NOT EXISTS idx_positions_status ON dry_run_positions(status);
@@ -648,6 +681,12 @@ export function initDb() {
     liquidity_floor_usd: 10000,
     tg_max_trades_per_group_hour: 5,
   }), ts);
+
+  // Pre-seed Tier A Callers
+  const seedCaller = db.prepare('INSERT OR IGNORE INTO tg_caller_trust (caller_handle, tier, trust_score, updated_at_ms) VALUES (?, ?, ?, ?)');
+  seedCaller.run('Brando', 'A', 1.0, ts);
+  seedCaller.run('Scarp', 'A', 1.0, ts);
+  seedCaller.run('DegenCapitalLLC', 'A', 1.0, ts);
 }
 
 export function ensureColumn(table, column, ddl) {
