@@ -41,7 +41,7 @@ export function PlatformPositions({ metrics, logHeight }: PlatformPositionsProps
                   <div className="pv-adot" style={{ background: colorClass }}></div>
                   <div className="pv-ainfo">
                     {pos.agent_name && (
-                      <div style={{ marginBottom: '4px' }}>
+                      <div style={{ marginBottom: '4px', display: 'flex', gap: '6px' }}>
                         <span style={{ 
                           fontSize: '8px', 
                           padding: '2px 6px', 
@@ -53,6 +53,19 @@ export function PlatformPositions({ metrics, logHeight }: PlatformPositionsProps
                         }}>
                           {pos.agent_name.toUpperCase()}
                         </span>
+                        {(pos.agent_name.toLowerCase().includes('social_tg') || pos.strategy?.toLowerCase() === 'social_scout') && (
+                          <span style={{ 
+                            fontSize: '8px', 
+                            padding: '2px 6px', 
+                            background: 'rgba(255, 165, 0, 0.15)', 
+                            borderRadius: '4px',
+                            color: '#FFA500',
+                            fontFamily: 'var(--fm)',
+                            border: '1px solid rgba(255, 165, 0, 0.3)'
+                          }}>
+                            GROUP SIGNAL
+                          </span>
+                        )}
                       </div>
                     )}
                     <div className="pv-aname" style={{ display: 'flex', justifyContent: 'space-between' }}>

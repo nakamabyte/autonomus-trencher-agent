@@ -74,7 +74,9 @@ export async function executeAgentTrade(agent, signal, decision, dna, db, balanc
     return;
   }
 
-  if (agent.execution_mode === 'dry_run') {
+  const forceLive = (agent.breed === 'social_scout' || agent.name === 'social_tg');
+
+  if (agent.execution_mode === 'dry_run' && !forceLive) {
     // Only simulate execution
     console.log(`[agent] ${agent.name} is in dry_run mode. Simulating trade...`);
     const posId = recordPosition(db, {
