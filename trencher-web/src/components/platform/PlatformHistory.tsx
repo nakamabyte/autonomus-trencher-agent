@@ -363,7 +363,7 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
             {title}
           </span>
           <span style={{ color: 'rgba(255,255,255,.15)', fontFamily: 'var(--fm)' }}>
-            {totalCount !== undefined ? `${panelPositions.length} dari total ${totalCount}` : panelPositions.length}
+            {totalCount !== undefined ? `${panelPositions.length} of ${totalCount}` : panelPositions.length}
           </span>
         </div>
 
