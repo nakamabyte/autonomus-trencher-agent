@@ -15,6 +15,23 @@ import { SOLANA_RPC_URL } from './config.js';
 import { resumeActiveAgents } from './agents/agentRunner.js';
 import { startFundingWatcher } from './agents/fundingWatcher.js';
 
+// Prevent unhandled gramjs connection errors from crashing the bot
+process.on('unhandledRejection', (reason, promise) => {
+  if (reason && reason.message && reason.message.includes('Not connected')) {
+    console.warn('[process] Ignored unhandled gramjs connection error:', reason.message);
+    return;
+  }
+  console.error('[process] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  if (err && err.message && err.message.includes('Not connected')) {
+    console.warn('[process] Ignored uncaught gramjs connection error:', err.message);
+    return;
+  }
+  console.error('[process] Uncaught Exception:', err);
+});
+
 setDefaultResultOrder('ipv4first');
 validateConfig();
 
