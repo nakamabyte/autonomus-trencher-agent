@@ -214,12 +214,17 @@ export function startWsServer(port = 4001) {
       try {
         const limit = Math.min(parseInt(parsedUrl.searchParams.get('limit')) || 50, 100);
         const offset = parseInt(parsedUrl.searchParams.get('offset')) || 0;
+        const type = parsedUrl.searchParams.get('type');
+        let typeFilter = '';
+        if (type === 'profit') typeFilter = 'AND p.pnl_percent >= 0';
+        else if (type === 'loss') typeFilter = 'AND p.pnl_percent < 0';
+
         const { db } = await import('../db/connection.js');
         const closedPositions = db.prepare(`
           SELECT p.id, p.mint, p.symbol, p.pnl_percent, p.pnl_sol, p.execution_mode as mode, p.opened_at_ms, p.closed_at_ms, p.entry_signature, p.exit_signature, p.size_sol, p.exit_reason, p.entry_mcap, p.strategy_id as strategy, a.name as agent_name 
           FROM dry_run_positions p 
           LEFT JOIN agent_dna a ON p.agent_dna_id = a.id 
-          WHERE p.status = 'closed' 
+          WHERE p.status = 'closed' ${typeFilter}
           ORDER BY p.closed_at_ms DESC 
           LIMIT ? OFFSET ?
         `).all(limit, offset);

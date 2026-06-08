@@ -343,7 +343,7 @@ async function processMessage({ text, groupId, groupName, senderId, senderUserna
       // Execute fast buy directly — bypass orchestrator entirely
       ;(async () => {
         try {
-          const { createDryRunPosition, tradingMode, canOpenMorePositions } = await import('../execution/positions.js');
+          const { createDryRunPosition, tradingMode, canOpenMorePositions } = await import('../db/positions.js');
           const { upsertCandidate } = await import('../db/candidates.js');
           const { fetchGmgnTokenInfo } = await import('../enrichment/gmgn.js');
           const { fetchJupiterAsset } = await import('../enrichment/jupiter.js');

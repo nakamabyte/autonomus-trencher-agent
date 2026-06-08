@@ -297,59 +297,92 @@ function PnlModal({ pos, onClose }: { pos: ClosedPos; onClose: () => void }) {
 
 export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryProps) {
   const wsPositions = metrics.closed_positions || [];
-  const [extraPositions, setExtraPositions] = useState<ClosedPos[]>([]);
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+  const wsProfit = wsPositions.filter(p => p.pnl_percent >= 0);
+  const wsLoss = wsPositions.filter(p => p.pnl_percent < 0);
+
+  const [extraProfit, setExtraProfit] = useState<ClosedPos[]>([]);
+  const [pageProfit, setPageProfit] = useState(0);
+  const [hasMoreProfit, setHasMoreProfit] = useState(true);
+  const [loadingProfit, setLoadingProfit] = useState(false);
+
+  const [extraLoss, setExtraLoss] = useState<ClosedPos[]>([]);
+  const [pageLoss, setPageLoss] = useState(0);
+  const [hasMoreLoss, setHasMoreLoss] = useState(true);
+  const [loadingLoss, setLoadingLoss] = useState(false);
   
   const [selectedPos, setSelectedPos] = useState<ClosedPos | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  const fetchMore = useCallback(async () => {
-    if (loading || !hasMore) return;
-    setLoading(true);
+  const fetchMoreProfit = useCallback(async () => {
+    if (loadingProfit || !hasMoreProfit) return;
+    setLoadingProfit(true);
     try {
-      const res = await fetch(`/api/core-proxy/history?limit=50&offset=${page * 50}`);
+      const res = await fetch(`/api/core-proxy/history?limit=50&offset=${pageProfit * 50}&type=profit`);
       const data = await res.json();
       if (data.closed_positions && Array.isArray(data.closed_positions)) {
-        if (data.closed_positions.length < 50) setHasMore(false);
-        setExtraPositions(prev => [...prev, ...data.closed_positions]);
-        setPage(p => p + 1);
+        if (data.closed_positions.length < 50) setHasMoreProfit(false);
+        setExtraProfit(prev => [...prev, ...data.closed_positions]);
+        setPageProfit(p => p + 1);
       } else {
-        setHasMore(false);
+        setHasMoreProfit(false);
       }
     } catch (e) {
       console.error(e);
-      setHasMore(false);
+      setHasMoreProfit(false);
     }
-    setLoading(false);
-  }, [page, loading, hasMore]);
+    setLoadingProfit(false);
+  }, [pageProfit, loadingProfit, hasMoreProfit]);
+
+  const fetchMoreLoss = useCallback(async () => {
+    if (loadingLoss || !hasMoreLoss) return;
+    setLoadingLoss(true);
+    try {
+      const res = await fetch(`/api/core-proxy/history?limit=50&offset=${pageLoss * 50}&type=loss`);
+      const data = await res.json();
+      if (data.closed_positions && Array.isArray(data.closed_positions)) {
+        if (data.closed_positions.length < 50) setHasMoreLoss(false);
+        setExtraLoss(prev => [...prev, ...data.closed_positions]);
+        setPageLoss(p => p + 1);
+      } else {
+        setHasMoreLoss(false);
+      }
+    } catch (e) {
+      console.error(e);
+      setHasMoreLoss(false);
+    }
+    setLoadingLoss(false);
+  }, [pageLoss, loadingLoss, hasMoreLoss]);
+
+  // Initial fetch so both panels populate immediately without waiting for scroll
+  useEffect(() => {
+    fetchMoreProfit();
+    fetchMoreLoss();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Merge, deduplicate by ID, and sort
-  const allPositions = [...wsPositions, ...extraPositions];
-  const uniquePositionsMap = new Map();
-  for (const pos of allPositions) {
-    if (!uniquePositionsMap.has(pos.id)) {
-      uniquePositionsMap.set(pos.id, pos);
-    }
-  }
-  const positions = Array.from(uniquePositionsMap.values()).sort((a, b) => b.closed_at_ms - a.closed_at_ms);
+  const mergeUnique = (wsArr: ClosedPos[], extraArr: ClosedPos[]) => {
+    const map = new Map();
+    for (const pos of [...wsArr, ...extraArr]) map.set(pos.id, pos);
+    return Array.from(map.values()).sort((a, b) => b.closed_at_ms - a.closed_at_ms);
+  };
 
+  const profitPositions = mergeUnique(wsProfit, extraProfit);
+  const lossPositions = mergeUnique(wsLoss, extraLoss);
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 0);
     return () => clearTimeout(timer);
   }, []);
 
-  const profitPositions = positions.filter(p => p.pnl_percent >= 0);
-  const lossPositions = positions.filter(p => p.pnl_percent < 0);
-
   const renderPanel = (
     title: string,
-    panelPositions: typeof positions,
+    panelPositions: ClosedPos[],
     offset: number,
     color: string,
     emptyText: string,
+    onScrollFetch: () => void,
+    isLoading: boolean,
     totalCount?: number
   ) => (
     <div
@@ -372,7 +405,7 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
           onScroll={(e) => {
             const t = e.currentTarget;
             if (t.scrollHeight - t.scrollTop - t.clientHeight < 50) {
-              fetchMore();
+              onScrollFetch();
             }
           }}
         >
@@ -469,7 +502,7 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
               );
             })
           )}
-          {loading && (
+          {isLoading && (
             <div className="pv-ai" style={{ justifyContent: 'center', padding: '8px 0' }}>
               <span className="pv-ast" style={{ opacity: 0.5 }}>[ LOADING... ]</span>
             </div>
@@ -482,9 +515,9 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
   return (
     <>
       {/* PROFIT Panel (Left) */}
-      {renderPanel('PROFIT HISTORY', profitPositions, rightOffset + 240 + 16, '#4ADE80', 'NO WINNING TRADES', metrics.total_profit_count)}
+      {renderPanel('PROFIT HISTORY', profitPositions, rightOffset + 240 + 16, '#4ADE80', 'NO WINNING TRADES', fetchMoreProfit, loadingProfit, metrics.total_profit_count)}
       {/* LOSS Panel (Right) */}
-      {renderPanel('LOSS HISTORY', lossPositions, rightOffset, '#F87171', 'NO LOSING TRADES', metrics.total_loss_count)}
+      {renderPanel('LOSS HISTORY', lossPositions, rightOffset, '#F87171', 'NO LOSING TRADES', fetchMoreLoss, loadingLoss, metrics.total_loss_count)}
 
       {mounted && selectedPos && <PnlModal pos={selectedPos} onClose={() => setSelectedPos(null)} />}
     </>
