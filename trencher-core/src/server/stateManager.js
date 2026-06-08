@@ -65,6 +65,8 @@ setInterval(async () => {
     const posQuery = db.prepare("SELECT COUNT(*) as count FROM dry_run_positions WHERE status = 'open'").get();
     const pnlQuery = db.prepare("SELECT SUM(pnl_sol) as total FROM dry_run_positions WHERE pnl_sol IS NOT NULL").get();
     const candsQuery = db.prepare("SELECT COUNT(*) as count FROM candidates").get();
+    const profitQuery = db.prepare("SELECT COUNT(*) as count FROM dry_run_positions WHERE status = 'closed' AND pnl_percent >= 0").get();
+    const lossQuery = db.prepare("SELECT COUNT(*) as count FROM dry_run_positions WHERE status = 'closed' AND pnl_percent < 0").get();
     const activePositions = db.prepare(`
       SELECT p.id, p.mint, p.symbol, p.pnl_percent, p.pnl_sol, p.execution_mode, p.opened_at_ms, p.entry_signature, p.strategy_id as strategy, p.size_sol, a.name as agent_name 
       FROM dry_run_positions p 
@@ -87,6 +89,8 @@ setInterval(async () => {
       pos: posQuery?.count || 0,
       pnl: +(pnlQuery?.total || 0).toFixed(3),
       cands: candsQuery?.count || 0,
+      total_profit_count: profitQuery?.count || 0,
+      total_loss_count: lossQuery?.count || 0,
       mode: setting('trading_mode', 'dry_run'),
       strategy: strat?.id || 'sniper',
       active_positions: activePositions.map(p => ({

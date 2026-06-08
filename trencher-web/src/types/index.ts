@@ -51,6 +51,8 @@ export interface PlatformMetrics {
   uptime: number;
   mode?: string;
   strategy?: string;
+  total_profit_count?: number;
+  total_loss_count?: number;
   active_positions?: {
     id: number;
     mint: string;

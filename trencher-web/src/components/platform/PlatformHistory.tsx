@@ -349,7 +349,8 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
     panelPositions: typeof positions,
     offset: number,
     color: string,
-    emptyText: string
+    emptyText: string,
+    totalCount?: number
   ) => (
     <div
       className="absolute top-4 z-20 pointer-events-auto flex flex-col"
@@ -361,7 +362,9 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
             <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }}></div>
             {title}
           </span>
-          <span style={{ color: 'rgba(255,255,255,.15)', fontFamily: 'var(--fm)' }}>{panelPositions.length}</span>
+          <span style={{ color: 'rgba(255,255,255,.15)', fontFamily: 'var(--fm)' }}>
+            {totalCount !== undefined ? `${panelPositions.length} dari total ${totalCount}` : panelPositions.length}
+          </span>
         </div>
 
         <div 
@@ -479,9 +482,9 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
   return (
     <>
       {/* PROFIT Panel (Left) */}
-      {renderPanel('PROFIT HISTORY', profitPositions, rightOffset + 240 + 16, '#4ADE80', 'NO WINNING TRADES')}
+      {renderPanel('PROFIT HISTORY', profitPositions, rightOffset + 240 + 16, '#4ADE80', 'NO WINNING TRADES', metrics.total_profit_count)}
       {/* LOSS Panel (Right) */}
-      {renderPanel('LOSS HISTORY', lossPositions, rightOffset, '#F87171', 'NO LOSING TRADES')}
+      {renderPanel('LOSS HISTORY', lossPositions, rightOffset, '#F87171', 'NO LOSING TRADES', metrics.total_loss_count)}
 
       {mounted && selectedPos && <PnlModal pos={selectedPos} onClose={() => setSelectedPos(null)} />}
     </>
