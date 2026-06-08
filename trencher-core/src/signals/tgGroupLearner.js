@@ -65,7 +65,9 @@ export async function learnGroupHistory(client, groupId, groupName = '', {
 
   // ── Step 2: Filter by date + extract CA ───────────────────────────
   const caMap     = new Map(); // ca → { count, samples[] }
+  const senderMap = new Map(); // senderId → { id, username, firstName, lastName, count }
   const narratives = [];       // potongan teks non-CA untuk LLM context
+
 
   let messagesScanned = 0;
 
@@ -81,7 +83,25 @@ export async function learnGroupHistory(client, groupId, groupName = '', {
 
     const { addresses } = parseTokenCall(text);
 
+    let senderId = null;
+    let username = '';
+    let firstName = '';
+    let lastName = '';
+    if (msg.sender) {
+      senderId = String(msg.sender.id || '');
+      username = msg.sender.username || '';
+      firstName = msg.sender.firstName || '';
+      lastName = msg.sender.lastName || '';
+    }
+
     if (addresses.length > 0) {
+      if (senderId) {
+        if (!senderMap.has(senderId)) {
+          senderMap.set(senderId, { id: senderId, username, firstName, lastName, count: 0 });
+        }
+        senderMap.get(senderId).count += addresses.length;
+      }
+
       for (const ca of addresses) {
         if (!caMap.has(ca)) {
           caMap.set(ca, { count: 0, firstSeen: msgMs, lastSeen: msgMs, samples: [] });
@@ -189,6 +209,10 @@ export async function learnGroupHistory(client, groupId, groupName = '', {
     console.warn(`[TG-Learn] insert history failed:`, e.message);
   }
 
+  const topCallers = [...senderMap.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
   return {
     groupId,
     groupName,
@@ -196,6 +220,7 @@ export async function learnGroupHistory(client, groupId, groupName = '', {
     caFound,
     uniqueCa,
     topCas,
+    topCallers,
     lessons,
     error: null,
   };

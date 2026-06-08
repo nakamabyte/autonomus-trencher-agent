@@ -296,9 +296,45 @@ function PnlModal({ pos, onClose }: { pos: ClosedPos; onClose: () => void }) {
 }
 
 export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryProps) {
-  const positions = metrics.closed_positions || [];
+  const wsPositions = metrics.closed_positions || [];
+  const [extraPositions, setExtraPositions] = useState<ClosedPos[]>([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  
   const [selectedPos, setSelectedPos] = useState<ClosedPos | null>(null);
   const [mounted, setMounted] = useState(false);
+
+  const fetchMore = useCallback(async () => {
+    if (loading || !hasMore) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/core-proxy/history?limit=50&offset=${page * 50}`);
+      const data = await res.json();
+      if (data.closed_positions && Array.isArray(data.closed_positions)) {
+        if (data.closed_positions.length < 50) setHasMore(false);
+        setExtraPositions(prev => [...prev, ...data.closed_positions]);
+        setPage(p => p + 1);
+      } else {
+        setHasMore(false);
+      }
+    } catch (e) {
+      console.error(e);
+      setHasMore(false);
+    }
+    setLoading(false);
+  }, [page, loading, hasMore]);
+
+  // Merge, deduplicate by ID, and sort
+  const allPositions = [...wsPositions, ...extraPositions];
+  const uniquePositionsMap = new Map();
+  for (const pos of allPositions) {
+    if (!uniquePositionsMap.has(pos.id)) {
+      uniquePositionsMap.set(pos.id, pos);
+    }
+  }
+  const positions = Array.from(uniquePositionsMap.values()).sort((a, b) => b.closed_at_ms - a.closed_at_ms);
+
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 0);
@@ -319,7 +355,15 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
           <span style={{ color: 'rgba(255,255,255,.15)', fontFamily: 'var(--fm)' }}>{positions.length}</span>
         </div>
 
-        <div className="flex flex-col gap-[2px] mt-2 overflow-y-auto custom-scrollbar flex-1 min-h-0">
+        <div 
+          className="flex flex-col gap-[2px] mt-2 overflow-y-auto custom-scrollbar flex-1 min-h-0"
+          onScroll={(e) => {
+            const t = e.currentTarget;
+            if (t.scrollHeight - t.scrollTop - t.clientHeight < 50) {
+              fetchMore();
+            }
+          }}
+        >
           {positions.length === 0 ? (
             <div className="pv-ai" style={{ justifyContent: 'center' }}>
               <span className="pv-ast" style={{ opacity: 0.5 }}>[ NO HISTORY ]</span>
@@ -412,6 +456,11 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
                 </div>
               );
             })
+          )}
+          {loading && (
+            <div className="pv-ai" style={{ justifyContent: 'center', padding: '8px 0' }}>
+              <span className="pv-ast" style={{ opacity: 0.5 }}>[ LOADING... ]</span>
+            </div>
           )}
         </div>
       </div>

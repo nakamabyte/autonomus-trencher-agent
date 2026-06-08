@@ -755,6 +755,17 @@ To deploy an agent, you need to pay SOL via the Trenchyard platform.
           summary += '\n';
         }
 
+        if (r.topCallers && r.topCallers.length > 0) {
+          summary += `   👤 Top Callers: `;
+          summary += r.topCallers.map(s => {
+             const name = escapeHtml([s.firstName, s.lastName].filter(Boolean).join(' ') || 'Unknown');
+             const userStr = s.username ? ` (@${escapeHtml(s.username)})` : '';
+             return `<code>${escapeHtml(s.id)}</code> ${name}${userStr} (×${s.count})`;
+          }).join(', ');
+          summary += '\n';
+        }
+
+
         if (r.lessons.length > 0) {
           summary += `   📝 <b>${r.lessons.length} lesson(s) saved</b>\n`;
           const firstLesson = r.lessons[0];
