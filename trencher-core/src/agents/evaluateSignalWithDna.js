@@ -45,9 +45,15 @@ export async function evaluateSignalWithDna(signal, dna) {
   // ── 3. social_signal_weight (0-100) ───────────────────────────────────────
   // Applied when a KOL handle or TG alpha signal is present.
   // social_scout (95) gains +0.095 max; bunker (45) gains +0.045 max.
-  const socialWeight = (dna.social_signal_weight || 50) / 100;
+  const socialWeightRaw = dna.social_signal_weight || 50;
+  const socialWeight = socialWeightRaw / 100;
   const hasKol = signal.kol_signal && signal.kol_signal !== 'YES';  // specific handle > generic
   const hasTgAlpha = signal.source === 'tg_alpha';
+
+  // HARD SKIP: If this is a TG group signal but agent doesn't care about social signals (<30)
+  if (hasTgAlpha && socialWeightRaw < 30) {
+    return { verdict: 'SKIP', confidence: signal.llm_confidence || 0, reason: `DNA skip — agent ignores group signals (social weight ${socialWeightRaw} < 30)` };
+  }
 
   if (hasTgAlpha) {
     // Human-curated TG alpha: full social weight boost

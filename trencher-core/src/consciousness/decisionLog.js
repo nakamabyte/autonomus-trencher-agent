@@ -28,16 +28,22 @@ export function getRecentDecisions(limit = 10) {
 export function logDecision(candidate, analysis, verdict, confidence, reason, tier = 'T1') {
   const timestamp = new Date().toISOString().slice(11, 19);
 
+  const rawHolder = analysis?.holder_count ?? analysis?.holders?.total ?? 0;
+  const parsedHolder = typeof rawHolder === 'object' ? rawHolder.count || rawHolder.total || 0 : rawHolder;
+  const walletsAnalyzed = analysis?.wallet_count ?? 0;
+  const source = analysis?.source || candidate?.source || 'pumpfun_ws';
+
   const entry = {
     timestamp,
     tier,
+    source,
     symbol:              candidate?.symbol || candidate?.token?.symbol || 'UNKNOWN',
     name:                candidate?.name || candidate?.token?.name || null,
     mint:                candidate?.mint   || candidate?.token?.mint   || '',
-    wallets_analyzed:    analysis?.wallet_count        ?? 0,
-    holder_count:        analysis?.holder_count        ?? analysis?.holders?.total ?? 0,
+    wallets_analyzed:    walletsAnalyzed,
+    holder_count:        parsedHolder,
     bundle_wallets:      analysis?.bundler_count       ?? 0,
-    rug_probability:     Math.round((analysis?.bundler_rate ?? 0) * 100),
+    rug_probability:     walletsAnalyzed === 0 ? 'n/a' : Math.round((analysis?.bundler_rate ?? 0) * 100),
     smart_money_overlap: analysis?.smart_money_overlap ?? analysis?.savedWalletExposure?.count ?? 0,
     runner_signal:       analysis?.runner_signal       ?? null,
     kol_signal:          analysis?.kol_signal          ?? null,
@@ -66,12 +72,14 @@ function printDecision(entry) {
   const SEP = '─'.repeat(52);
   const mintShort = entry.mint ? `(${entry.mint.slice(0, 8)}...)` : '';
   const tierLabel = entry.tier === 'T2' ? chalk.magenta('[T2-Grok]') : chalk.cyan('[T1]');
+  const sourceEmoji = entry.source === 'tg_alpha' ? '✈️' : '💊';
 
   console.log(chalk.gray(`\n${SEP}`));
   console.log(
     tierLabel + ' ' +
     chalk.white.bold(`TOKEN FOUND: ${entry.symbol} `) +
-    chalk.gray(mintShort)
+    chalk.gray(mintShort) +
+    ' ' + chalk.magenta(`[Source: ${sourceEmoji} ${entry.source}]`)
   );
   console.log(chalk.gray(SEP));
 
@@ -79,6 +87,9 @@ function printDecision(entry) {
     chalk.gray('Wallets analyzed:    ') +
     chalk.white(entry.wallets_analyzed)
   );
+  if (entry.wallets_analyzed === 0) {
+    console.log(chalk.yellow(`  (enrichment: no data yet — token is too fresh)`));
+  }
   console.log(
     chalk.gray('Holder count:        ') +
     chalk.white(entry.holder_count)
@@ -89,9 +100,11 @@ function printDecision(entry) {
   );
   console.log(
     chalk.gray('Rug probability:     ') +
-    (entry.rug_probability > 20
-      ? chalk.red(`${entry.rug_probability}%`)
-      : chalk.green(`${entry.rug_probability}%`))
+    (entry.rug_probability === 'n/a'
+      ? chalk.yellow('n/a')
+      : entry.rug_probability > 20
+        ? chalk.red(`${entry.rug_probability}%`)
+        : chalk.green(`${entry.rug_probability}%`))
   );
   console.log(
     chalk.gray('Smart money overlap: ') +

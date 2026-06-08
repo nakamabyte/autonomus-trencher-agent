@@ -712,29 +712,24 @@ export async function screenCandidates(candidates) {
 
   // Hard BUY from Tier 1
   if (tier1.decision === 'BUY' && tier1.confidence >= LLM_T1_CONFIDENCE_BUY) {
-    console.log(`[LLM-T1] BUY ${tier1.mint} confidence=${tier1.confidence}`);
     return tier1;
   }
 
   // Hard SKIP from Tier 1
   if (tier1.decision === 'SKIP' || tier1.confidence < LLM_T1_CONFIDENCE_PASS) {
-    console.log(`[LLM-T1] SKIP — ${tier1.reasoning}`);
     return { decision: 'SKIP', mint: null, confidence: 0.0, reasoning: tier1.reasoning };
   }
 
   // ── TIER 2 — Grok deep validation ─────────────────────────────────
-  console.log(`[LLM-T1] ESCALATE ${tier1.mint} → Grok (confidence=${tier1.confidence})`);
   const tier2 = await runTier2(candidates, tier1);
 
   // Log escalated candidate with T2 verdict (overwrites T1 ESCALATE in stream)
   _logAllCandidates(candidates, tier2, 'T2');
 
   if (tier2.decision === 'BUY' && tier2.confidence >= LLM_T2_CONFIDENCE_BUY) {
-    console.log(`[LLM-T2] BUY ${tier2.mint} confidence=${tier2.confidence} kol=${tier2.kol_signal}`);
     return tier2;
   }
 
-  console.log(`[LLM-T2] SKIP — ${tier2.reasoning}`);
   return { decision: 'SKIP', mint: null, confidence: 0.0, reasoning: tier2.reasoning };
 }
 
@@ -778,7 +773,9 @@ function _logAllCandidates(candidates, llmResult, tier) {
       // All non-picked candidates in this batch → SKIP
       verdict    = 'SKIP';
       confidence = 0;
-      reason     = `Not selected by ${tier} — batch winner: ${pickedMint ? pickedMint.slice(0, 8) + '...' : 'none'}`;
+      // If LLM returned a reason for skipping (especially if no winner was picked), use it!
+      const explicitReason = llmResult.reasoning && llmResult.decision === 'SKIP' ? llmResult.reasoning : null;
+      reason     = explicitReason ?? `Not selected by ${tier} — batch winner: ${pickedMint ? pickedMint.slice(0, 8) + '...' : 'none'}`;
     }
 
     // Build analysis object from available candidate fields
@@ -791,6 +788,7 @@ function _logAllCandidates(candidates, llmResult, tier) {
       market_cap_usd:      c.metrics?.mcap_usd            ?? c.mcap_usd,
       runner_signal:       llmResult.runner_signal        ?? null,
       kol_signal:          llmResult.kol_signal           ?? null,
+      source:              c.source                       ?? null,
     };
 
     logDecision(c, analysis, verdict, confidence, reason, tier);

@@ -341,18 +341,27 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
     return () => clearTimeout(timer);
   }, []);
 
-  return (
+  const profitPositions = positions.filter(p => p.pnl_percent >= 0);
+  const lossPositions = positions.filter(p => p.pnl_percent < 0);
+
+  const renderPanel = (
+    title: string,
+    panelPositions: typeof positions,
+    offset: number,
+    color: string,
+    emptyText: string
+  ) => (
     <div
       className="absolute top-4 z-20 pointer-events-auto flex flex-col"
-      style={{ right: `${rightOffset}px`, width: '240px', maxHeight: 'calc(100% - 32px)', background: '#111110', border: '1px solid rgba(255,255,255,.06)', borderRadius: '2px' }}
+      style={{ right: `${offset}px`, width: '240px', maxHeight: 'calc(100% - 32px)', background: '#111110', border: '1px solid rgba(255,255,255,.06)', borderRadius: '2px' }}
     >
       <div className="pv-sec flex flex-col flex-1 min-h-0" style={{ borderBottom: 'none' }}>
         <div className="pv-sh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div className="w-1.5 h-1.5 rounded-full bg-[#7C3AED]"></div>
-            HISTORY
+            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }}></div>
+            {title}
           </span>
-          <span style={{ color: 'rgba(255,255,255,.15)', fontFamily: 'var(--fm)' }}>{positions.length}</span>
+          <span style={{ color: 'rgba(255,255,255,.15)', fontFamily: 'var(--fm)' }}>{panelPositions.length}</span>
         </div>
 
         <div 
@@ -364,12 +373,12 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
             }
           }}
         >
-          {positions.length === 0 ? (
+          {panelPositions.length === 0 ? (
             <div className="pv-ai" style={{ justifyContent: 'center' }}>
-              <span className="pv-ast" style={{ opacity: 0.5 }}>[ NO HISTORY ]</span>
+              <span className="pv-ast" style={{ opacity: 0.5 }}>[ {emptyText} ]</span>
             </div>
           ) : (
-            positions.map((pos) => {
+            panelPositions.map((pos) => {
               const isProfit = pos.pnl_percent >= 0;
               const colorClass = isProfit ? '#4ADE80' : '#F87171';
               const sign = isProfit ? '+' : '';
@@ -464,8 +473,17 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
           )}
         </div>
       </div>
+    </div>
+  );
+
+  return (
+    <>
+      {/* PROFIT Panel (Left) */}
+      {renderPanel('PROFIT HISTORY', profitPositions, rightOffset + 240 + 16, '#4ADE80', 'NO WINNING TRADES')}
+      {/* LOSS Panel (Right) */}
+      {renderPanel('LOSS HISTORY', lossPositions, rightOffset, '#F87171', 'NO LOSING TRADES')}
 
       {mounted && selectedPos && <PnlModal pos={selectedPos} onClose={() => setSelectedPos(null)} />}
-    </div>
+    </>
   );
 }

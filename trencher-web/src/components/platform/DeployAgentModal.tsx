@@ -43,6 +43,7 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
   const [walletInput, setWalletInput] = useState('');
   const [tgGroups, setTgGroups] = useState<string[]>([]);
   const [tgGroupInput, setTgGroupInput] = useState('');
+  const [socialWeight, setSocialWeight] = useState<number | null>(null);
   const { publicKey, sendTransaction } = useWallet();
 
   const addWallets = (input: string) => {
@@ -87,6 +88,7 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
         setWalletInput('');
         setTgGroups([]);
         setTgGroupInput('');
+        setSocialWeight(null);
       }, 0);
       return () => clearTimeout(timer);
     }
@@ -96,6 +98,9 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
 
   // Calculate preview traits
   const previewTraits = { ...breedConfig.traits } as Record<string, number>;
+  if (socialWeight !== null) {
+    previewTraits.social_signal_weight = socialWeight;
+  }
 
   const handleDeploy = async () => {
     if (!name.trim()) return;
@@ -254,6 +259,7 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
                     disabled={!isAvailable}
                     onClick={() => {
                       setSelectedBreed(b.key);
+                      setSocialWeight(null);
                     }}
                     style={{
                       background: isSelected ? `${b.color}15` : '#0d0d12',
@@ -549,6 +555,35 @@ export function DeployAgentModal({ isOpen, onClose, onDeploy }: DeployAgentModal
                 Enter numeric group IDs (e.g. <code style={{color:'#00BBF9'}}>-100123456789</code>) or @usernames.
                 Your agent will monitor these groups and auto-trade calls that pass DNA filters.
                 Groups with &lt;35% win rate are auto-demoted after 20 trades.
+              </div>
+
+              {/* Social Weight Slider inside social_scout */}
+              <div style={{ marginTop: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '10px', color: '#00BBF9', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    Social Signal Weight
+                  </label>
+                  <span style={{ fontSize: '10px', color: '#00BBF9', fontFamily: "'JetBrains Mono', monospace" }}>
+                    {socialWeight ?? previewTraits.social_signal_weight ?? 50}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={socialWeight ?? previewTraits.social_signal_weight ?? 50}
+                  onChange={e => setSocialWeight(parseInt(e.target.value))}
+                  style={{
+                    width: '100%',
+                    accentColor: '#00BBF9',
+                    cursor: 'pointer',
+                    background: '#0d0d12',
+                  }}
+                />
+                <div style={{ fontSize: '9px', color: '#888', marginTop: '6px' }}>
+                  Weight &lt; 30 will HARD SKIP all TG group calls. Weight &gt; 80 leans heavily into them.
+                </div>
               </div>
             </div>
           )}

@@ -138,6 +138,11 @@ function DecisionRow({ d }: { d: ConsciousnessDecision }) {
         {d.kol_signal && (
           <span style={{ color: '#CE93D8', fontSize: '9px' }}>KOL:{d.kol_signal}</span>
         )}
+        {d.source && (
+          <span style={{ color: '#aaa', fontSize: '9px', background: 'rgba(255,255,255,0.05)', padding: '1px 4px', borderRadius: '2px' }}>
+            {d.source === 'tg_alpha' ? '✈️ TG' : '💊 PF'}
+          </span>
+        )}
         <span style={{ color: verdictColor, fontWeight: 700, marginLeft: 'auto' }}>
           {VERDICT_LABEL[d.verdict]}
         </span>
@@ -151,8 +156,8 @@ function DecisionRow({ d }: { d: ConsciousnessDecision }) {
           </span>
         </span>
         <span>
-          rug: <span style={{ color: d.rug_probability > 20 ? '#FF6B6B' : '#888' }}>
-            {d.rug_probability}%
+          rug: <span style={{ color: d.rug_probability === 'n/a' ? '#FFB347' : d.rug_probability > 20 ? '#FF6B6B' : '#888' }}>
+            {d.rug_probability}{d.rug_probability !== 'n/a' ? '%' : ''}
           </span>
         </span>
         {d.smart_money_overlap > 0 && (

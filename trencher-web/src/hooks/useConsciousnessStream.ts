@@ -12,7 +12,7 @@ export interface ConsciousnessDecision {
   wallets_analyzed: number;
   holder_count: number;
   bundle_wallets: number;
-  rug_probability: number;        // 0–100
+  rug_probability: number | 'n/a';
   smart_money_overlap: number;
   runner_signal: string | null;
   kol_signal: string | null;
@@ -22,6 +22,7 @@ export interface ConsciousnessDecision {
   strategy: string | null;
   agent_name?: string | null;
   entry_mcap: number | null;
+  source?: string | null;
 }
 
 interface UseConsciousnessStreamOptions {
