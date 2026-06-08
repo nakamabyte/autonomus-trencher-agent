@@ -880,17 +880,23 @@ export async function sendPosition(chatId, id, query = null) {
 }
 
 export async function sendHistory(chatId) {
-  const rows = db.prepare("SELECT * FROM dry_run_positions WHERE status = 'closed' ORDER BY closed_at_ms DESC LIMIT 10").all();
+  const rows = db.prepare("SELECT * FROM dry_run_trades WHERE side = 'sell' ORDER BY at_ms DESC LIMIT 10").all();
   if (!rows.length) return bot.sendMessage(chatId, 'No completed transaction history yet.');
   
   const text = rows.map(r => {
     const symbol = r.mint.slice(0, 8);
-    const pnl = Number(r.pnl_percent || 0).toFixed(2);
+    let pnlPercent = 0;
+    try {
+      const payload = JSON.parse(r.payload_json || '{}');
+      pnlPercent = payload.pnlPercent || payload.pnl_percent || 0;
+    } catch (e) {}
+    
+    const pnl = Number(pnlPercent).toFixed(2);
     const sign = pnl > 0 ? '🟢' : (pnl < 0 ? '🔴' : '⚪');
-    return `${sign} <b>${symbol}</b>: ${pnl > 0 ? '+' : ''}${pnl}% (${escapeHtml(r.exit_reason || 'closed')})`;
+    return `${sign} <b>${symbol}</b>: ${pnl > 0 ? '+' : ''}${pnl}% (${escapeHtml(r.reason || 'closed')})`;
   }).join('\n');
   
-  await bot.sendMessage(chatId, `📜 <b>Last 10 Transaction History:</b>\n\n${text}`, { parse_mode: 'HTML' });
+  await bot.sendMessage(chatId, `📜 <b>Last 10 Sell History:</b>\n\n${text}`, { parse_mode: 'HTML' });
 }
 
 export async function closePosition(chatId, id, reason) {

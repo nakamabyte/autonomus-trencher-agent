@@ -350,7 +350,7 @@ async function processMessage({ text, groupId, groupName, senderId, senderUserna
           const { now } = await import('../utils.js');
           const { isOnCooldown } = await import('../utils/mintCooldown.js');
           const { db } = await import('../db/connection.js');
-          const { sendTelegram } = await import('./telegram.js');
+          const { sendTelegram } = await import('../telegram/send.js');
 
           if (isOnCooldown(ca)) {
             console.log(`[TG-FastBuy] ${ca.slice(0, 8)}... is on cooldown, skip`);

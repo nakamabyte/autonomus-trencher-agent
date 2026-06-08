@@ -72,7 +72,7 @@ export const LLM_T1_CONFIDENCE_BUY = Number(process.env.LLM_T1_CONFIDENCE_BUY ||
 
 export const LLM_T2_BASE_URL = process.env.LLM_T2_BASE_URL || 'https://api.x.ai/v1';
 export const LLM_T2_API_KEY = process.env.LLM_T2_API_KEY || process.env.GROK_API_KEY || '';
-export const LLM_T2_MODEL = process.env.LLM_T2_MODEL || 'grok-4-0309';
+export const LLM_T2_MODEL = process.env.LLM_T2_MODEL || 'grok-4.3';
 export const LLM_T2_CONFIDENCE_BUY = Number(process.env.LLM_T2_CONFIDENCE_BUY || 0.75);
 
 export const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
