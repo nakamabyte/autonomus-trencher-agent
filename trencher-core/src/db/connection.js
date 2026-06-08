@@ -275,14 +275,7 @@ export function initDb() {
       outcome_status TEXT
     );
     
-    -- Add columns if they don't exist (for existing databases)
-    try {
-      db.prepare("ALTER TABLE tg_calls ADD COLUMN mcap_at_call REAL").run();
-      db.prepare("ALTER TABLE tg_calls ADD COLUMN resolved_at_ms INTEGER").run();
-      db.prepare("ALTER TABLE tg_calls ADD COLUMN outcome_status TEXT").run();
-    } catch(e) {
-      // Columns already exist
-    }
+
 
     CREATE TABLE IF NOT EXISTS tg_caller_trust (
       caller_handle TEXT PRIMARY KEY,
@@ -355,6 +348,9 @@ export function initDb() {
     );
     CREATE INDEX IF NOT EXISTS idx_agent_dna_breed ON agent_dna(breed);
   `);
+  ensureColumn('tg_calls', 'mcap_at_call', 'REAL');
+  ensureColumn('tg_calls', 'resolved_at_ms', 'INTEGER');
+  ensureColumn('tg_calls', 'outcome_status', 'TEXT');
   ensureColumn('agent_dna', 'whale_wallets', 'TEXT');
   ensureColumn('candidates', 'signal_key', 'TEXT');
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_candidates_signal_key ON candidates(signal_key) WHERE signal_key IS NOT NULL');
@@ -727,10 +723,14 @@ export function getDailyStats(dateStr = null) {
 
 // 2.5 Signal Events Auto-cleanup
 function cleanupOldSignals() {
-  const cutoff = Date.now() - (7 * 24 * 60 * 60 * 1000);
-  const result = db.prepare('DELETE FROM signal_events WHERE at_ms < ?').run(cutoff);
-  if (result.changes > 0) {
-    console.log(`[db] cleaned ${result.changes} signal_events older than 7 days`);
+  try {
+    const cutoff = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    const result = db.prepare('DELETE FROM signal_events WHERE at_ms < ?').run(cutoff);
+    if (result.changes > 0) {
+      console.log(`[db] cleaned ${result.changes} signal_events older than 7 days`);
+    }
+  } catch(e) {
+    // Ignore error if table doesn't exist yet
   }
 }
 
