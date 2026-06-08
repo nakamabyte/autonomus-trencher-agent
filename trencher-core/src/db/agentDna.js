@@ -191,12 +191,24 @@ export function createDna({
 
 /** Get a single DNA record by ID. */
 export function getDna(id) {
-  return stmtGetById.get(id) || null;
+  const agent = stmtGetById.get(id) || null;
+  if (agent && agent.breed === 'social_scout') {
+    const groups = (process.env.TG_ALPHA_GROUPS || '').split(',').map(g => g.trim()).filter(Boolean);
+    agent.dna_config = JSON.stringify({ tgGroups: groups });
+  }
+  return agent;
 }
 
 /** List all agent DNA records. */
 export function listBreeds() {
-  return stmtListBreeds.all();
+  const agents = stmtListBreeds.all();
+  for (const agent of agents) {
+    if (agent.breed === 'social_scout') {
+      const groups = (process.env.TG_ALPHA_GROUPS || '').split(',').map(g => g.trim()).filter(Boolean);
+      agent.dna_config = JSON.stringify({ tgGroups: groups });
+    }
+  }
+  return agents;
 }
 
 /**
