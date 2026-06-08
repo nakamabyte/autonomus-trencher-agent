@@ -22,10 +22,7 @@
 import { parseTokenCall } from './tokenParser.js';
 import { db } from '../db/connection.js';
 import { sendTelegram } from '../telegram/send.js';
-import { parseTokenCall } from './tokenParser.js';
-import { db } from '../db/connection.js';
-import { sendTelegram } from '../telegram/send.js';
-import { escapeHtml, truncate } from '../format.js';
+import { escapeHtml } from '../format.js';
 
 // --- NEW MEMORY STRUCTURES FOR CALLER ATTRIBUTION ---
 const humanCallsCache = new Map(); // key: groupId:ca, value: { callerId, callerHandle, timestamp, timeoutId }
