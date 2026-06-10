@@ -1,6 +1,7 @@
 import { escapeHtml, fmtPct, fmtSol, fmtUsd, short } from '../format.js';
 import { numSetting, boolSetting, setting, activeStrategy, allStrategies } from '../db/settings.js';
 import { openPositionCount, tradingMode, allPositions } from '../db/positions.js';
+import { db } from '../db/connection.js';
 import { savedWallets } from '../enrichment/wallets.js';
 import { gmgnStatusText } from '../enrichment/gmgn.js';
 import { formatPosition } from './format.js';
@@ -453,10 +454,24 @@ async function editMenuMessage(query, text, extra = {}) {
 }
 
 export function burnStatsText() {
+  let x402Burn = 0;
+  let totalUsdc = 0;
+  try {
+    const revenueRows = db.prepare('SELECT amount_usdc FROM x402_revenue').all();
+    totalUsdc = revenueRows.reduce((sum, r) => sum + r.amount_usdc, 0);
+    x402Burn = totalUsdc * 0.25; // 25% of x402 goes to burn
+  } catch (e) {
+    console.error('[telegram] Failed to read x402_revenue for /burn command', e);
+  }
+
   return `🔥 <b>$AUTR Burn Stats</b>
     
 The system automatically collects 25% of the fees from every agent deployment to perform a <b>Buyback & Burn</b> of the $AUTR token via Jupiter. 
 The burn cycle runs automatically every 6 hours.
+
+<b>🔌 x402 API Revenue Contribution:</b>
+Total API Revenue: ${fmtUsd(totalUsdc)} USDC
+Burn Allocation (25%): ${fmtUsd(x402Burn)} USDC
 
 Monitor live metrics via the Trenchyard Dashboard:
 <a href="https://autonomustrencheragent.tech/burn">View Burn History</a>`;

@@ -144,8 +144,19 @@ export function startWsServer(port = 4001) {
       try {
         const { db } = await import('../db/connection.js');
         const history = db.prepare('SELECT * FROM burn_log ORDER BY created_at_ms DESC LIMIT 100').all();
+        
+        let totalUsdc = 0;
+        try {
+          const rev = db.prepare('SELECT amount_usdc FROM x402_revenue').all();
+          totalUsdc = rev.reduce((sum, r) => sum + r.amount_usdc, 0);
+        } catch (e) {}
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ history }));
+        res.end(JSON.stringify({ 
+          history, 
+          x402Revenue: totalUsdc, 
+          x402Burn: totalUsdc * 0.25 
+        }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));
@@ -221,7 +232,7 @@ export function startWsServer(port = 4001) {
 
         const { db } = await import('../db/connection.js');
         const closedPositions = db.prepare(`
-          SELECT p.id, p.mint, p.symbol, p.pnl_percent, p.pnl_sol, p.execution_mode as mode, p.opened_at_ms, p.closed_at_ms, p.entry_signature, p.exit_signature, p.size_sol, p.exit_reason, p.entry_mcap, p.strategy_id as strategy, a.name as agent_name 
+          SELECT p.id, p.mint, p.symbol, p.pnl_percent, p.pnl_sol, p.execution_mode as mode, p.opened_at_ms, p.closed_at_ms, p.entry_signature, p.exit_signature, p.size_sol, p.exit_reason, p.entry_mcap, COALESCE(a.breed, p.strategy_id) as strategy, a.name as agent_name 
           FROM dry_run_positions p 
           LEFT JOIN agent_dna a ON p.agent_dna_id = a.id 
           WHERE p.status = 'closed' ${typeFilter}

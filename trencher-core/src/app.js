@@ -67,6 +67,10 @@ export async function startTrencherAgent() {
   startWsServer(process.env.PORT || 4001);
   await import('./server/stateManager.js');
 
+  // Start x402 Signal Economy Server (Express)
+  const { startX402Server } = await import('./server/x402Server.js');
+  startX402Server();
+
   if (SIGNAL_SERVER_URL) {
     // ── Server mode: fetch signals from signal server ──────────────────────
     const { fetchServerSignals, setCandidateHandler, setDegenHandler } = await import('./signals/serverClient.js');

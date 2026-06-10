@@ -68,14 +68,14 @@ setInterval(async () => {
     const profitQuery = db.prepare("SELECT COUNT(*) as count FROM dry_run_positions WHERE status = 'closed' AND pnl_percent >= 0").get();
     const lossQuery = db.prepare("SELECT COUNT(*) as count FROM dry_run_positions WHERE status = 'closed' AND pnl_percent < 0").get();
     const activePositions = db.prepare(`
-      SELECT p.id, p.mint, p.symbol, p.pnl_percent, p.pnl_sol, p.execution_mode, p.opened_at_ms, p.entry_signature, p.strategy_id as strategy, p.size_sol, a.name as agent_name 
+      SELECT p.id, p.mint, p.symbol, p.pnl_percent, p.pnl_sol, p.execution_mode, p.opened_at_ms, p.entry_signature, COALESCE(a.breed, p.strategy_id) as strategy, p.size_sol, a.name as agent_name 
       FROM dry_run_positions p 
       LEFT JOIN agent_dna a ON p.agent_dna_id = a.id 
       WHERE p.status = 'open' 
       ORDER BY p.id DESC
     `).all();
     const closedPositions = db.prepare(`
-      SELECT p.id, p.mint, p.symbol, p.pnl_percent, p.pnl_sol, p.execution_mode, p.opened_at_ms, p.closed_at_ms, p.entry_signature, p.exit_signature, p.size_sol, p.exit_reason, p.entry_mcap, p.strategy_id as strategy, a.name as agent_name 
+      SELECT p.id, p.mint, p.symbol, p.pnl_percent, p.pnl_sol, p.execution_mode, p.opened_at_ms, p.closed_at_ms, p.entry_signature, p.exit_signature, p.size_sol, p.exit_reason, p.entry_mcap, COALESCE(a.breed, p.strategy_id) as strategy, a.name as agent_name 
       FROM dry_run_positions p 
       LEFT JOIN agent_dna a ON p.agent_dna_id = a.id 
       WHERE p.status = 'closed' 

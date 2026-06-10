@@ -845,6 +845,63 @@ To deploy an agent, you need to pay SOL via the Trenchyard platform.
       { parse_mode: 'HTML' }
     );
   }
+
+  // ── /lexicon ────────────────────────────────────
+  if (text.startsWith('/lexicon')) {
+    const parts = text.trim().split(/\s+/);
+    const sub = parts[1]; // pending | approve
+    
+    if (sub === 'pending') {
+      const rows = db.prepare('SELECT * FROM lexicon_shadow ORDER BY first_seen_ms DESC').all();
+      if (!rows.length) {
+        return bot.sendMessage(chatId, '✅ No pending slang in lexicon shadow.', { parse_mode: 'HTML' });
+      }
+      let msg = `📝 <b>Pending Lexicon Approvals (${rows.length})</b>\n\n`;
+      for (const r of rows) {
+        msg += `<b>ID:</b> <code>${r.id}</code>\n`;
+        msg += `Phrase: "<i>${escapeHtml(r.phrase)}</i>"\n`;
+        msg += `Category: <b>${r.category}</b>\n`;
+        msg += `Approve with: <code>/lexicon approve ${r.id}</code>\n\n`;
+      }
+      return bot.sendMessage(chatId, msg, { parse_mode: 'HTML' });
+    }
+
+    if (sub === 'approve') {
+      const id = parts[2];
+      if (!id) return bot.sendMessage(chatId, 'Usage: /lexicon approve <id>');
+      
+      const row = db.prepare('SELECT * FROM lexicon_shadow WHERE id = ?').get(id);
+      if (!row) return bot.sendMessage(chatId, `❌ No pending lexicon found with ID ${id}.`);
+      
+      try {
+         const fs = await import('fs');
+         const path = await import('path');
+         const lexPath = path.resolve(process.cwd(), 'lexicon.json');
+         const lex = JSON.parse(fs.readFileSync(lexPath, 'utf8'));
+         
+         if (!lex[row.category].includes(row.phrase)) {
+           lex[row.category].push(row.phrase);
+           fs.writeFileSync(lexPath, JSON.stringify(lex, null, 2), 'utf8');
+           
+           db.prepare('DELETE FROM lexicon_shadow WHERE id = ?').run(id);
+           
+           return bot.sendMessage(chatId, `✅ <b>Phrase Approved!</b>\nAdded "<i>${escapeHtml(row.phrase)}</i>" to <b>${row.category}</b>.`, { parse_mode: 'HTML' });
+         } else {
+           db.prepare('DELETE FROM lexicon_shadow WHERE id = ?').run(id);
+           return bot.sendMessage(chatId, `⚠️ Phrase already in lexicon.json. Removed from pending queue.`);
+         }
+      } catch (e) {
+         return bot.sendMessage(chatId, `❌ Error approving phrase: ${e.message}`);
+      }
+    }
+
+    return bot.sendMessage(chatId,
+      '📖 <b>Lexicon Manager</b>\n\n' +
+      '<b>/lexicon pending</b> — View LLM-proposed slang\n' +
+      '<b>/lexicon approve &lt;id&gt;</b> — Approve slang and add to lexicon.json',
+      { parse_mode: 'HTML' }
+    );
+  }
 }
 
 export async function sendCandidate(chatId, id) {
@@ -988,6 +1045,7 @@ export function setupTelegram() {
     { command: 'exportdb', description: 'Download sqlite database' },
     { command: 'twitter', description: 'Enable/disable auto Twitter post' },
     { command: 'scout', description: 'Manage Social Scout TG alpha groups (list/add/remove/learn/history)' },
+    { command: 'lexicon', description: 'Manage slang lexicon (pending/approve)' },
   ]).catch(err => console.log(`[telegram] commands ${err.message}`));
 
   bot.on('callback_query', query => handleCallback(query).catch(err => console.log(`[callback] ${err.message}`)));

@@ -85,7 +85,9 @@ function parseSentiment(messages) {
   let coordination = false;
   let clipCount = 0;
 
-  for (const rawMsg of messages) {
+  for (const rawMsgObj of messages) {
+    const rawMsg = typeof rawMsgObj === 'string' ? rawMsgObj : rawMsgObj.text;
+    const sender = typeof rawMsgObj === 'string' ? 'Unknown' : rawMsgObj.senderUsername;
     const msg = rawMsg.toLowerCase();
     const tokens = msg.split(/\s+/);
     
@@ -113,7 +115,7 @@ function parseSentiment(messages) {
           if (category === 'sell_event') clipCount++;
           if (category === 'coordination') coordination = true;
 
-          hits.push({ phrase, category, msg: rawMsg.slice(0, 50) });
+          hits.push({ phrase, category, msg: rawMsg.slice(0, 50), sender });
         }
       }
     };
@@ -127,7 +129,7 @@ function parseSentiment(messages) {
   let readStr = [];
   if (hits.some(h => h.category === 'bullish')) readStr.push('Bullish sentiment noted.');
   if (hits.some(h => h.category === 'bearish')) readStr.push('Warning/Bearish chatter active.');
-  if (clipCount > 1) readStr.push('Distribution in progress (multiple clips).');
+  if (clipCount > 1) readStr.push(`${clipCount} clip mentions recently — distribution in progress, no entry.`);
   else if (clipCount === 1) readStr.push('Minor sell-event noted.');
   if (coordination) readStr.push('Coordinated push forming. Short-horizon entry only.');
 
@@ -251,6 +253,31 @@ function isGroupDemoted(groupId) {
   }
 }
 
+export function recordCallerTradeResult(callerHandle, isWin) {
+  try {
+    const row = db.prepare('SELECT tier, win_count, loss_count FROM tg_caller_trust WHERE caller_handle = ?').get(callerHandle);
+    if (!row) {
+      db.prepare('INSERT INTO tg_caller_trust (caller_handle, tier, win_count, loss_count, trust_score, updated_at_ms) VALUES (?, ?, ?, ?, ?, ?)').run(callerHandle, 'B', isWin ? 1 : 0, isWin ? 0 : 1, 0.5, Date.now());
+      return;
+    }
+
+    const newWins = row.win_count + (isWin ? 1 : 0);
+    const newLosses = row.loss_count + (isWin ? 0 : 1);
+    const total = newWins + newLosses;
+    const winrate = newWins / total;
+    const seedVal = row.tier === 'A' ? 1.0 : (row.tier === 'C' ? 0.0 : 0.5);
+    const newTrustScore = (0.5 * seedVal) + (0.5 * winrate);
+
+    db.prepare(`
+      UPDATE tg_caller_trust SET
+        win_count = ?, loss_count = ?, trust_score = ?, updated_at_ms = ?
+      WHERE caller_handle = ?
+    `).run(newWins, newLosses, newTrustScore, Date.now(), callerHandle);
+  } catch (e) {
+    console.error('[TG] recordCallerTradeResult error:', e.message);
+  }
+}
+
 /**
  * Update win/loss and auto-demote group if win_rate drops below 35%.
  * Called externally when a Social Scout position closes.
@@ -289,6 +316,16 @@ export function recordGroupTradeResult(groupId, isWin) {
         "UPDATE tg_group_performance SET trust_level = ?, updated_at_ms = ? WHERE group_id = ?"
       ).run(`cooldown:${cooldownUntil}`, Date.now(), groupId);
       console.warn(`[TG] Group ${groupId} auto-demoted (7-day cooldown) (win_rate ${(row.win_rate * 100).toFixed(0)}% < 35%)`);
+      
+      // Demotion audit log
+      try {
+         const recentTrades = db.prepare(`SELECT * FROM dry_run_positions WHERE JSON_EXTRACT(snapshot_json, "$.signal.sourceMeta.groupId") = ? ORDER BY closed_at_ms DESC LIMIT 20`).all(groupId);
+         db.prepare('INSERT INTO tg_group_demotion_log (group_id, demoted_at_ms, reason, trades_json) VALUES (?, ?, ?, ?)').run(
+           groupId, Date.now(), `Auto-demoted: win_rate ${(row.win_rate * 100).toFixed(0)}% < 35% over ${row.traded} trades`, JSON.stringify(recentTrades)
+         );
+      } catch (logErr) {
+         console.error('[TG] Demotion log error:', logErr.message);
+      }
     }
   } catch (e) {
     console.error('[TG] recordGroupTradeResult error:', e.message);
@@ -370,13 +407,17 @@ function formatScoutCallUpdate({ ca, groupId, groupName, senderId, text, pipelin
   const runner     = pipelineResult?.runner_signal ? `\n🎯 Runner: <b>${pipelineResult.runner_signal}</b>${pipelineResult.runner_account ? ` • ${pipelineResult.runner_account}` : ''}` : '';
   const kolSignal  = pipelineResult?.kol_signal  ? `\n👁 KOL: <b>${pipelineResult.kol_signal}</b>` : '';
 
+  const callerTier = pipelineResult?.sourceMeta?.callerMeta?.trustTier || 'B';
+  const callerScore = pipelineResult?.sourceMeta?.callerMeta?.trustScore;
+  const callerTrust = callerScore !== undefined ? `${(callerScore * 100).toFixed(0)}% trust` : '50% trust';
+
   const decEmoji = decision === 'BUY' ? '🟢 BUY' : decision === 'ESCALATE' ? '🟡 ESCALATE' : '🔴 SKIP';
 
   const lines = [
     `📡 <b>TG Alpha Call — Analysis Complete</b>`,
     ``,
     `👥 <b>Group:</b> ${escapeHtml(gName)}`,
-    `👤 <b>Caller ID:</b> <code>${escapeHtml(String(senderId))}</code>`,
+    `👤 <b>Caller ID:</b> <code>${escapeHtml(String(senderId))}</code> (Tier ${callerTier}, ${callerTrust})`,
     `🪙 <b>Token${symbol ? ` ${escapeHtml(symbol)}` : ticker}:</b>`,
     `   <a href="${gmgnUrl}"><code>${ca}</code></a>`,
     ``,
@@ -900,7 +941,7 @@ export async function startTgListener() {
       if (chatId && msg.message) {
          if (!groupMessageBuffer.has(chatId)) groupMessageBuffer.set(chatId, []);
          const buf = groupMessageBuffer.get(chatId);
-         buf.push(msg.message);
+         buf.push({ text: msg.message, senderUsername });
          if (buf.length > 50) buf.shift(); // Keep last 50
       }
       

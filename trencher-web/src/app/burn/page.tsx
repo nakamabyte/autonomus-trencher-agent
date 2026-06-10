@@ -4,6 +4,7 @@ import React from 'react';
 
 export default function BurnHistoryPage() {
   const [history, setHistory] = React.useState<any[]>([]);
+  const [x402Stats, setX402Stats] = React.useState<{ revenue: number, burn: number } | null>(null);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -11,6 +12,9 @@ export default function BurnHistoryPage() {
       .then(res => res.json())
       .then(data => {
         if (data.history) setHistory(data.history);
+        if (data.x402Revenue !== undefined) {
+          setX402Stats({ revenue: data.x402Revenue, burn: data.x402Burn });
+        }
       })
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
@@ -31,6 +35,18 @@ export default function BurnHistoryPage() {
       <p style={{ color: '#888', marginBottom: '24px' }}>
         A transparent log of all $AUTR buyback and burn events executed by the protocol.
       </p>
+
+      {x402Stats && (
+        <div style={{ background: '#111118', border: '1px solid #1a1a28', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}>
+          <h3 style={{ margin: '0 0 8px 0', color: '#fff', fontSize: '16px' }}>🔌 x402 API Revenue Contribution</h3>
+          <p style={{ margin: '4px 0', color: '#888' }}>
+            Total API Revenue: <span style={{ color: '#00BBF9' }}>${x402Stats.revenue.toFixed(2)} USDC</span>
+          </p>
+          <p style={{ margin: '4px 0', color: '#888' }}>
+            Burn Allocation (25%): <span style={{ color: '#FF6B6B' }}>${x402Stats.burn.toFixed(2)} USDC</span>
+          </p>
+        </div>
+      )}
 
       <div style={{
         background: '#111118', border: '1px solid #1a1a28', borderRadius: '8px',

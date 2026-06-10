@@ -287,6 +287,51 @@ export function initDb() {
       updated_at_ms INTEGER
     );
 
+    -- Shadow table for automated lexicon discovery
+    CREATE TABLE IF NOT EXISTS lexicon_shadow (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      phrase TEXT NOT NULL UNIQUE,
+      category TEXT NOT NULL,
+      source_group TEXT,
+      first_seen_ms INTEGER NOT NULL,
+      proposed_by TEXT,
+      status TEXT DEFAULT 'shadow'
+    );
+
+    -- x402 tables
+    CREATE TABLE IF NOT EXISTS x402_payers (
+      pubkey TEXT PRIMARY KEY,
+      free_calls_today INTEGER DEFAULT 0,
+      last_free_call_ms INTEGER DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS x402_revenue (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      payer_pubkey TEXT NOT NULL,
+      endpoint TEXT NOT NULL,
+      amount_usdc REAL NOT NULL,
+      timestamp_ms INTEGER NOT NULL,
+      invoice TEXT,
+      signature TEXT,
+      split_processed INTEGER DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS paysh_spend_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      provider TEXT NOT NULL,
+      amount_usdc REAL NOT NULL,
+      timestamp_ms INTEGER NOT NULL,
+      reason TEXT,
+      signature TEXT
+    );
+
+    -- Demotion audit log for tracking causal trades
+    CREATE TABLE IF NOT EXISTS tg_group_demotion_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      group_id TEXT NOT NULL,
+      demoted_at_ms INTEGER NOT NULL,
+      reason TEXT,
+      trades_json TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_alerts_status ON price_alerts(status, expires_at_ms);
     CREATE INDEX IF NOT EXISTS idx_candidates_mint ON candidates(mint);
     CREATE INDEX IF NOT EXISTS idx_positions_status ON dry_run_positions(status);
@@ -709,13 +754,14 @@ export function getDailyStats(dateStr = null) {
   `).get(start, end)
 
   const byStrategy = db.prepare(`
-    SELECT strategy_id as strategy,
-      SUM(CASE WHEN pnl_percent > 0 THEN 1 ELSE 0 END) as wins,
-      SUM(CASE WHEN pnl_percent <= 0 THEN 1 ELSE 0 END) as losses
+    SELECT COALESCE((SELECT breed FROM agent_dna WHERE id = agent_dna_id), strategy_id) as strategy,
+           COUNT(*) as total_trades,
+           SUM(CASE WHEN pnl_percent > 0 THEN 1 ELSE 0 END) as wins,
+           SUM(CASE WHEN pnl_percent <= 0 THEN 1 ELSE 0 END) as losses
     FROM dry_run_positions
     WHERE status = 'closed'
     AND closed_at_ms >= ? AND closed_at_ms < ?
-    GROUP BY strategy_id
+    GROUP BY COALESCE((SELECT breed FROM agent_dna WHERE id = agent_dna_id), strategy_id)
   `).all(start, end)
 
   return { ...main, by_strategy: byStrategy }

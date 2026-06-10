@@ -89,23 +89,31 @@ export async function evaluateSignalWithDna(signal, dna) {
   }
 
   if (hasTgAlpha) {
-    // ── 3.5 Caller Reputation (Trust Tier) ──────────────────────────────────────
-    const callerTrustTier = signal.sourceMeta?.callerMeta?.trustTier || 'B';
+    // ── 3.5 Caller Reputation (Trust Tier & Score) ──────────────────────────
+    const callerMeta = signal.sourceMeta?.callerMeta || {};
+    const callerTrustTier = callerMeta.trustTier || 'B';
+    const callerScore = callerMeta.trustScore !== undefined ? callerMeta.trustScore : 0.5;
     
     if (callerTrustTier === 'F') {
       return { verdict: 'SKIP', confidence: signal.llm_confidence || 0, reason: `DNA skip — caller is Tier F (untrusted)` };
     }
 
-    // Human-curated TG alpha: base social weight boost
-    let boost = socialWeight * 0.10;
+    // Trust multiplier logic: scale the boost by the reputation score (0 to 1)
+    // Tier A / high winrate users get a larger boost (up to 0.20 total base)
+    // Tier C / low winrate users get a negative boost (penalty)
+    let baseBoost = socialWeight * 0.15; // base maximum potential boost from group call
     
-    // Adjust boost based on reputation
-    if (callerTrustTier === 'A') {
-      boost += 0.10; // Extra boost for Tier A
-    } else if (callerTrustTier === 'C') {
-      boost -= 0.15; // Penalty for Tier C
+    // Map trustScore (0..1) to a multiplier (-1.0 to +1.0)
+    // 0.5 is neutral (multiplier 0) -> gives 0.075 boost
+    // 1.0 is max (multiplier 1.0) -> gives 0.15 boost
+    // 0.0 is min (multiplier -1.0) -> gives -0.15 penalty
+    const multiplier = (callerScore - 0.5) * 2;
+    
+    let boost = baseBoost * (0.5 + 0.5 * multiplier);
+    if (callerScore < 0.3) {
+       boost = -0.10; // Explicit penalty for poor track record
     }
-    
+
     adjustedConfidence += boost;
   } else if (hasKol) {
     // Specific KOL handle detected (e.g. "@Ga__ke")
@@ -153,27 +161,56 @@ export async function evaluateSignalWithDna(signal, dna) {
     adjustedConfidence += (dna.runner_weight / 100) * 0.10;
   }
 
-  // ── 7. smart money / wallet intelligence ──────────────────────────────────
-  const smartMoneyWeight = (dna.smart_money_weight || dna.wallet_intelligence || 50) / 100;
-  if (signal.smart_money_overlap > 0) {
-    adjustedConfidence += smartMoneyWeight * Math.min(signal.smart_money_overlap, 3) * 0.03;
-  }
-
-  // ── 8. exit_discipline → raises per-agent min confidence floor ────────────
+  // ── 7. exit_discipline → raises per-agent min confidence floor ────────────
   // Agent with exit_discipline=90 (reaper, social_scout) requires >= 0.78 confidence.
   // Agent with exit_discipline=25 (degen) only requires >= 0.70.
   const disciplineFloor = 0.68 + ((dna.exit_discipline || 50) / 100) * 0.12;
   const llmFloor        = (dna.llm_min_confidence || 50) / 100;
   const minConfidence   = Math.max(llmFloor, disciplineFloor);
 
+  // ── 8. Pay.sh: Nansen Enrichment on Uncertain Band ────────────────────────
+  // If confidence is slightly below the threshold (e.g., 0 to 0.10 below), we query Pay.sh
+  let enrichmentLog = "";
+  if (adjustedConfidence >= minConfidence - 0.10 && adjustedConfidence < minConfidence) {
+    try {
+      const { fetchWithPaySh } = await import('../payments/paysh-client.js');
+      const url = `https://api.pay.sh/nansen/v1/token/${signal.mint || 'unknown'}`;
+      
+      const res = await fetchWithPaySh(url, {}, 0.10, "nansen");
+      
+      // Mocked Nansen response
+      signal.smart_money_overlap = (signal.smart_money_overlap || 0) + 1;
+      enrichmentLog = ` | enrichment cost: $0.10 via pay.sh/nansen`;
+    } catch (e) {
+      console.error("[evaluate] Pay.sh Nansen enrichment failed:", e.message);
+    }
+  }
+
+  // ── 9. smart money / wallet intelligence ──────────────────────────────────
+  const smartMoneyWeight = (dna.smart_money_weight || dna.wallet_intelligence || 50) / 100;
+  if (signal.smart_money_overlap > 0) {
+    adjustedConfidence += smartMoneyWeight * Math.min(signal.smart_money_overlap, 3) * 0.03;
+  }
+
   // Clamp to [0, 0.97]
   adjustedConfidence = Math.max(0, Math.min(0.97, adjustedConfidence));
 
   const verdict = adjustedConfidence >= minConfidence ? 'BUY' : 'SKIP';
-  const reason  = verdict === 'BUY'
-    ? `DNA passed — adjusted confidence ${adjustedConfidence.toFixed(3)} >= floor ${minConfidence.toFixed(3)}`
-    : `DNA skip — confidence ${adjustedConfidence.toFixed(3)} < floor ${minConfidence.toFixed(3)}`;
+  
+  // Format the reason for logging
+  const reasons = [];
+  if (hasKol) reasons.push(`KOL mentioned`);
+  if (callerScore) reasons.push(`caller score ${callerScore.toFixed(2)}`);
+  if (priceDelta5m > 0.05) reasons.push(`5m momentum +${(priceDelta5m * 100).toFixed(0)}%`);
+  if (signal.smart_money_overlap > 0) reasons.push(`smart money overlap ${signal.smart_money_overlap}`);
+  if (dna.runner_weight && signal.runner_signal) reasons.push(`runner signal detected`);
+  
+  let finalReason = reasons.length > 0 ? reasons.join(', ') : 'Base llm confidence';
+  finalReason += enrichmentLog;
 
-  return { verdict, confidence: adjustedConfidence, reason };
+  return {
+    verdict,
+    confidence: adjustedConfidence,
+    reason: finalReason
+  };
 }
-

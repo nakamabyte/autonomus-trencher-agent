@@ -71,7 +71,7 @@ export async function sendBatch(chatId, batchId) {
 
 export async function sendPositionOpen(positionId) {
   const position = db.prepare(`
-    SELECT p.*, a.name as agent_name 
+    SELECT p.*, a.name as agent_name, a.breed as agent_breed
     FROM dry_run_positions p 
     LEFT JOIN agent_dna a ON p.agent_dna_id = a.id 
     WHERE p.id = ?
@@ -92,9 +92,10 @@ export async function sendPositionOpen(positionId) {
 export async function sendPositionExit(position) {
   let posObj = { ...position, status: 'closed' };
   if (!posObj.agent_name && posObj.agent_dna_id) {
-    const agent = db.prepare('SELECT name FROM agent_dna WHERE id = ?').get(posObj.agent_dna_id);
+    const agent = db.prepare('SELECT name, breed as agent_breed FROM agent_dna WHERE id = ?').get(posObj.agent_dna_id);
     if (agent) {
       posObj.agent_name = agent.name;
+      posObj.agent_breed = agent.agent_breed;
     }
   }
   await notifyClosePosition(posObj);

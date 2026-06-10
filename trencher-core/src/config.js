@@ -101,6 +101,23 @@ export const JSON_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
 };
 
+// x402 Signal Economy Configurations
+export const X402_PORT = process.env.X402_PORT || 4002;
+export const X402_TREASURY_KEY = process.env.X402_TREASURY_KEY || ''; // Revenue wallet
+export const X402_PRICES_USDC = {
+  'risk-check': 0.05,
+  'due-diligence': 0.25,
+  'caller-trust': 0.10,
+  'sentiment-read': 0.05,
+  'market-regime': 0.02,
+};
+export const X402_FREE_CALLS_PER_DAY = Number(process.env.X402_FREE_CALLS_PER_DAY || 3);
+
+// Pay.sh configurations
+export const PAYSH_SPEND_WALLET_KEY = process.env.PAYSH_SPEND_WALLET_KEY || '';
+export const API_DAILY_SPEND_CAP_USDC = Number(process.env.API_DAILY_SPEND_CAP_USDC || 5.0);
+export const API_MAX_PER_CALL_USDC = Number(process.env.API_MAX_PER_CALL_USDC || 0.50);
+
 export function validateConfig() {
   if (!TELEGRAM_BOT_TOKEN) throw new Error('TELEGRAM_BOT_TOKEN is required.');
   if (!TELEGRAM_CHAT_ID) throw new Error('TELEGRAM_CHAT_ID is required.');

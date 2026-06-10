@@ -49,7 +49,7 @@ function formatStrategy(strategy) {
 // ─── TELEGRAM: OPEN POSITION ───────────────────────────────────────
 export function formatOpenPosition(position, decision = {}) {
   const mode = position.execution_mode || position.mode || 'live';
-  const strategy = position.strategy_id || position.strategy || 'sniper';
+  const strategy = position.agent_breed || position.strategy_id || position.strategy || 'sniper';
   const isBase = strategy === 'base_sniper' || (position.snapshot_json && JSON.parse(position.snapshot_json).candidate?.chain === 'base');
 
   // Detect Social Scout / TG Alpha source
@@ -114,7 +114,7 @@ TP: ${position.tp_percent?.toFixed(1) || '0.0'}% · SL: ${position.sl_percent?.t
 // ─── TELEGRAM: CLOSE POSITION ─────────────────────────────────────
 export function formatClosePosition(position) {
   const mode = position.execution_mode || position.mode || 'live';
-  const strategy = position.strategy_id || position.strategy || 'sniper';
+  const strategy = position.agent_breed || position.strategy_id || position.strategy || 'sniper';
   const isBase = strategy === 'base_sniper' || (position.snapshot_json && JSON.parse(position.snapshot_json).candidate?.chain === 'base');
 
   // Detect Social Scout / TG Alpha source

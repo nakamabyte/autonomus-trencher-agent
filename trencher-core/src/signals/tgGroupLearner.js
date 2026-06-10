@@ -196,30 +196,42 @@ export async function learnGroupHistory(client, groupId, groupName = '', {
 
     if (result?.new_slang) {
       try {
-        const fs = await import('fs');
-        const path = await import('path');
-        const lexPath = path.resolve(process.cwd(), 'lexicon.json');
-        const currentLexicon = JSON.parse(fs.readFileSync(lexPath, 'utf8'));
-        let updated = false;
+        let addedCount = 0;
         
+        // Check weekly limit (max 10 shadow entries per week)
+        const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        const recentShadows = db.prepare('SELECT COUNT(*) as cnt FROM lexicon_shadow WHERE first_seen_ms > ?').get(weekAgo).cnt;
+        let availableSlots = Math.max(0, 10 - recentShadows);
+
+        const insertShadow = db.prepare(`
+          INSERT INTO lexicon_shadow (phrase, category, source_group, first_seen_ms, proposed_by)
+          VALUES (?, ?, ?, ?, 'llm')
+          ON CONFLICT(phrase) DO NOTHING
+        `);
+
         for (const cat of ['bullish', 'bearish', 'sell_event', 'coordination']) {
           if (Array.isArray(result.new_slang[cat])) {
             for (const phrase of result.new_slang[cat]) {
+              if (availableSlots <= 0) break;
               const lower = phrase.toLowerCase().trim();
-              if (lower && !currentLexicon[cat].includes(lower)) {
-                currentLexicon[cat].push(lower);
-                updated = true;
+              if (lower) {
+                const res = insertShadow.run(lower, cat, groupId, Date.now());
+                if (res.changes > 0) {
+                  addedCount++;
+                  availableSlots--;
+                }
               }
             }
           }
         }
 
-        if (updated) {
-          fs.writeFileSync(lexPath, JSON.stringify(currentLexicon, null, 2), 'utf8');
-          console.log('[TG-Learn] Discovered and added new slang to lexicon.json!');
+        if (addedCount > 0) {
+          console.log(`[TG-Learn] Added ${addedCount} new slang phrases to shadow quarantine. Use /lexicon pending to review.`);
+        } else if (availableSlots === 0 && (result.new_slang.bullish?.length || result.new_slang.bearish?.length)) {
+          console.warn('[TG-Learn] Weekly shadow limit (10) reached. Ignored LLM suggestions.');
         }
       } catch (e) {
-        console.error('[TG-Learn] Failed to update lexicon.json:', e.message);
+        console.error('[TG-Learn] Failed to add shadow slang:', e.message);
       }
     }
   } catch (err) {

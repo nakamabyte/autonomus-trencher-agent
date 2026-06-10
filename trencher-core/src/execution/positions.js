@@ -326,9 +326,15 @@ export async function refreshPosition(position, { autoExit = true, jupiterPnl = 
         if (sourceMeta?.groupId) {
           const isWin = finalPnlPercent > 0;
           try {
-            const { recordGroupTradeResult } = await import('../signals/tgListener.js');
+            const { recordGroupTradeResult, recordCallerTradeResult } = await import('../signals/tgListener.js');
             recordGroupTradeResult(sourceMeta.groupId, isWin);
             console.log(`[tg] updated group ${sourceMeta.groupId} win=${isWin} (${finalPnlPercent.toFixed(1)}%)`);
+            
+            if (sourceMeta.callerMeta?.callerHandle) {
+               if (recordCallerTradeResult) {
+                  recordCallerTradeResult(sourceMeta.callerMeta.callerHandle, isWin);
+               }
+            }
           } catch (tgErr) {
             console.error('[tg] recordGroupTradeResult error:', tgErr.message);
           }
