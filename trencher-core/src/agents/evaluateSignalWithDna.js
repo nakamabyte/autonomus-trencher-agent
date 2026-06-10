@@ -17,6 +17,39 @@
  * @returns {{ verdict: 'BUY'|'SKIP', confidence: number, reason: string }}
  */
 export async function evaluateSignalWithDna(signal, dna) {
+  // ── 0. BREED STRICT HARD-FILTERS ───────────────────────────────────────────
+  // These filters define the absolute personality of the agent. If the signal doesn't
+  // match the breed's core identity, it is rejected immediately regardless of LLM confidence.
+  
+  const breed = dna.breed || 'scout';
+
+  if (breed === 'sniper') {
+    // Snipers only buy if there is positive short-term momentum.
+    if ((signal.price_delta_5m || 0) < 0.05) {
+      return { verdict: 'SKIP', confidence: signal.llm_confidence || 0, reason: `DNA skip — sniper requires price_delta_5m >= 0.05` };
+    }
+  } else if (breed === 'degen') {
+    // Degens only buy high-risk plays: mcap < 100k or token age < 60 mins.
+    const mcap = signal.mcap_usd || 0;
+    const age = signal.token_age_minutes || 0;
+    if (mcap >= 100000 && age >= 60) {
+      return { verdict: 'SKIP', confidence: signal.llm_confidence || 0, reason: `DNA skip — degen requires mcap < 100k or age < 60m` };
+    }
+  } else if (breed === 'bunker') {
+    // Bunker only buys very safe plays: rug prob <= 0.05 and liquidity > 5k.
+    const rug = signal.rug_probability || 0;
+    const liq = signal.liquidity_usd || 0;
+    if (rug > 0.05 || liq <= 5000) {
+      return { verdict: 'SKIP', confidence: signal.llm_confidence || 0, reason: `DNA skip — bunker requires rug <= 0.05 and liquidity > 5000` };
+    }
+  } else if (breed === 'whale_tracker') {
+    // Whale tracker requires at least 1 smart money wallet overlap.
+    const smart = signal.smart_money_overlap || 0;
+    if (smart < 1) {
+      return { verdict: 'SKIP', confidence: signal.llm_confidence || 0, reason: `DNA skip — whale_tracker requires smart_money_overlap >= 1` };
+    }
+  }
+
   // ── 1. Hard-filter checks ──────────────────────────────────────────────────
   // rug_defense (0-100): higher = stricter rug tolerance.
   // e.g. bunker (95) rejects anything rug_probability > 0.05

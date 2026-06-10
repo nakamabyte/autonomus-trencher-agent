@@ -156,6 +156,7 @@ export function startAgentTradingLoop(agentId, db, sharedSignalFeed, connection)
     }
 
     // Evaluate signal using this agent's DNA config
+    dna.breed = current.breed; // Inject breed for hard-filtering
     const decision = await evaluateSignalWithDna(signal, dna);
 
     const isBuy = decision.verdict === 'BUY' && decision.confidence >= (dna.llm_min_confidence || 50) / 100;

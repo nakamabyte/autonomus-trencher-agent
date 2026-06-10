@@ -49,25 +49,97 @@ function getCallerTrust(callerHandle) {
   }
 }
 
+import fs from 'fs';
+import path from 'path';
+
+let LEXICON;
+const lexPath = path.resolve(process.cwd(), 'lexicon.json');
+
+function loadLexicon() {
+  try {
+    LEXICON = JSON.parse(fs.readFileSync(lexPath, 'utf8'));
+  } catch (e) {
+    console.warn('[TG] Failed to load lexicon.json, using fallback.', e.message);
+    if (!LEXICON) {
+      LEXICON = {
+        bullish: ['ape', 'send', 'bid', 'moon', '100x'],
+        bearish: ['rug', 'jeet', 'larp', 'fade', 'dead'],
+        sell_event: ['clipped'],
+        coordination: ['cabal push']
+      };
+    }
+  }
+}
+
+loadLexicon();
+
+fs.watchFile(lexPath, { interval: 1000 }, (curr, prev) => {
+  if (curr.mtime !== prev.mtime) {
+    console.log('[TG] lexicon.json changed, reloading...');
+    loadLexicon();
+  }
+});
+
+function parseSentiment(messages) {
+  let hits = [];
+  let coordination = false;
+  let clipCount = 0;
+
+  for (const rawMsg of messages) {
+    const msg = rawMsg.toLowerCase();
+    const tokens = msg.split(/\s+/);
+    
+    const checkNegation = (idx) => {
+      const start = Math.max(0, idx - 3);
+      for (let i = start; i < idx; i++) {
+        if (["don't", "dont", "no", "never", "stop"].includes(tokens[i])) return true;
+      }
+      return false;
+    };
+
+    const searchMatch = (phraseList, category) => {
+      for (const phrase of phraseList) {
+        const escapedPhrase = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\b${escapedPhrase}\\b`, 'i');
+        const match = msg.match(regex);
+        if (match) {
+          const idx = match.index;
+          const tokenIdx = msg.substring(0, idx).split(/\s+/).length - 1;
+          const isNegated = checkNegation(tokenIdx);
+          
+          if (category === 'bullish' && isNegated) continue; // Skip negated bullish
+          if (phrase === 'cooked' && msg.includes('let him cook')) continue; // Context fix
+          
+          if (category === 'sell_event') clipCount++;
+          if (category === 'coordination') coordination = true;
+
+          hits.push({ phrase, category, msg: rawMsg.slice(0, 50) });
+        }
+      }
+    };
+
+    searchMatch(LEXICON.bullish, 'bullish');
+    searchMatch(LEXICON.bearish, 'bearish');
+    searchMatch(LEXICON.sell_event, 'sell_event');
+    searchMatch(LEXICON.coordination, 'coordination');
+  }
+
+  let readStr = [];
+  if (hits.some(h => h.category === 'bullish')) readStr.push('Bullish sentiment noted.');
+  if (hits.some(h => h.category === 'bearish')) readStr.push('Warning/Bearish chatter active.');
+  if (clipCount > 1) readStr.push('Distribution in progress (multiple clips).');
+  else if (clipCount === 1) readStr.push('Minor sell-event noted.');
+  if (coordination) readStr.push('Coordinated push forming. Short-horizon entry only.');
+
+  let read = readStr.join(' ');
+  if (!read) read = 'No clear slang sentiment.';
+
+  return { hits, read, coordination, clipCount, rawHits: hits.slice(-5) }; // Store up to 5 hits
+}
+
 function recordGroupSentiment(groupId) {
   const messages = groupMessageBuffer.get(groupId) || [];
-  let bullish = 0;
-  let bearish = 0;
-  
-  const bullWords = ['bull', 'buy', 'send', 'moon', 'lfg', 'gem', 'ape', 'pump'];
-  const bearWords = ['bear', 'sell', 'rug', 'scam', 'jeets', 'dump', 'skip', 'trash'];
-  
-  for (const msg of messages) {
-    const lower = msg.toLowerCase();
-    let isBull = false;
-    let isBear = false;
-    for (const w of bullWords) { if (lower.includes(w)) { isBull = true; break; } }
-    for (const w of bearWords) { if (lower.includes(w)) { isBear = true; break; } }
-    if (isBull) bullish++;
-    if (isBear) bearish++;
-  }
-  
-  return { bullish, bearish };
+  return parseSentiment(messages);
 }
 
 
@@ -89,6 +161,9 @@ const FAST_BUY_SIZE_SOL = parseFloat(process.env.TG_FAST_BUY_SIZE_SOL || '0.05')
 
 // De-dupe: prevent same CA from the same group within 5 minutes
 const recentSignals = new Map(); // key: `${groupId}:${ca}` → timestamp
+
+// Repeat-shill tracking: global mention tracker for CAs
+const recentCaMentions = new Map(); // key: ca → array of timestamps
 
 /**
  * Check if a group has exceeded its hourly trade rate limit.
@@ -159,7 +234,18 @@ function isGroupDemoted(groupId) {
     const row = db.prepare(
       "SELECT trust_level FROM tg_group_performance WHERE group_id = ?"
     ).get(groupId);
-    return row?.trust_level === 'demoted';
+    if (!row) return false;
+    
+    if (row.trust_level === 'demoted') return true;
+    if (row.trust_level && row.trust_level.startsWith('cooldown:')) {
+      const until = parseInt(row.trust_level.split(':')[1], 10);
+      if (Date.now() < until) return true;
+      // Cooldown expired, restore
+      db.prepare("UPDATE tg_group_performance SET trust_level = 'active', traded = 0, wins = 0, losses = 0 WHERE group_id = ?").run(groupId);
+      console.log(`[TG] Group ${groupId} cooldown expired. Restored to active.`);
+      return false;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -197,10 +283,12 @@ export function recordGroupTradeResult(groupId, isWin) {
       'SELECT traded, win_rate FROM tg_group_performance WHERE group_id = ?'
     ).get(groupId);
     if (row && row.traded >= 20 && row.win_rate < 0.35) {
+      // 7-day cooldown (7 * 24 * 60 * 60 * 1000)
+      const cooldownUntil = Date.now() + 604800000;
       db.prepare(
-        "UPDATE tg_group_performance SET trust_level = 'demoted' WHERE group_id = ?"
-      ).run(groupId);
-      console.warn(`[TG] Group ${groupId} auto-demoted (win_rate ${(row.win_rate * 100).toFixed(0)}% < 35%)`);
+        "UPDATE tg_group_performance SET trust_level = ?, updated_at_ms = ? WHERE group_id = ?"
+      ).run(`cooldown:${cooldownUntil}`, Date.now(), groupId);
+      console.warn(`[TG] Group ${groupId} auto-demoted (7-day cooldown) (win_rate ${(row.win_rate * 100).toFixed(0)}% < 35%)`);
     }
   } catch (e) {
     console.error('[TG] recordGroupTradeResult error:', e.message);
@@ -334,10 +422,26 @@ async function processMessage({ text, groupId, groupName, senderId, senderUserna
       continue;
     }
 
-    console.log(`[TG] 📡 alpha call detected: ${ca.slice(0, 8)}... from group ${groupId} — routing through LLM cascade`);
+    // Track global mentions for this CA (30 min window) for repeat-shill detection
+    const now = Date.now();
+    let caTimes = recentCaMentions.get(ca) || [];
+    caTimes = caTimes.filter(t => now - t < 30 * 60 * 1000);
+    caTimes.push(now);
+    recentCaMentions.set(ca, caTimes);
+    const mentionCount = caTimes.length;
+
+    console.log(`[TG] 📡 alpha call detected: ${ca.slice(0, 8)}... from group ${groupId} (Mentions: ${mentionCount}) — routing through LLM cascade`);
+
+    // Check coordination on the current message to see if we should escalate
+    const msgSentiment = parseSentiment([text]);
+    const isEscalated = msgSentiment.coordination && mentionCount >= 4;
+
+    if (isEscalated) {
+      console.log(`[TG] 🚨 ESCALATION: ${ca.slice(0, 8)}... has coordination + ${mentionCount}x shills. Forcing LLM cascade, skipping fast-buy.`);
+    }
 
     // ── Fast Buy mode: skip LLM for trusted groups ────────────────────
-    if (FAST_BUY_GROUPS.has(String(groupId))) {
+    if (FAST_BUY_GROUPS.has(String(groupId)) && !isEscalated) {
       console.log(`[TG] ⚡ FAST BUY — group ${groupId} is trusted, skipping LLM for ${ca.slice(0, 8)}...`);
 
       // Execute fast buy directly — bypass orchestrator entirely
@@ -490,9 +594,20 @@ async function processMessage({ text, groupId, groupName, senderId, senderUserna
               }
 
             } else if (mode === 'live') {
-              const { executeLiveBuy } = await import('../execution/router.js');
-              const selectedRow = { id: candidateId, candidate };
-              await executeLiveBuy(selectedRow, fastBuyDecision, scout.id, [selectedRow], candidateId, null);
+              const { executeAgentTrade } = await import('../agents/executeAgentTrade.js');
+              const { getWalletBalance } = await import('../liveExecutor.js');
+              const { connection } = await import('../db/connection.js');
+              
+              const dnaConfig = scout.dna_config ? JSON.parse(scout.dna_config) : {};
+              const balance = scout.agent_wallet ? await getWalletBalance(connection, scout.agent_wallet) : 0;
+              
+              const signal = {
+                mint: ca,
+                symbol: symbol,
+                mcap_usd: mcapUsd,
+              };
+
+              await executeAgentTrade(scout, signal, fastBuyDecision, dnaConfig, db, balance);
               console.log(`[TG-FastBuy] ✅ LIVE buy executed for ${symbol} by ${scout.name}`);
 
               // Update the initial alert for live mode
@@ -552,8 +667,8 @@ async function processMessage({ text, groupId, groupName, senderId, senderUserna
         authorType: authorType,
         sentiment: sentiment
       };
-      if (sentiment.bullish > 0 || sentiment.bearish > 0) {
-        console.log(`[LEARNING] Sentiment at Call Time — Bullish: ${sentiment.bullish}, Bearish: ${sentiment.bearish} (window: 50 msgs)`);
+      if (sentiment.hits && sentiment.hits.length > 0) {
+        console.log(`[LEARNING] Sentiment at Call Time: ${sentiment.read} (hits: ${sentiment.hits.length})`);
       }
       const result = await processCandidateFromSignals({
         mint: ca,
@@ -763,7 +878,23 @@ export async function startTgListener() {
       } catch { /* non-fatal */ }
       
       const lowerUser = senderUsername.toLowerCase();
-      const authorType = (lowerUser.includes('phanes') || lowerUser.includes('rick')) ? 'bot' : 'human';
+      const KNOWN_BOTS = ['phanes', 'rick', 'maestro', 'banana'];
+      const authorType = KNOWN_BOTS.some(b => lowerUser.includes(b)) || (msg.sender && msg.sender.bot) ? 'bot' : 'human';
+      
+      if (authorType === 'bot') {
+        // Sprint 1: bot messages excluded from calls and reputation
+        // Sprint 2: parse card as enrichment
+        const botAddresses = parseTokenCall(msg.message).addresses;
+        for (const ca of botAddresses) {
+          const key = `${chatId}:${ca}`;
+          const cacheHit = humanCallsCache.get(key);
+          if (cacheHit && Date.now() - cacheHit.timestamp < 300000) {
+            console.log(`[TG] Bot card linked to prior call by ${cacheHit.callerHandle} for ${ca}`);
+            // Future: parse card details (mcap, liq) and update tg_calls / memory
+          }
+        }
+        return;
+      }
       
       // Update message buffer for sentiment
       if (chatId && msg.message) {

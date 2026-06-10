@@ -68,15 +68,16 @@ export async function executeAgentTrade(agent, signal, decision, dna, db, balanc
   const positionSize = calculatePositionSize(balance, dna);
   if (positionSize <= 0) return;
 
-  const walletKey = getAgentWalletKey(db, agent.id);
-  if (!walletKey) {
-    console.error(`[agent] ${agent.name} has no valid wallet key, cannot trade`);
-    return;
+  let walletKey = null;
+  if (agent.execution_mode === 'live') {
+    walletKey = getAgentWalletKey(db, agent.id);
+    if (!walletKey) {
+      console.error(`[agent] ${agent.name} has no valid wallet key, cannot trade live`);
+      return;
+    }
   }
 
-  const forceLive = (agent.breed === 'social_scout' || agent.name === 'social_tg');
-
-  if (agent.execution_mode === 'dry_run' && !forceLive) {
+  if (agent.execution_mode === 'dry_run') {
     // Only simulate execution
     console.log(`[agent] ${agent.name} is in dry_run mode. Simulating trade...`);
     const posId = recordPosition(db, {

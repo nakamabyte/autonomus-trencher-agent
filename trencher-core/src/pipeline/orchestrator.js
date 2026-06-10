@@ -145,11 +145,15 @@ export async function processCandidateFromSignals(signals) {
     // Price momentum fields for momentum_sensitivity DNA trait
     price_delta_5m: candidate.trending?.price_change_5m || candidate.chart?.priceChangePct5m || 0,
     price_delta_1h: candidate.trending?.price_change_1h || candidate.chart?.priceChangePct1h || 0,
+    token_age_minutes: candidate.metrics.tokenAgeMinutes || 0,
     // Source tag: raw scan signals use 'raw_scan'; TG alpha will use 'tg_alpha'
     source: signals.source || 'raw_scan',
     // sourceMeta carries groupId (and rawMessage, senderId) set by tgListener.js.
     // Required for Social Scout win/loss tracking in positions.js close callback.
     sourceMeta: signals.sourceMeta || null,
+    caller_handle: signals.sourceMeta?.callerMeta?.callerHandle || null,
+    sentiment_read: signals.sourceMeta?.callerMeta?.sentiment?.read || null,
+    sentiment_hits: signals.sourceMeta?.callerMeta?.sentiment?.rawHits || null,
   });
 
 
@@ -250,26 +254,20 @@ export async function handleApprovedBuy(selectedRow, decision, batchId, rows = [
     return;
   }
 
-  const { getBreedForStrategy } = await import('../db/agentDna.js');
-  const { db } = await import('../db/connection.js');
   const { canOpenMorePositionsForAgent, openPositionCountForAgent } = await import('../db/positions.js');
 
-  const breed = getBreedForStrategy(strat.id);
-  let matchedAgents = db.prepare('SELECT id, execution_mode FROM agent_dna WHERE breed = ?').all(breed);
-  if (matchedAgents.length === 0) {
-    matchedAgents = [{ id: null, execution_mode: tradingMode() }];
+  // We no longer loop over agent_dna here. agentRunner.js handles individual agents.
+  // The orchestrator acts ONLY on behalf of the global 'master' bot.
+  const agent = { id: null, execution_mode: tradingMode() };
+  const mode = agent.execution_mode || 'dry_run';
+
+  if (!canOpenMorePositionsForAgent(agent.id)) {
+    const max = strat.max_open_positions ?? numSetting('max_open_positions', 3);
+    console.log(`[orchestrator] max open positions reached for global bot (${openPositionCountForAgent(agent.id)}/${max}), skipping buy`);
+    return;
   }
 
-  for (const agent of matchedAgents) {
-    const mode = agent.execution_mode || 'dry_run';
-
-    if (!canOpenMorePositionsForAgent(agent.id)) {
-      const max = strat.max_open_positions ?? numSetting('max_open_positions', 3);
-      console.log(`[agent] max open positions reached for agent ${agent.id || 'global'} (${openPositionCountForAgent(agent.id)}/${max}), skipping buy`);
-      continue;
-    }
-
-    if (mode === 'dry_run') {
+  if (mode === 'dry_run') {
       const positionId = await createDryRunPosition(freshSelectedRow.id, freshSelectedRow.candidate, decision, `llm_batch_${batchId}`, agent.id);
       logDecisionEvent({
         batchId,
@@ -321,7 +319,6 @@ export async function handleApprovedBuy(selectedRow, decision, batchId, rows = [
           `Intent #${intentId} stored.`,
           `Error: ${escapeHtml(err.message)}`,
         ].join('\n'));
-      }
     }
   }
 }

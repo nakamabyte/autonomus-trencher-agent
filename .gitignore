@@ -7,3 +7,18 @@ COMPLETE_LLM_BRIEF_v4.md
 trencher-holder-guide-brief.md
 trencher-registery-mcp-brief.md
 trencher-auto-trade-brief.md
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db.env
+node_modules/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+test_*.js
+.env

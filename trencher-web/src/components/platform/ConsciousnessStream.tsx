@@ -143,6 +143,11 @@ function DecisionRow({ d }: { d: ConsciousnessDecision }) {
             {d.source === 'tg_alpha' ? '✈️ TG' : '💊 PF'}
           </span>
         )}
+        {d.caller_handle && (
+          <span style={{ color: '#FFF200', fontSize: '9px', fontWeight: 600, paddingLeft: '4px' }}>
+            👤 {d.caller_handle}
+          </span>
+        )}
         <span style={{ color: verdictColor, fontWeight: 700, marginLeft: 'auto' }}>
           {VERDICT_LABEL[d.verdict]}
         </span>
@@ -172,6 +177,22 @@ function DecisionRow({ d }: { d: ConsciousnessDecision }) {
       {(d.verdict === 'SKIP' || d.verdict === 'ESCALATE') && d.reason && (
         <div style={{ color: '#444', fontSize: '9px', marginTop: '1px', fontStyle: 'italic' }}>
           ↳ {d.reason}
+        </div>
+      )}
+
+      {/* Row 4: Sentiment Read */}
+      {d.sentiment_hits && d.sentiment_hits.length > 0 && (
+        <div style={{ color: '#FFB347', fontSize: '9px', marginTop: '3px' }}>
+          Hits: {d.sentiment_hits.map((h, i) => (
+            <span key={i} style={{ display: 'block', marginLeft: '10px' }}>
+              "{h.phrase}" <i>({h.category})</i>
+            </span>
+          ))}
+        </div>
+      )}
+      {d.sentiment_read && (
+        <div style={{ color: '#FFB347', fontSize: '9px', marginTop: '2px', fontStyle: 'italic' }}>
+          Read: {d.sentiment_read}
         </div>
       )}
     </div>

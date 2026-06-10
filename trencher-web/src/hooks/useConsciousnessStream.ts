@@ -23,6 +23,9 @@ export interface ConsciousnessDecision {
   agent_name?: string | null;
   entry_mcap: number | null;
   source?: string | null;
+  caller_handle?: string | null;
+  sentiment_read?: string | null;
+  sentiment_hits?: Array<{phrase: string, category: string}>;
 }
 
 interface UseConsciousnessStreamOptions {

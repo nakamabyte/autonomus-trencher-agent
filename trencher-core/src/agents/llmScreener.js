@@ -675,8 +675,19 @@ OUTPUT FORMAT: Valid JSON only. No text outside JSON.
   "group_style": "...",
   "recommended_trust": "...",
   "summary": "...",
-  "lessons": [...]
-}`;
+  "lessons": [...],
+  "new_slang": {
+    "bullish": ["example_slang_word"],
+    "bearish": [],
+    "sell_event": [],
+    "coordination": []
+  }
+}
+
+SLANG EXTRACTION GUIDELINES:
+- Extract any NEW slang, idioms, or recurring phrases used by the group to describe buying, selling, rugging, or coordinating.
+- Put them in 'new_slang' under the appropriate category.
+- ONLY output slang that is highly specific to this group's narrative samples and not common English words.`;
 
   try {
     const response = await t2Client.chat.completions.create({

@@ -193,6 +193,35 @@ export async function learnGroupHistory(client, groupId, groupName = '', {
         }
       }
     }
+
+    if (result?.new_slang) {
+      try {
+        const fs = await import('fs');
+        const path = await import('path');
+        const lexPath = path.resolve(process.cwd(), 'lexicon.json');
+        const currentLexicon = JSON.parse(fs.readFileSync(lexPath, 'utf8'));
+        let updated = false;
+        
+        for (const cat of ['bullish', 'bearish', 'sell_event', 'coordination']) {
+          if (Array.isArray(result.new_slang[cat])) {
+            for (const phrase of result.new_slang[cat]) {
+              const lower = phrase.toLowerCase().trim();
+              if (lower && !currentLexicon[cat].includes(lower)) {
+                currentLexicon[cat].push(lower);
+                updated = true;
+              }
+            }
+          }
+        }
+
+        if (updated) {
+          fs.writeFileSync(lexPath, JSON.stringify(currentLexicon, null, 2), 'utf8');
+          console.log('[TG-Learn] Discovered and added new slang to lexicon.json!');
+        }
+      } catch (e) {
+        console.error('[TG-Learn] Failed to update lexicon.json:', e.message);
+      }
+    }
   } catch (err) {
     console.error(`[TG-Learn] LLM analysis failed:`, err.message);
     // Non-fatal — simpan tanpa lessons
