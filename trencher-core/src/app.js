@@ -59,17 +59,16 @@ export async function startTrencherAgent() {
   // DISABLED: User manually activates agents via UI, preventing 429 Too Many Requests errors.
   // startFundingWatcher(connection, db, sharedSignalFeed);
 
-  
+  // Start x402 Signal Economy Server (Express)
+  const { getX402App } = await import('./server/x402Server.js');
+  const x402App = getX402App();
+
   // Start WebSocket server and passive state manager
   // NOTE: consciousness stream (CONSCIOUSNESS_DECISION) is broadcast
   // through this same server — no separate port needed.
   const { startWsServer } = await import('./server/wsServer.js');
-  startWsServer(process.env.PORT || 4001);
+  startWsServer(process.env.PORT || 4001, x402App);
   await import('./server/stateManager.js');
-
-  // Start x402 Signal Economy Server (Express)
-  const { startX402Server } = await import('./server/x402Server.js');
-  startX402Server();
 
   if (SIGNAL_SERVER_URL) {
     // ── Server mode: fetch signals from signal server ──────────────────────

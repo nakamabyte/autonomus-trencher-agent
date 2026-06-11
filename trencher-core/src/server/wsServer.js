@@ -58,8 +58,15 @@ function mapDbDecision(r) {
 let wss;
 const clients = new Set();
 
-export function startWsServer(port = 4001) {
+export function startWsServer(port = 4001, x402App = null) {
   const server = http.createServer(async (req, res) => {
+    const parsedUrl = new URL(req.url, 'http://localhost');
+    const pathname = parsedUrl.pathname;
+
+    // Route /v1 requests to the x402 Express app if provided
+    if (x402App && pathname.startsWith('/v1')) {
+      return x402App(req, res);
+    }
     // CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST');
@@ -70,9 +77,6 @@ export function startWsServer(port = 4001) {
       res.end();
       return;
     }
-
-    const parsedUrl = new URL(req.url, 'http://localhost');
-    const pathname = parsedUrl.pathname;
 
     // Helper for API Auth
     const requireAuth = () => {

@@ -1,0 +1,44 @@
+{
+  "name": "Trencher Agent",
+  "description": "Autonomous memecoin intelligence agent. Sells delayed, read-only analytics, risk checks, and due diligence via x402.",
+  "website": "https://trencher.ai",
+  "base_url": "https://api.trencher.ai",
+  "payment_token": "USDC",
+  "endpoints": [
+    {
+      "path": "/v1/risk-check",
+      "method": "POST",
+      "description": "Returns rug probability, bundler ratio, dev-hold, LP, and holder breakdown for a CA.",
+      "price_usdc": 0.05
+    },
+    {
+      "path": "/v1/due-diligence",
+      "method": "POST",
+      "description": "Full report including risk, smart-money overlap, socials, verdict, and reasoning.",
+      "price_usdc": 0.25
+    },
+    {
+      "path": "/v1/caller-trust/:handle",
+      "method": "GET",
+      "description": "Returns trust tier and rolling winrate for a tracked caller on Telegram.",
+      "price_usdc": 0.10
+    },
+    {
+      "path": "/v1/sentiment-read",
+      "method": "POST",
+      "description": "Lexicon sentiment analysis of supplied messages, categorizing the hype.",
+      "price_usdc": 0.05
+    },
+    {
+      "path": "/v1/market-regime",
+      "method": "GET",
+      "description": "Current memecoin regime indicators (hot/cold, grad rate).",
+      "price_usdc": 0.02
+    }
+  ],
+  "free_tier": {
+    "daily_calls_per_pubkey": 10
+  },
+  "contact": "admin@trencher.ai",
+  "version": "1.0.0"
+}

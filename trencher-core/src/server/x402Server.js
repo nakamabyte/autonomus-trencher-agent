@@ -3,7 +3,7 @@ import cors from 'cors';
 import { db } from '../db/connection.js';
 import { X402_PORT, X402_PRICES_USDC, X402_FREE_CALLS_PER_DAY } from '../config.js';
 
-export function startX402Server() {
+export function getX402App() {
   const app = express();
   app.use(cors());
   app.use(express.json());
@@ -178,7 +178,6 @@ export function startX402Server() {
     });
   });
 
-  app.listen(X402_PORT, () => {
-    console.log(`[x402] Signal Economy API listening on port ${X402_PORT}`);
-  });
+  // Return the express app instead of listening directly
+  return app;
 }
