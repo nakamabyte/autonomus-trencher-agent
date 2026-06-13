@@ -150,6 +150,28 @@ function FaqItem({ question, answer, isOpen, onToggle }: FaqItemProps) {
   );
 }
 
+function CodeBlock({ code, title }: { code: string; title: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div style={{ background: '#000', borderRadius: '4px', overflow: 'hidden', marginTop: '8px', border: '1px solid #1a1a24' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 12px', background: '#111', borderBottom: '1px solid #1a1a24' }}>
+        <span style={{ color: '#aaa', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace" }}>{title}</span>
+        <button onClick={handleCopy} style={{ background: 'none', border: 'none', color: copied ? '#00C896' : '#666', fontSize: '11px', cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace" }}>
+          {copied ? 'COPIED!' : 'COPY'}
+        </button>
+      </div>
+      <pre style={{ margin: 0, padding: '12px', overflowX: 'auto', color: '#4FC3F7', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace" }}>
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+}
+
 export default function GuidePage() {
   const router = useRouter();
   const [activeStep, setActiveStep] = useState<number | null>(1);
@@ -537,6 +559,132 @@ console.log(data);`}
                   <span style={{ color: '#888' }}>— {c.desc}</span>
                 </div>
               ))}
+            </div>
+          </StepSection>
+
+          {/* STEP 7 */}
+          <StepSection
+            number="7"
+            title="Institutional Partner API"
+            isOpen={activeStep === 7}
+            onToggle={() => toggleStep(7)}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <p>
+                Trencher Core supports a parallel execution pipeline designed for institutional partners like Hatcher Labs. This allows partners to receive mirror signals and execute trades using their own capital without exposing private keys.
+              </p>
+
+              <div>
+                <strong style={{ color: '#fff', display: 'block', marginBottom: '4px' }}>Core Principles:</strong>
+                <ul style={{ paddingLeft: '20px', margin: 0 }}>
+                  <li><strong>Zero-Custody:</strong> Trencher never holds partner funds. It only provides <code>unsigned_transaction</code> payloads for the partner to sign.</li>
+                  <li><strong>Parallel Execution:</strong> Partner proposal generation runs completely asynchronously (fire-and-forget) to ensure the main Trencher bot never slows down.</li>
+                  <li><strong>Hardcoded Caps Floor:</strong> Partner risk limits are clamped to a minimum floor (e.g., max 0.1% trade, 0.5% daily loss) to protect the underlying risk framework from erroneous inputs.</li>
+                </ul>
+              </div>
+
+              <div>
+                <strong style={{ color: '#fff', display: 'block', marginBottom: '4px' }}>REST API Endpoints:</strong>
+                <p style={{ marginBottom: '8px' }}>Partners must authenticate using a Bearer token (<code>Authorization: Bearer hatcher_YOUR_API_KEY</code>).</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  
+                  <div style={{ background: '#111', padding: '12px', borderRadius: '4px' }}>
+                    <div style={{ color: '#00C896', fontWeight: 'bold', fontFamily: "'JetBrains Mono', monospace", marginBottom: '8px' }}>GET /partner/v1/agents/&#123;agent_id&#125;/propose</div>
+                    <div style={{ color: '#aaa', fontSize: '12px', marginBottom: '8px' }}>Polls for new unsigned transactions and intelligence. Returns Base64 Tx and signal read.</div>
+                    <CodeBlock 
+                      title="Response (Success)" 
+                      code={`{
+  "proposal_id": "uuid",
+  "unsigned_transaction": "<base64_v0_tx>",
+  "decision": {
+    "lane": "tg_alpha",
+    "caller": "Brando",
+    "verdict": "BUY",
+    "signals": { ... }
+  },
+  "caps_check": {
+    "max_trade_bps_of_wallet": 50,
+    ...
+  }
+}`}
+                    />
+                  </div>
+
+                  <div style={{ background: '#111', padding: '12px', borderRadius: '4px' }}>
+                    <div style={{ color: '#4FC3F7', fontWeight: 'bold', fontFamily: "'JetBrains Mono', monospace", marginBottom: '8px' }}>PUT /partner/v1/agents/&#123;agent_id&#125;/caps</div>
+                    <div style={{ color: '#aaa', fontSize: '12px', marginBottom: '8px' }}>Updates the partner's risk tolerance caps. Note: Subject to hardcoded minimum safety floors.</div>
+                    <CodeBlock 
+                      title="Request Body" 
+                      code={`{
+  "max_trade_bps_of_wallet": 50, // 0.5% max per trade
+  "max_daily_loss_bps": 300,     // 3% max daily loss
+  "max_open_positions": 2        // Max 2 concurrent positions
+}`}
+                    />
+                  </div>
+
+                  <div style={{ background: '#111', padding: '12px', borderRadius: '4px' }}>
+                    <div style={{ color: '#FFB347', fontWeight: 'bold', fontFamily: "'JetBrains Mono', monospace", marginBottom: '8px' }}>POST /partner/v1/agents/&#123;agent_id&#125;/executed</div>
+                    <div style={{ color: '#aaa', fontSize: '12px', marginBottom: '8px' }}>Callback endpoint for partners to report successful transaction signing.</div>
+                    <CodeBlock 
+                      title="Request Body" 
+                      code={`{
+  "proposal_id": "uuid",
+  "status": "signed_submitted",
+  "tx_signature": "5xxxxxxxxx",
+  "reason": "OK"
+}`}
+                    />
+                  </div>
+
+                  <div style={{ background: '#111', padding: '12px', borderRadius: '4px' }}>
+                    <div style={{ color: '#FF6B6B', fontWeight: 'bold', fontFamily: "'JetBrains Mono', monospace", marginBottom: '8px' }}>POST /partner/v1/agents/&#123;agent_id&#125;/kill</div>
+                    <div style={{ color: '#aaa', fontSize: '12px', marginBottom: '8px' }}>Emergency kill switch to immediately stop receiving new proposals.</div>
+                    <div style={{ background: '#000', padding: '8px', borderRadius: '4px', fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#888' }}>
+                      <span style={{color: '#fff'}}>Note:</span> No payload required. Re-enable with <span style={{color: '#4FC3F7'}}>POST /revive</span>
+                    </div>
+                  </div>
+
+                  <div style={{ background: '#111', padding: '12px', borderRadius: '4px' }}>
+                    <div style={{ color: '#00C896', fontWeight: 'bold', fontFamily: "'JetBrains Mono', monospace", marginBottom: '8px' }}>POST /partner/v1/agents/&#123;agent_id&#125;/revive</div>
+                    <div style={{ color: '#aaa', fontSize: '12px', marginBottom: '8px' }}>Restores the agent's signal keran after a kill switch event.</div>
+                    <div style={{ background: '#000', padding: '8px', borderRadius: '4px', fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#888' }}>
+                      <span style={{color: '#fff'}}>Note:</span> No payload required. Status will return to active.
+                    </div>
+                  </div>
+
+                  <div style={{ background: '#111', padding: '12px', borderRadius: '4px' }}>
+                    <div style={{ color: '#CE93D8', fontWeight: 'bold', fontFamily: "'JetBrains Mono', monospace", marginBottom: '8px' }}>GET /partner/v1/agents/&#123;agent_id&#125;/status</div>
+                    <div style={{ color: '#aaa', fontSize: '12px', marginBottom: '8px' }}>Check the agent's current health status, uptime, and configured caps.</div>
+                    <CodeBlock 
+                      title="Response (Success)" 
+                      code={`{
+  "agent_id": "7764bdd9...",
+  "is_killed": false,
+  "caps": {
+    "max_trade_bps": 50,
+    "max_daily_loss_bps": 300,
+    "max_open_positions": 2
+  },
+  "uptime": 3600.5,
+  "timestamp": "2026-06-13T12:00:00.000Z"
+}`}
+                    />
+                  </div>
+
+                </div>
+              </div>
+
+              <div style={{
+                background: 'rgba(255, 179, 71, 0.05)',
+                border: '1px solid rgba(255, 179, 71, 0.2)',
+                padding: '12px 16px',
+                borderRadius: '4px',
+                color: '#FFB347',
+                fontSize: '11px',
+              }}>
+                <strong>Note:</strong> All API requests must use the production core URL (e.g. <code>https://&lt;YOUR_CORE_URL&gt;</code>) and your specific <code>agent_id</code>. Dummy data must not be used in production.
+              </div>
             </div>
           </StepSection>
         </div>

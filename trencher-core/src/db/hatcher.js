@@ -1,6 +1,24 @@
 import { db } from './connection.js';
 import { randomUUID } from 'crypto';
 
+const PILOT_FLOORS = {
+  max_trade_bps_of_wallet: 10,    // min 0.1% per trade
+  max_daily_loss_bps:       50,   // min 0.5% daily loss limit
+  max_open_positions_min:    1,
+  max_open_positions_max:    5,
+};
+
+function applyFloors(caps) {
+  return {
+    max_trade_bps: Math.max(caps.max_trade_bps || caps.max_trade_bps_of_wallet || 50, PILOT_FLOORS.max_trade_bps_of_wallet),
+    max_daily_loss_bps: Math.max(caps.max_daily_loss_bps || 300, PILOT_FLOORS.max_daily_loss_bps),
+    max_open_positions: Math.min(
+      Math.max(caps.max_open_positions || 2, PILOT_FLOORS.max_open_positions_min),
+      PILOT_FLOORS.max_open_positions_max
+    )
+  };
+}
+
 // Initialize tables
 db.exec(`
   CREATE TABLE IF NOT EXISTS hatcher_proposals (
@@ -35,7 +53,8 @@ db.exec(`
 
 const nowMs = () => Date.now();
 
-export function updateHatcherCaps(agentId, { max_trade_bps, max_daily_loss_bps, max_open_positions }) {
+export function updateHatcherCaps(agentId, caps) {
+  const safeCaps = applyFloors(caps);
   const row = db.prepare('SELECT * FROM hatcher_agents WHERE agent_id = ?').get(agentId);
   const tnow = nowMs();
   if (row) {
@@ -43,12 +62,12 @@ export function updateHatcherCaps(agentId, { max_trade_bps, max_daily_loss_bps, 
       UPDATE hatcher_agents 
       SET max_trade_bps = ?, max_daily_loss_bps = ?, max_open_positions = ?, updated_at_ms = ?
       WHERE agent_id = ?
-    `).run(max_trade_bps, max_daily_loss_bps, max_open_positions, tnow, agentId);
+    `).run(safeCaps.max_trade_bps, safeCaps.max_daily_loss_bps, safeCaps.max_open_positions, tnow, agentId);
   } else {
     db.prepare(`
       INSERT INTO hatcher_agents (agent_id, max_trade_bps, max_daily_loss_bps, max_open_positions, is_killed, updated_at_ms)
       VALUES (?, ?, ?, ?, 0, ?)
-    `).run(agentId, max_trade_bps, max_daily_loss_bps, max_open_positions, tnow);
+    `).run(agentId, safeCaps.max_trade_bps, safeCaps.max_daily_loss_bps, safeCaps.max_open_positions, tnow);
   }
 }
 
@@ -71,12 +90,20 @@ export function reviveHatcherAgent(agentId) {
 }
 
 export function getHatcherAgent(agentId) {
-  return db.prepare('SELECT * FROM hatcher_agents WHERE agent_id = ?').get(agentId) || {
+  const agent = db.prepare('SELECT * FROM hatcher_agents WHERE agent_id = ?').get(agentId) || {
     agent_id: agentId,
     max_trade_bps: 50,
     max_daily_loss_bps: 300,
     max_open_positions: 2,
     is_killed: 0
+  };
+  
+  const safeCaps = applyFloors(agent);
+  return {
+    ...agent,
+    max_trade_bps: safeCaps.max_trade_bps,
+    max_daily_loss_bps: safeCaps.max_daily_loss_bps,
+    max_open_positions: safeCaps.max_open_positions
   };
 }
 

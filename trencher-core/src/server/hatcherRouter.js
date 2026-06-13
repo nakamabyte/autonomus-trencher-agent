@@ -108,6 +108,11 @@ export function getHatcherRouter() {
     res.status(200).json({
       agent_id: agentId,
       is_killed: !!agent.is_killed,
+      caps: {
+        max_trade_bps: agent.max_trade_bps,
+        max_daily_loss_bps: agent.max_daily_loss_bps,
+        max_open_positions: agent.max_open_positions
+      },
       uptime: process.uptime(),
       timestamp: new Date().toISOString()
     });

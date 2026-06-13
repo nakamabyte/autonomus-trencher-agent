@@ -97,10 +97,15 @@ export async function executeLiveBuy(selectedRow, decision, batchId, rows = [], 
           slippageBps: unsignedSwap.slippageBps,
           unsignedTxBase64: unsignedSwap.unsignedTxBase64,
           decisionJson: {
-            lane: 'highest-conviction',
-            confidence: decision.confidence || 0.8,
-            reasoning: decision.reason || 'Alpha trusted caller signal',
-            signals: {}
+            lane: decision.lane,
+            caller: decision.caller,
+            caller_trust: decision.caller_trust,
+            source_group: decision.source_group,
+            confidence: decision.confidence,
+            verdict: decision.verdict || decision.action,
+            hits: decision.hits,
+            read: decision.read || decision.reason,
+            signals: decision.signals
           },
           capsCheckJson: capsCheck,
           expiresAtMs
