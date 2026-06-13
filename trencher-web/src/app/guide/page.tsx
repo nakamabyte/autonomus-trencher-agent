@@ -619,7 +619,7 @@ console.log(data);`}
   "max_trade_bps_of_wallet": 50, // 0.5% max per trade
   "max_daily_loss_bps": 300,     // 3% max daily loss
   "max_open_positions": 2,       // Max 2 concurrent positions
-  "wallet_pubkey": "Hz7... (Opsional, mengganti pubkey dinamis)"
+  "wallet_pubkey": "Hz7... (Optional, override dynamic pubkey)"
 }`}
                     />
                   </div>
