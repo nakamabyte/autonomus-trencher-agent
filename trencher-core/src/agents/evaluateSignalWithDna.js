@@ -88,11 +88,12 @@ export async function evaluateSignalWithDna(signal, dna) {
     return { verdict: 'SKIP', confidence: signal.llm_confidence || 0, reason: `DNA skip — agent ignores group signals (social weight ${socialWeightRaw} < 30)` };
   }
 
+  let callerScore = undefined;
   if (hasTgAlpha) {
     // ── 3.5 Caller Reputation (Trust Tier & Score) ──────────────────────────
     const callerMeta = signal.sourceMeta?.callerMeta || {};
     const callerTrustTier = callerMeta.trustTier || 'B';
-    const callerScore = callerMeta.trustScore !== undefined ? callerMeta.trustScore : 0.5;
+    callerScore = callerMeta.trustScore !== undefined ? callerMeta.trustScore : 0.5;
     
     if (callerTrustTier === 'F') {
       return { verdict: 'SKIP', confidence: signal.llm_confidence || 0, reason: `DNA skip — caller is Tier F (untrusted)` };
