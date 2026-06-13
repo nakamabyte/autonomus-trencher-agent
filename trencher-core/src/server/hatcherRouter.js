@@ -86,6 +86,14 @@ export function getHatcherRouter() {
     const agentId = req.params.agent_id;
     const { max_trade_bps_of_wallet, max_daily_loss_bps, max_open_positions, wallet_pubkey } = req.body;
     
+    const agent = getHatcherAgent(agentId);
+    if (wallet_pubkey && agent.wallet_pubkey && agent.wallet_pubkey !== wallet_pubkey) {
+      console.warn(`[SECURITY ALERT] Partner target wallet pubkey changed!`);
+      console.warn(`  - Old: ${agent.wallet_pubkey}`);
+      console.warn(`  - New: ${wallet_pubkey}`);
+      console.warn(`  * Ensure this change was authorized by the partner.`);
+    }
+
     // Default fallback if not provided
     const tradeBps = max_trade_bps_of_wallet || 50;
     const dailyLossBps = max_daily_loss_bps || 300;

@@ -638,7 +638,7 @@ console.log(data);`}
               >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <p>
-                Trencher Core supports a parallel execution pipeline designed for institutional partners like Hatcher Labs. This allows partners to receive mirror signals and execute trades using their own capital without exposing private keys.
+                Trencher Core supports a parallel execution pipeline designed for institutional partners. This allows partners to receive mirror signals and execute trades using their own capital without exposing private keys.
               </p>
 
               <div>
