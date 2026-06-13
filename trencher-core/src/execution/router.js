@@ -84,14 +84,6 @@ export async function executeLiveBuy(selectedRow, decision, batchId, rows = [], 
           hatcher_must_sign: true
         };
 
-        const unsignedSwap = await buildUnsignedJupiterSwap({
-          inputMint: WSOL_MINT,
-          outputMint: selectedRow.candidate.token.mint,
-          amount: amountLamports,
-          takerPubkey: targetPubkey,
-          slippageBps: 300,
-        });
-
         createHatcherProposal({
           agentId: HATCHER_AGENT_ID,
           walletPubkey: targetPubkey,
@@ -99,9 +91,9 @@ export async function executeLiveBuy(selectedRow, decision, batchId, rows = [], 
           action: 'buy',
           mint: selectedRow.candidate.token.mint,
           inputAmountLamports: String(amountLamports),
-          expectedOutputAmount: unsignedSwap.expectedOutputAmount,
-          slippageBps: unsignedSwap.slippageBps,
-          unsignedTxBase64: unsignedSwap.unsignedTxBase64,
+          expectedOutputAmount: '0', // Will be populated during JIT phase
+          slippageBps: 300,
+          unsignedTxBase64: 'JIT', // Generated Just-In-Time when Hatcher polls
           decisionJson: {
             lane: decision.lane,
             caller: decision.caller,

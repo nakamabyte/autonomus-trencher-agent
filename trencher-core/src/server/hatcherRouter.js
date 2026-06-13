@@ -1,6 +1,7 @@
 import express from 'express';
-import { HATCHER_PARTNER_API_KEY, ENABLE_HATCHER_PILOT } from '../config.js';
+import { HATCHER_PARTNER_API_KEY, ENABLE_HATCHER_PILOT, WSOL_MINT } from '../config.js';
 import { getPendingProposals, markProposalExecuted, getHatcherAgent, killHatcherAgent, reviveHatcherAgent, updateHatcherCaps } from '../db/hatcher.js';
+import { buildUnsignedJupiterSwap } from '../liveExecutor.js';
 
 export function getHatcherRouter() {
   const router = express.Router();
@@ -20,7 +21,7 @@ export function getHatcherRouter() {
   router.use(hatcherAuth);
 
   // 1. GET /propose (Polling)
-  router.get('/:agent_id/propose', (req, res) => {
+  router.get('/:agent_id/propose', async (req, res) => {
     const agentId = req.params.agent_id;
     const agent = getHatcherAgent(agentId);
     
@@ -40,6 +41,29 @@ export function getHatcherRouter() {
     const decision = JSON.parse(proposal.decision_json || '{}');
     const capsCheck = JSON.parse(proposal.caps_check_json || '{}');
 
+    let unsignedTxBase64 = proposal.unsigned_tx_base64;
+    let expectedOutputAmount = proposal.expected_output_amount;
+    let slippageBps = proposal.slippage_bps;
+
+    // Just-In-Time (JIT) Blockhash Generation
+    // We generate it exactly when Hatcher polls to ensure the blockhash is 100% fresh
+    if (!unsignedTxBase64 || unsignedTxBase64 === 'JIT') {
+      try {
+        const unsignedSwap = await buildUnsignedJupiterSwap({
+          inputMint: WSOL_MINT,
+          outputMint: proposal.mint,
+          amount: parseInt(proposal.input_amount_lamports, 10),
+          takerPubkey: proposal.wallet_pubkey,
+          slippageBps: 300,
+        });
+        unsignedTxBase64 = unsignedSwap.unsignedTxBase64;
+        expectedOutputAmount = unsignedSwap.expectedOutputAmount;
+        slippageBps = unsignedSwap.slippageBps;
+      } catch (err) {
+        return res.status(500).json({ error: 'JIT Generation Failed: ' + err.message });
+      }
+    }
+
     return res.status(200).json({
       proposal_id: proposal.proposal_id,
       agent_id: proposal.agent_id,
@@ -48,9 +72,9 @@ export function getHatcherRouter() {
       action: proposal.action,
       mint: proposal.mint,
       input_amount_lamports: proposal.input_amount_lamports,
-      expected_output_amount: proposal.expected_output_amount,
-      slippage_bps: proposal.slippage_bps,
-      unsigned_transaction: proposal.unsigned_tx_base64,
+      expected_output_amount: expectedOutputAmount,
+      slippage_bps: slippageBps,
+      unsigned_transaction: unsignedTxBase64,
       decision,
       caps_check: capsCheck,
       expires_at: new Date(proposal.expires_at_ms).toISOString()
