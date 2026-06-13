@@ -60,7 +60,7 @@ export function getHatcherRouter() {
   // 2. PUT /caps
   router.put('/:agent_id/caps', (req, res) => {
     const agentId = req.params.agent_id;
-    const { max_trade_bps_of_wallet, max_daily_loss_bps, max_open_positions } = req.body;
+    const { max_trade_bps_of_wallet, max_daily_loss_bps, max_open_positions, wallet_pubkey } = req.body;
     
     // Default fallback if not provided
     const tradeBps = max_trade_bps_of_wallet || 50;
@@ -71,9 +71,9 @@ export function getHatcherRouter() {
       max_trade_bps: tradeBps,
       max_daily_loss_bps: dailyLossBps,
       max_open_positions: openPos
-    });
+    }, wallet_pubkey);
 
-    res.status(200).json({ status: 'success', message: 'Caps updated.' });
+    res.status(200).json({ status: 'success', message: 'Caps & Config updated.' });
   });
 
   // 3. POST /executed

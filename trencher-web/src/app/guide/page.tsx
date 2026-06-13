@@ -612,13 +612,14 @@ console.log(data);`}
 
                   <div style={{ background: '#111', padding: '12px', borderRadius: '4px' }}>
                     <div style={{ color: '#4FC3F7', fontWeight: 'bold', fontFamily: "'JetBrains Mono', monospace", marginBottom: '8px' }}>PUT /partner/v1/agents/&#123;agent_id&#125;/caps</div>
-                    <div style={{ color: '#aaa', fontSize: '12px', marginBottom: '8px' }}>Updates the partner's risk tolerance caps. Note: Subject to hardcoded minimum safety floors.</div>
+                    <div style={{ color: '#aaa', fontSize: '12px', marginBottom: '8px' }}>Updates the partner's risk tolerance caps and configures the wallet public key dynamically.</div>
                     <CodeBlock 
                       title="Request Body" 
                       code={`{
   "max_trade_bps_of_wallet": 50, // 0.5% max per trade
   "max_daily_loss_bps": 300,     // 3% max daily loss
-  "max_open_positions": 2        // Max 2 concurrent positions
+  "max_open_positions": 2,       // Max 2 concurrent positions
+  "wallet_pubkey": "Hz7... (Opsional, mengganti pubkey dinamis)"
 }`}
                     />
                   </div>

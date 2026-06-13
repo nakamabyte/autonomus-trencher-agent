@@ -60,12 +60,18 @@ export async function executeLiveBuy(selectedRow, decision, batchId, rows = [], 
   await sendPositionOpen(positionId);
 
   // Trigger parallel Hatcher proposal generation (Fire-and-Forget)
-  if (ENABLE_HATCHER_PILOT && chain === 'solana' && HATCHER_AGENT_PUBKEY && HATCHER_AGENT_ID) {
+  if (ENABLE_HATCHER_PILOT && chain === 'solana' && HATCHER_AGENT_ID) {
     setTimeout(async () => {
       try {
         const agent = getHatcherAgent(HATCHER_AGENT_ID);
         if (agent.is_killed) return;
         
+        const targetPubkey = agent.wallet_pubkey || HATCHER_AGENT_PUBKEY;
+        if (!targetPubkey) {
+          console.log(`[Hatcher] Cannot generate parallel proposal: wallet_pubkey is missing.`);
+          return;
+        }
+
         const amountLamports = Math.floor((strat.position_size_sol ?? numSetting('dry_run_buy_sol', 0.1)) * 1_000_000_000);
         const expiresAtMs = Date.now() + 30000;
         
@@ -82,13 +88,13 @@ export async function executeLiveBuy(selectedRow, decision, batchId, rows = [], 
           inputMint: WSOL_MINT,
           outputMint: selectedRow.candidate.token.mint,
           amount: amountLamports,
-          takerPubkey: HATCHER_AGENT_PUBKEY,
+          takerPubkey: targetPubkey,
           slippageBps: 300,
         });
 
         createHatcherProposal({
           agentId: HATCHER_AGENT_ID,
-          walletPubkey: HATCHER_AGENT_PUBKEY,
+          walletPubkey: targetPubkey,
           chain: 'solana-mainnet',
           action: 'buy',
           mint: selectedRow.candidate.token.mint,
