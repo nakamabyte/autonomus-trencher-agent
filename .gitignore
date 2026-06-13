@@ -22,3 +22,5 @@ node_modules/
 *.sqlite-wal
 test_*.js
 .env
+
+x402-doc.md
