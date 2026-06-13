@@ -176,6 +176,7 @@ export default function GuidePage() {
   const router = useRouter();
   const [activeStep, setActiveStep] = useState<number | null>(1);
   const [openFaqs, setOpenFaqs] = useState<Set<number>>(new Set([0]));
+  const [activeTab, setActiveTab] = useState<'general' | 'api'>('general');
 
   const toggleStep = useCallback((step: number) => {
     setActiveStep(prev => (prev === step ? null : step));
@@ -246,32 +247,70 @@ export default function GuidePage() {
         margin: '0 auto',
         padding: '40px 24px',
       }}>
-        {/* Intro */}
-        <div style={{ marginBottom: '40px', textAlign: 'center' }}>
-          <h1 style={{
-            fontFamily: "'Barlow Condensed', sans-serif",
-            fontSize: '36px',
-            fontWeight: 900,
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-            color: '#fff',
-            marginBottom: '12px',
-          }}>
-            Non-Dev Holder User Guide
-          </h1>
-          <p style={{
-            color: '#888',
-            fontSize: '14px',
-            maxWidth: '560px',
-            margin: '0 auto',
-            lineHeight: 1.6,
-          }}>
-            A complete, step-by-step manual to unlock private repository access, explore the dashboard, and connect to signal API. No coding experience needed.
-          </p>
+        {/* Tabs Selection */}
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '32px', justifyContent: 'center' }}>
+          <button 
+            onClick={() => { setActiveTab('general'); setActiveStep(1); }}
+            style={{
+              padding: '12px 24px',
+              background: activeTab === 'general' ? '#FFB347' : '#111',
+              color: activeTab === 'general' ? '#000' : '#888',
+              border: '1px solid #1a1a24',
+              borderRadius: '4px',
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontWeight: 700,
+              fontSize: '16px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}>
+            NON-DEV HOLDER GUIDE
+          </button>
+          <button 
+            onClick={() => { setActiveTab('api'); setActiveStep(7); }}
+            style={{
+              padding: '12px 24px',
+              background: activeTab === 'api' ? '#00C896' : '#111',
+              color: activeTab === 'api' ? '#000' : '#888',
+              border: '1px solid #1a1a24',
+              borderRadius: '4px',
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontWeight: 700,
+              fontSize: '16px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}>
+            DEVELOPER INTEGRATION API
+          </button>
         </div>
 
-        {/* Steps */}
-        <div>
+        {activeTab === 'general' && (
+          <>
+            {/* Intro */}
+            <div style={{ marginBottom: '40px', textAlign: 'center' }}>
+              <h1 style={{
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontSize: '36px',
+                fontWeight: 900,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                color: '#fff',
+                marginBottom: '12px',
+              }}>
+                Non-Dev Holder User Guide
+              </h1>
+              <p style={{
+                color: '#888',
+                fontSize: '14px',
+                maxWidth: '560px',
+                margin: '0 auto',
+                lineHeight: 1.6,
+              }}>
+                A complete, step-by-step manual to unlock private repository access, explore the dashboard, and connect to signal API. No coding experience needed.
+              </p>
+            </div>
+
+            {/* Steps */}
+            <div>
           {/* STEP 1 */}
           <StepSection
             number="1"
@@ -561,15 +600,43 @@ console.log(data);`}
               ))}
             </div>
           </StepSection>
+            </div>
+          </>
+        )}
 
-          {/* STEP 7 */}
-          <StepSection
-            number="7"
-            title="Institutional Partner API"
-            isOpen={activeStep === 7}
-            onToggle={() => toggleStep(7)}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {activeTab === 'api' && (
+          <>
+            <div style={{ marginBottom: '40px', textAlign: 'center' }}>
+              <h1 style={{
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontSize: '36px',
+                fontWeight: 900,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                color: '#fff',
+                marginBottom: '12px',
+              }}>
+                Institutional Partner API Guide
+              </h1>
+              <p style={{
+                color: '#888',
+                fontSize: '14px',
+                maxWidth: '560px',
+                margin: '0 auto',
+                lineHeight: 1.6,
+              }}>
+                Technical documentation for zero-custody mirror trading integration via REST API.
+              </p>
+            </div>
+            <div>
+              {/* STEP 7 */}
+              <StepSection
+                number="1"
+                title="API Specifications"
+                isOpen={activeStep === 7}
+                onToggle={() => toggleStep(7)}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <p>
                 Trencher Core supports a parallel execution pipeline designed for institutional partners like Hatcher Labs. This allows partners to receive mirror signals and execute trades using their own capital without exposing private keys.
               </p>
@@ -688,7 +755,9 @@ console.log(data);`}
               </div>
             </div>
           </StepSection>
-        </div>
+            </div>
+          </>
+        )}
 
         {/* Divider */}
         <div style={{ margin: '48px 0', borderBottom: '1px solid #1a1a24' }} />
