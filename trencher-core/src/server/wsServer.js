@@ -63,8 +63,8 @@ export function startWsServer(port = 4001, x402App = null) {
     const parsedUrl = new URL(req.url, 'http://localhost');
     const pathname = parsedUrl.pathname;
 
-    // Route /v1 requests to the x402 Express app if provided
-    if (x402App && pathname.startsWith('/v1')) {
+    // Route /v1 and /partner requests to the x402 Express app if provided
+    if (x402App && (pathname.startsWith('/v1') || pathname.startsWith('/partner'))) {
       return x402App(req, res);
     }
     // CORS headers

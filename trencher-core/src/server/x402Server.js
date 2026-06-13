@@ -2,11 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import { db } from '../db/connection.js';
 import { X402_PORT, X402_PRICES_USDC, X402_FREE_CALLS_PER_DAY } from '../config.js';
+import { getHatcherRouter } from './hatcherRouter.js';
 
 export function getX402App() {
   const app = express();
   app.use(cors());
   app.use(express.json());
+
+  // Mount Hatcher Labs Partner API
+  app.use('/partner/v1/agents', getHatcherRouter());
 
   // L402 Middleware
   const x402Auth = (endpointName) => {

@@ -118,6 +118,12 @@ export const PAYSH_SPEND_WALLET_KEY = process.env.PAYSH_SPEND_WALLET_KEY || '';
 export const API_DAILY_SPEND_CAP_USDC = Number(process.env.API_DAILY_SPEND_CAP_USDC || 5.0);
 export const API_MAX_PER_CALL_USDC = Number(process.env.API_MAX_PER_CALL_USDC || 0.50);
 
+// Hatcher Labs Integration
+export const ENABLE_HATCHER_PILOT = process.env.ENABLE_HATCHER_PILOT === 'true';
+export const HATCHER_PARTNER_API_KEY = process.env.HATCHER_PARTNER_API_KEY || '';
+export const HATCHER_AGENT_PUBKEY = process.env.HATCHER_AGENT_PUBKEY || '';
+export const HATCHER_AGENT_ID = process.env.HATCHER_AGENT_ID || '';
+
 export function validateConfig() {
   if (!TELEGRAM_BOT_TOKEN) throw new Error('TELEGRAM_BOT_TOKEN is required.');
   if (!TELEGRAM_CHAT_ID) throw new Error('TELEGRAM_CHAT_ID is required.');

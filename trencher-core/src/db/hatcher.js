@@ -1,0 +1,124 @@
+import { db } from './connection.js';
+import { randomUUID } from 'crypto';
+
+// Initialize tables
+db.exec(`
+  CREATE TABLE IF NOT EXISTS hatcher_proposals (
+    proposal_id TEXT PRIMARY KEY,
+    agent_id TEXT NOT NULL,
+    unsigned_tx_base64 TEXT NOT NULL,
+    expires_at_ms INTEGER NOT NULL,
+    status TEXT DEFAULT 'pending',
+    tx_signature TEXT,
+    wallet_pubkey TEXT,
+    chain TEXT,
+    action TEXT,
+    mint TEXT,
+    input_amount_lamports TEXT,
+    expected_output_amount TEXT,
+    slippage_bps INTEGER,
+    decision_json TEXT,
+    caps_check_json TEXT,
+    created_at_ms INTEGER NOT NULL,
+    updated_at_ms INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS hatcher_agents (
+    agent_id TEXT PRIMARY KEY,
+    max_trade_bps INTEGER DEFAULT 50,
+    max_daily_loss_bps INTEGER DEFAULT 300,
+    max_open_positions INTEGER DEFAULT 2,
+    is_killed INTEGER DEFAULT 0,
+    updated_at_ms INTEGER NOT NULL
+  );
+`);
+
+const nowMs = () => Date.now();
+
+export function updateHatcherCaps(agentId, { max_trade_bps, max_daily_loss_bps, max_open_positions }) {
+  const row = db.prepare('SELECT * FROM hatcher_agents WHERE agent_id = ?').get(agentId);
+  const tnow = nowMs();
+  if (row) {
+    db.prepare(`
+      UPDATE hatcher_agents 
+      SET max_trade_bps = ?, max_daily_loss_bps = ?, max_open_positions = ?, updated_at_ms = ?
+      WHERE agent_id = ?
+    `).run(max_trade_bps, max_daily_loss_bps, max_open_positions, tnow, agentId);
+  } else {
+    db.prepare(`
+      INSERT INTO hatcher_agents (agent_id, max_trade_bps, max_daily_loss_bps, max_open_positions, is_killed, updated_at_ms)
+      VALUES (?, ?, ?, ?, 0, ?)
+    `).run(agentId, max_trade_bps, max_daily_loss_bps, max_open_positions, tnow);
+  }
+}
+
+export function killHatcherAgent(agentId) {
+  const tnow = nowMs();
+  db.prepare(`
+    INSERT INTO hatcher_agents (agent_id, is_killed, updated_at_ms)
+    VALUES (?, 1, ?)
+    ON CONFLICT(agent_id) DO UPDATE SET is_killed = 1, updated_at_ms = ?
+  `).run(agentId, tnow, tnow);
+}
+
+export function reviveHatcherAgent(agentId) {
+  const tnow = nowMs();
+  db.prepare(`
+    INSERT INTO hatcher_agents (agent_id, is_killed, updated_at_ms)
+    VALUES (?, 0, ?)
+    ON CONFLICT(agent_id) DO UPDATE SET is_killed = 0, updated_at_ms = ?
+  `).run(agentId, tnow, tnow);
+}
+
+export function getHatcherAgent(agentId) {
+  return db.prepare('SELECT * FROM hatcher_agents WHERE agent_id = ?').get(agentId) || {
+    agent_id: agentId,
+    max_trade_bps: 50,
+    max_daily_loss_bps: 300,
+    max_open_positions: 2,
+    is_killed: 0
+  };
+}
+
+export function createHatcherProposal({
+  agentId,
+  walletPubkey,
+  chain,
+  action,
+  mint,
+  inputAmountLamports,
+  expectedOutputAmount,
+  slippageBps,
+  unsignedTxBase64,
+  decisionJson,
+  capsCheckJson,
+  expiresAtMs
+}) {
+  const proposalId = randomUUID();
+  const tnow = nowMs();
+  db.prepare(`
+    INSERT INTO hatcher_proposals (
+      proposal_id, agent_id, unsigned_tx_base64, expires_at_ms, status,
+      wallet_pubkey, chain, action, mint, input_amount_lamports, expected_output_amount,
+      slippage_bps, decision_json, caps_check_json, created_at_ms, updated_at_ms
+    ) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    proposalId, agentId, unsignedTxBase64, expiresAtMs,
+    walletPubkey, chain, action, mint, inputAmountLamports, expectedOutputAmount,
+    slippageBps, JSON.stringify(decisionJson), JSON.stringify(capsCheckJson), tnow, tnow
+  );
+  return proposalId;
+}
+
+export function getPendingProposals(agentId) {
+  const tnow = nowMs();
+  return db.prepare('SELECT * FROM hatcher_proposals WHERE agent_id = ? AND status = \'pending\' AND expires_at_ms > ? ORDER BY created_at_ms ASC').all(agentId, tnow);
+}
+
+export function markProposalExecuted(proposalId, status, txSignature, reason) {
+  db.prepare(`
+    UPDATE hatcher_proposals 
+    SET status = ?, tx_signature = ?, updated_at_ms = ?
+    WHERE proposal_id = ?
+  `).run(status, txSignature, nowMs(), proposalId);
+}

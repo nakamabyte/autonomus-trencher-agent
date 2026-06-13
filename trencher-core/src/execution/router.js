@@ -1,9 +1,10 @@
 import { now, json } from '../utils.js';
 import { numSetting, boolSetting } from '../db/settings.js';
 import { db } from '../db/connection.js';
-import { WSOL_MINT, LIVE_MIN_SOL_RESERVE_LAMPORTS } from '../config.js';
+import { WSOL_MINT, LIVE_MIN_SOL_RESERVE_LAMPORTS, ENABLE_HATCHER_PILOT, HATCHER_AGENT_PUBKEY, HATCHER_AGENT_ID } from '../config.js';
 import { escapeHtml, fmtSol } from '../format.js';
-import { executeJupiterSwap, liveWalletBalanceLamports, fetchLiveTokenBalance } from '../liveExecutor.js';
+import { executeJupiterSwap, liveWalletBalanceLamports, fetchLiveTokenBalance, buildUnsignedJupiterSwap } from '../liveExecutor.js';
+import { getHatcherAgent, createHatcherProposal } from '../db/hatcher.js';
 import { executeBaseSwap } from './baseExecutor.js';
 import { activeStrategy } from '../db/settings.js';
 import { createLivePosition, canOpenMorePositions, openPositionCount } from '../db/positions.js';
@@ -57,6 +58,59 @@ export async function executeLiveBuy(selectedRow, decision, batchId, rows = [], 
     execution: { positionId, swap },
   });
   await sendPositionOpen(positionId);
+
+  // Trigger parallel Hatcher proposal generation (Fire-and-Forget)
+  if (ENABLE_HATCHER_PILOT && chain === 'solana' && HATCHER_AGENT_PUBKEY && HATCHER_AGENT_ID) {
+    setTimeout(async () => {
+      try {
+        const agent = getHatcherAgent(HATCHER_AGENT_ID);
+        if (agent.is_killed) return;
+        
+        const amountLamports = Math.floor((strat.position_size_sol ?? numSetting('dry_run_buy_sol', 0.1)) * 1_000_000_000);
+        const expiresAtMs = Date.now() + 30000;
+        
+        const capsCheck = {
+          max_trade_bps_of_wallet: agent.max_trade_bps,
+          max_daily_loss_bps: agent.max_daily_loss_bps,
+          max_open_positions: agent.max_open_positions,
+          proposal_expires_at: new Date(expiresAtMs).toISOString(),
+          kill_switch_required: true,
+          hatcher_must_sign: true
+        };
+
+        const unsignedSwap = await buildUnsignedJupiterSwap({
+          inputMint: WSOL_MINT,
+          outputMint: selectedRow.candidate.token.mint,
+          amount: amountLamports,
+          takerPubkey: HATCHER_AGENT_PUBKEY,
+          slippageBps: 300,
+        });
+
+        createHatcherProposal({
+          agentId: HATCHER_AGENT_ID,
+          walletPubkey: HATCHER_AGENT_PUBKEY,
+          chain: 'solana-mainnet',
+          action: 'buy',
+          mint: selectedRow.candidate.token.mint,
+          inputAmountLamports: String(amountLamports),
+          expectedOutputAmount: unsignedSwap.expectedOutputAmount,
+          slippageBps: unsignedSwap.slippageBps,
+          unsignedTxBase64: unsignedSwap.unsignedTxBase64,
+          decisionJson: {
+            lane: 'highest-conviction',
+            confidence: decision.confidence || 0.8,
+            reasoning: decision.reason || 'Alpha trusted caller signal',
+            signals: {}
+          },
+          capsCheckJson: capsCheck,
+          expiresAtMs
+        });
+        console.log(`[Hatcher] Generated parallel unsigned proposal for ${selectedRow.candidate.token.mint}`);
+      } catch (err) {
+        console.error(`[Hatcher] Parallel proposal generation failed:`, err.message);
+      }
+    }, 0);
+  }
 }
 
 export async function executeLiveSell(position, reason) {

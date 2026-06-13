@@ -207,3 +207,38 @@ export async function executeJupiterSwapWithKey(keypair, { inputMint, outputMint
     outputAmount: String(executed?.outputAmountResult || executed?.totalOutputAmount || order?.outAmount || ''),
   };
 }
+
+export async function buildUnsignedJupiterSwap({ inputMint, outputMint, amount, takerPubkey, slippageBps, priorityFee, useJito }) {
+  if (!JUPITER_API_KEY) throw new Error('JUPITER_API_KEY is required for execution.');
+  if (!takerPubkey) throw new Error('takerPubkey is required for unsigned swap.');
+  
+  const url = new URL(`${JUPITER_SWAP_BASE_URL.replace(/\/$/, '')}/order`);
+  url.searchParams.set('inputMint', inputMint);
+  url.searchParams.set('outputMint', outputMint);
+  url.searchParams.set('amount', String(amount));
+  url.searchParams.set('taker', takerPubkey);
+  url.searchParams.set('slippageBps', String(slippageBps || JUPITER_SLIPPAGE_BPS));
+  if (priorityFee) url.searchParams.set('priorityFee', String(priorityFee));
+  if (useJito) url.searchParams.set('useJito', 'true');
+  
+  const res = await axios.get(url.toString(), {
+    timeout: 20_000,
+    headers: { ...JSON_HEADERS, 'x-api-key': JUPITER_API_KEY },
+  });
+  
+  const order = res.data;
+  if (order.errorCode || order.error) {
+    throw new Error(`Jupiter order failed: ${order.errorMessage || order.error || order.errorCode}`);
+  }
+
+  const transactionBase64 = order?.transaction || order?.swapTransaction || null;
+  if (!transactionBase64) throw new Error('Jupiter order did not include a transaction.');
+
+  return {
+    unsignedTxBase64: transactionBase64,
+    order,
+    inputAmountLamports: String(amount),
+    expectedOutputAmount: String(order.outAmount || ''),
+    slippageBps: slippageBps || JUPITER_SLIPPAGE_BPS,
+  };
+}
