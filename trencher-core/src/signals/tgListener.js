@@ -586,6 +586,8 @@ async function processMessage({ text, groupId, groupName, senderId, senderUserna
             sourceMeta: { groupId, groupName, rawMessage: text.slice(0, 200), senderId: String(senderId) },
           };
 
+          const candidateId = upsertCandidate(candidate);
+
           // Open position for EACH active scout
           for (const scout of activeScouts) {
             const fastBuyDecision = {
