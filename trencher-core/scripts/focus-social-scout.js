@@ -50,8 +50,8 @@ function run() {
     closePosStmt.run(Date.now());
 
     const insertTradeStmt = db.prepare(`
-      INSERT INTO dry_run_trades (position_id, mint, side, at_ms, price, mcap, reason)
-      VALUES (?, ?, 'sell', ?, NULL, NULL, 'manual_exit_focus_social_scout')
+      INSERT INTO dry_run_trades (position_id, mint, side, at_ms, price, mcap, reason, payload_json)
+      VALUES (?, ?, 'sell', ?, NULL, NULL, 'manual_exit_focus_social_scout', '{}')
     `);
 
     db.transaction(() => {
