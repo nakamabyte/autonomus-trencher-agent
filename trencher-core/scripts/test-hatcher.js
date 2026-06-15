@@ -8,7 +8,7 @@
 
 const API_URL = process.env.API_URL || 'http://localhost:4001/partner/v1/agents';
 const API_KEY = process.env.HATCHER_PARTNER_API_KEY || 'htc_8x9fp2a';
-const AGENT_ID = process.env.HATCHER_AGENT_ID || 'a72032da-6de4-4a3c-b235-dbf138ed8a87';
+const AGENT_ID = process.env.HATCHER_AGENT_ID || 'cce1b05d-e967-411e-900b-80a58463a19a';
 const HEADERS = {
   'Authorization': `Bearer hatcher_${API_KEY}`,
   'Content-Type': 'application/json'
