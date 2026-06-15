@@ -95,15 +95,21 @@ export async function executeLiveBuy(selectedRow, decision, batchId, rows = [], 
           slippageBps: 300,
           unsignedTxBase64: 'JIT', // Generated Just-In-Time when Hatcher polls
           decisionJson: {
-            lane: decision.lane,
-            caller: decision.caller,
-            caller_trust: decision.caller_trust,
-            source_group: decision.source_group,
+            lane: decision.lane || selectedRow.candidate.signals?.route || 'raw_scan',
+            caller: decision.caller || selectedRow.candidate.sourceMeta?.callerMeta?.callerHandle || 'system',
+            caller_trust: decision.caller_trust || 'Unknown',
+            source_group: decision.source_group || 'Unknown',
             confidence: decision.confidence,
             verdict: decision.verdict || decision.action,
-            hits: decision.hits,
-            read: decision.read || decision.reason,
-            signals: decision.signals
+            hits: decision.hits || selectedRow.candidate.sourceMeta?.callerMeta?.sentiment?.rawHits || [],
+            read: decision.read || decision.reason || selectedRow.candidate.sourceMeta?.callerMeta?.sentiment?.read || 'Automated buy',
+            signals: decision.signals || {
+              rug_probability: selectedRow.candidate.trending?.rug_ratio || 0,
+              bundler_ratio: selectedRow.candidate.trending?.bundler_rate || 0,
+              smart_money_overlap: (selectedRow.candidate.metrics?.trendingSmartDegenCount || 0) > 0,
+              runner_signal: !!selectedRow.candidate.signals?.route,
+              liquidity_usd: selectedRow.candidate.metrics?.liquidityUsd || 0
+            }
           },
           capsCheckJson: capsCheck,
           expiresAtMs

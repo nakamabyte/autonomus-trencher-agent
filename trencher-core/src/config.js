@@ -86,6 +86,7 @@ export const GMGN_CACHE_TTL_MS = Number(process.env.GMGN_CACHE_TTL_MS || 5 * 60 
 export const POSITION_CHECK_MS = Number(process.env.POSITION_CHECK_MS || 10_000);
 export const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 60_000);
 export const ENABLE_LLM = process.env.ENABLE_LLM !== 'false';
+export const ENABLE_GENERAL_SCREENING = process.env.ENABLE_GENERAL_SCREENING !== 'false';
 export const MINT_COOLDOWN_MS = Number(process.env.MINT_COOLDOWN_MS || 2 * 60 * 60 * 1000);
 export const SIGNAL_SERVER_URL = process.env.SIGNAL_SERVER_URL || 'http://localhost:3456';
 export const SIGNAL_SERVER_KEY = process.env.SIGNAL_SERVER_KEY || '';
