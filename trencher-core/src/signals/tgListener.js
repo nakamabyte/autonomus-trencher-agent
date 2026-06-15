@@ -853,15 +853,13 @@ export async function startTgListener() {
 
   for (const g of envGroups) monitoredGroups.add(g);
 
-  // ── Also load any groups previously added via /scout add command (from DB) ──
-  try {
-    const dbGroups = db.prepare(
-      "SELECT group_id FROM tg_group_performance WHERE monitored = 1"
-    ).all();
-    for (const row of dbGroups) monitoredGroups.add(row.group_id);
-  } catch {
-    // Table may not have monitored column on older installs — silently skip
-  }
+  // ── DB Loading disabled to force focus ONLY on .env groups ──
+  // try {
+  //   const dbGroups = db.prepare(
+  //     "SELECT group_id FROM tg_group_performance WHERE monitored = 1"
+  //   ).all();
+  //   for (const row of dbGroups) monitoredGroups.add(row.group_id);
+  // } catch { }
 
   const isDiscoveryMode = monitoredGroups.size === 0;
   if (isDiscoveryMode) {
@@ -952,26 +950,7 @@ export async function startTgListener() {
         : [...monitoredGroups].some(g => chatId.includes(g) || g.includes(chatId));
 
       if (!isMonitored) {
-        // Only act if the message contains a possible CA (32-44 char base58 token)
-        const hasPossibleCa = /[1-9A-HJ-NP-Za-km-z]{32,44}/.test(msg.message);
-        if (hasPossibleCa) {
-          console.log(
-            `[TG] 🔍 UNMONITORED group — ID: ${chatId} | Name: "${groupName}" | ` +
-            `Use: /scout add ${chatId}`
-          );
-          // Queue group for Telegram approval notification (hourly batch, max 5 per hour)
-          try {
-            db.prepare(`
-              INSERT INTO tg_group_pending (group_id, group_name, status, first_seen_ms, last_notified_ms)
-              VALUES (?, ?, 'pending', ?, 0)
-              ON CONFLICT(group_id) DO UPDATE SET
-                group_name = CASE WHEN excluded.group_name != '' THEN excluded.group_name ELSE group_name END
-              WHERE status = 'pending'
-            `).run(chatId, groupName, Date.now());
-          } catch (e) {
-            console.warn('[TG] could not queue pending group:', e.message);
-          }
-        }
+        // Abaikan group lain sepenuhnya
         return;
       }
 
