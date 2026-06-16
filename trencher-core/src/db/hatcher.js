@@ -256,7 +256,7 @@ export async function generateAndPushHatcherProposal(action, mint, amountLamport
     const WSOL = 'So11111111111111111111111111111111111111112';
     let jitSwap = {
       unsignedTxBase64: 'JIT_DRY_RUN_TX_MOCK',
-      blockhashMetadata: { recentBlockhash: 'MOCK_BLOCKHASH', lastValidBlockHeight: 0 },
+      blockhashMetadata: { blockhash: 'MOCK_BLOCKHASH', lastValidBlockHeight: 0 },
       expectedOutputAmount: '0'
     };
 
@@ -289,7 +289,21 @@ export async function generateAndPushHatcherProposal(action, mint, amountLamport
         expected_output_amount: jitSwap.expectedOutputAmount,
         slippage_bps: 300
       },
-      signal_payload: decisionJson,
+      signal_payload: {
+        lane: decisionJson.lane || 'social_scout',
+        caller: decisionJson.caller || 'autr_engine',
+        caller_trust: decisionJson.caller_trust || 'High',
+        confidence: decisionJson.confidence || 100,
+        verdict: decisionJson.verdict || String(action).toUpperCase(),
+        reason: decisionJson.reason || 'Trencher internal automated execution',
+        signals: decisionJson.signals || {
+          rug_probability: 0,
+          bundler_ratio: 0,
+          smart_money_overlap: true,
+          runner_signal: true,
+          liquidity_usd: 10000
+        }
+      },
       dry_run: isDryRun
     };
     

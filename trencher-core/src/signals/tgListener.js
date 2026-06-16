@@ -610,6 +610,10 @@ async function processMessage({ text, groupId, groupName, senderId, senderUserna
                 mint: ca,
                 confidence: 100,
                 reasoning: `Fast Buy: trusted group ${groupId}`
+              },
+              selected_row: {
+                id: candidateId,
+                candidate: candidate
               }
             };
 
