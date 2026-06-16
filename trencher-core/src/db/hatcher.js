@@ -255,8 +255,8 @@ export async function generateAndPushHatcherProposal(action, mint, amountLamport
     
     const WSOL = 'So11111111111111111111111111111111111111112';
     let jitSwap = {
-      unsignedTxBase64: 'JIT_DRY_RUN_TX_MOCK',
-      blockhashMetadata: { blockhash: 'MOCK_BLOCKHASH', lastValidBlockHeight: 0 },
+      unsignedTxBase64: Buffer.from('JIT_DRY_RUN_TX_MOCK_PAYLOAD_STRING_THAT_IS_LONG_ENOUGH').toString('base64'),
+      blockhashMetadata: { blockhash: 'MOCK_BLOCKHASH_DRY_RUN_123456', lastValidBlockHeight: 999999999 },
       expectedOutputAmount: '0'
     };
 
