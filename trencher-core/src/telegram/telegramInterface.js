@@ -38,20 +38,20 @@ export async function notifyClosePosition(position) {
 // TP hit
 export async function notifyTpHit(position, tpLevel) {
   const msg = formatTpHit(position, tpLevel)
-  await bot.sendMessage(CHAT_ID, msg, { parse_mode: 'Markdown' })
+  await bot.sendMessage(CHAT_ID, msg, { parse_mode: 'HTML' })
 }
 
 // SL hit
 export async function notifySlHit(position) {
   const msg = formatSlHit(position)
-  await bot.sendMessage(CHAT_ID, msg, { parse_mode: 'Markdown' })
+  await bot.sendMessage(CHAT_ID, msg, { parse_mode: 'HTML' })
 }
 
 // Daily summary — fires at midnight WIB (17:00 UTC)
 cron.schedule('0 17 * * *', async () => {
   const stats = getDailyStats()
   const msg = formatDailySummary(stats)
-  await bot.sendMessage(CHAT_ID, msg, { parse_mode: 'Markdown' })
+  await bot.sendMessage(CHAT_ID, msg, { parse_mode: 'HTML' })
   await tweetDailySummary(stats)
 })
 

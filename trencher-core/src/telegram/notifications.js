@@ -175,29 +175,27 @@ Exit: ${exitReason} at ${formatMcap(position.exit_mcap)} (${pnl.toFixed(1)}%)
 
 // ─── TELEGRAM: TP HIT ──────────────────────────────────────────────
 export function formatTpHit(position, tpLevel) {
-  return `
-✅ *TP HIT*
-
-🪙 *${position.symbol}*
-🎯 TP Level: ${tpLevel}%
-💰 Current PnL: +${position.current_pnl_percent?.toFixed(2) || '0'}%
-📐 Trailing activated
-─────────────────
-_Autonomous Trencher Agent_
-`.trim()
+  return [
+    `✅ <b>TP HIT</b>`,
+    ``,
+    `🪙 <b>${position.symbol}</b>`,
+    `🎯 TP Level: ${tpLevel}%`,
+    `💰 Current PnL: +${position.current_pnl_percent?.toFixed(2) || '0'}%`,
+    `📐 Trailing activated`,
+    `<i>Autonomous Trencher Agent</i>`,
+  ].join('\n');
 }
 
 // ─── TELEGRAM: SL HIT ──────────────────────────────────────────────
 export function formatSlHit(position) {
-  return `
-🛑 *STOP LOSS HIT*
-
-🪙 *${position.symbol}*
-📉 Loss: ${position.pnl_percent?.toFixed(2) || '0'}%
-⏱ Hold: ${Math.round(position.hold_minutes || 0)}m
-─────────────────
-_Autonomous Trencher Agent_
-`.trim()
+  return [
+    `🛑 <b>STOP LOSS HIT</b>`,
+    ``,
+    `🪙 <b>${position.symbol}</b>`,
+    `📉 Loss: ${position.pnl_percent?.toFixed(2) || '0'}%`,
+    `⏱ Hold: ${Math.round(position.hold_minutes || 0)}m`,
+    `<i>Autonomous Trencher Agent</i>`,
+  ].join('\n');
 }
 
 // ─── TELEGRAM: DAILY SUMMARY ───────────────────────────────────────
@@ -209,33 +207,34 @@ export function formatDailySummary(stats) {
     ? ((stats.wins / stats.total_trades) * 100).toFixed(1)
     : '0'
 
-  return `
-📊 *DAILY SUMMARY*
+  const byStrategy = stats.by_strategy?.map(s =>
+    `  ${formatStrategy(s.strategy)}: ${s.wins}W/${s.losses}L`
+  ).join('\n') || '  No data'
 
-${pnlEmoji} PnL: ${pnlSign}${formatSol(stats.total_pnl_sol)}
-📈 Win Rate: ${winRate}% (${stats.wins}W / ${stats.losses}L)
-🔄 Total Trades: ${stats.total_trades}
-🏆 Best: +${stats.best_pnl?.toFixed(2) || '0'}%
-💀 Worst: ${stats.worst_pnl?.toFixed(2) || '0'}%
-
-🎯 By Strategy:
-${stats.by_strategy?.map(s =>
-  `  ${formatStrategy(s.strategy)}: ${s.wins}W/${s.losses}L`
-).join('\n') || '  No data'}
-─────────────────
-_Autonomous Trencher Agent_
-`.trim()
+  return [
+    `📊 <b>DAILY SUMMARY</b>`,
+    ``,
+    `${pnlEmoji} PnL: ${pnlSign}${formatSol(stats.total_pnl_sol)}`,
+    `📈 Win Rate: ${winRate}% (${stats.wins}W / ${stats.losses}L)`,
+    `🔄 Total Trades: ${stats.total_trades}`,
+    `🏆 Best: +${stats.best_pnl?.toFixed(2) || '0'}%`,
+    `💀 Worst: ${stats.worst_pnl?.toFixed(2) || '0'}%`,
+    ``,
+    `🎯 By Strategy:`,
+    byStrategy,
+    `<i>Autonomous Trencher Agent</i>`,
+  ].join('\n');
 }
 
 // ─── COOLDOWN SKIP ─────────────────────────────────────────────────
 export function formatCooldownSkip(symbol, mint, remainingMinutes) {
-  return `
-⏳ *COOLDOWN ACTIVE*
-
-🪙 ${symbol}
-\`${mint}\`
-⏱ ${remainingMinutes}m remaining
-`.trim()
+  return [
+    `⏳ <b>COOLDOWN ACTIVE</b>`,
+    ``,
+    `🪙 ${symbol}`,
+    `<code>${mint}</code>`,
+    `⏱ ${remainingMinutes}m remaining`,
+  ].join('\n');
 }
 
 // ─── HOURLY SCAN SUMMARY ────────────────────────────────────────────
