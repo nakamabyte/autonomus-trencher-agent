@@ -642,11 +642,15 @@ async function processMessage({ text, groupId, groupName, senderId, senderUserna
 
             } else if (mode === 'live') {
               const { executeAgentTrade } = await import('../agents/executeAgentTrade.js');
-              const { getWalletBalance } = await import('../liveExecutor.js');
-              const { connection } = await import('../db/connection.js');
+              const { Connection, PublicKey } = await import('@solana/web3.js');
+              const { getActiveRpcUrl } = await import('../config.js');
               
               const dnaConfig = scout.dna_config ? JSON.parse(scout.dna_config) : {};
-              const balance = scout.agent_wallet ? await getWalletBalance(connection, scout.agent_wallet) : 0;
+              let balance = 0;
+              if (scout.agent_wallet) {
+                const solConnection = new Connection(getActiveRpcUrl(), 'confirmed');
+                balance = await solConnection.getBalance(new PublicKey(scout.agent_wallet));
+              }
               
               const signal = {
                 mint: ca,
