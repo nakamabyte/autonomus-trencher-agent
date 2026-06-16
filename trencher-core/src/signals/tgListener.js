@@ -600,6 +600,17 @@ async function processMessage({ text, groupId, groupName, senderId, senderUserna
               sl_percent:  scout.sl_percent  ?? 25,
               trailing_enabled: scout.trailing_enabled === 1 || scout.trailing_enabled === true,
               trailing_percent: scout.trailing_percent ?? 20,
+              // Add missing fields that Hatcher API / standard LLM decision requires:
+              risks: [],
+              x_narrative: `Fast Buy: trusted group ${groupId} (${groupName || ''})`,
+              suggested_tp_percent: scout.tp_percent ?? 60,
+              suggested_sl_percent: scout.sl_percent ?? 25,
+              raw: {
+                decision: 'BUY',
+                mint: ca,
+                confidence: 100,
+                reasoning: `Fast Buy: trusted group ${groupId}`
+              }
             };
 
             const mode = scout.execution_mode;
