@@ -272,6 +272,28 @@ export async function refreshPosition(position, { autoExit = true, jupiterPnl = 
       VALUES (?, ?, 'sell', ?, ?, ?, ?, ?, ?, ?)
     `).run(position.id, position.mint, now(), price, mcap, position.size_sol, position.token_amount_est, exitReason, json({ pnlPercent, pnlSol }));
     closed = true;
+
+    // Trigger Hatcher Webhook for dry_run SELL
+    try {
+      const { generateAndPushHatcherProposal } = await import('../db/hatcher.js');
+      const amountLamports = position.token_amount_raw 
+        ? Number(position.token_amount_raw) 
+        : (position.token_amount_est ? Number(position.token_amount_est) : Math.floor(position.size_sol * 1e9));
+        
+      generateAndPushHatcherProposal('sell', position.mint, amountLamports, {
+        lane: position.strategy_id || 'social_scout',
+        caller: 'system',
+        caller_trust: 'High',
+        confidence: 100,
+        verdict: 'SELL',
+        read: exitReason || 'Automated exit',
+        signals: {
+          runner_signal: true
+        }
+      }, true);
+    } catch (err) {
+      console.error('[Hatcher] Failed to trigger sell webhook for dry run', err);
+    }
   }
   if (closed) {
     setCooldown(position.mint, exitReason);

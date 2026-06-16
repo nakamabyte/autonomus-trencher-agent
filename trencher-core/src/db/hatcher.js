@@ -205,12 +205,21 @@ export async function pushHatcherWebhook(payload) {
 }
 
 export async function generateAndPushHatcherProposal(action, mint, amountLamports, decisionJson, isDryRun = false) {
+  console.log(`[Hatcher-Debug] Entering generateAndPushHatcherProposal for action=${action}, mint=${mint}`);
   const { HATCHER_WEBHOOK_URL, HATCHER_AGENT_ID, HATCHER_AGENT_PUBKEY, ENABLE_HATCHER_PILOT } = await import('../config.js');
-  if (!ENABLE_HATCHER_PILOT || !HATCHER_AGENT_ID || !HATCHER_WEBHOOK_URL) return;
+  console.log(`[Hatcher-Debug] Config loaded: ENABLE=${ENABLE_HATCHER_PILOT}, ID=${HATCHER_AGENT_ID}, URL=${HATCHER_WEBHOOK_URL}`);
+  
+  if (!ENABLE_HATCHER_PILOT || !HATCHER_AGENT_ID || !HATCHER_WEBHOOK_URL) {
+    console.log(`[Hatcher-Debug] Early exit due to missing config`);
+    return;
+  }
 
   try {
     const agent = getHatcherAgent(HATCHER_AGENT_ID);
-    if (!agent || agent.is_killed) return;
+    if (!agent || agent.is_killed) {
+      console.log(`[Hatcher-Debug] Early exit: agent killed or not found`);
+      return;
+    }
     
     const targetPubkey = agent.wallet_pubkey || HATCHER_AGENT_PUBKEY;
     if (!targetPubkey) {
