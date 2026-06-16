@@ -96,6 +96,11 @@ export async function executeAgentTrade(agent, signal, decision, dna, db, balanc
     });
     console.log(`[agent] ${agent.name} simulated BUY ${signal.symbol || signal.mint}`);
     import('../telegram/send.js').then(({ sendPositionOpen }) => sendPositionOpen(posId)).catch(() => {});
+    
+    // Trigger Hatcher Webhook for dry_run
+    import('../db/hatcher.js').then(({ generateAndPushHatcherProposal }) => {
+      generateAndPushHatcherProposal('buy', signal.mint, Math.floor(positionSize * 1e9), decision, true);
+    }).catch(e => console.error(e));
     return;
   }
 
@@ -127,5 +132,10 @@ export async function executeAgentTrade(agent, signal, decision, dna, db, balanc
 
     console.log(`[agent] ${agent.name} LIVE BUY ${signal.symbol || signal.mint} | Sig: ${result.signature}`);
     import('../telegram/send.js').then(({ sendPositionOpen }) => sendPositionOpen(posId)).catch(() => {});
+    
+    // Trigger Hatcher Webhook for live
+    import('../db/hatcher.js').then(({ generateAndPushHatcherProposal }) => {
+      generateAndPushHatcherProposal('buy', signal.mint, Math.floor(positionSize * 1e9), decision, false);
+    }).catch(e => console.error(e));
   }
 }

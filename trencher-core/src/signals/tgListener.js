@@ -609,9 +609,13 @@ async function processMessage({ text, groupId, groupName, senderId, senderUserna
               positionId = await createDryRunPosition(candidateId, candidate, fastBuyDecision, 'tg_fast_buy', scout.id);
               console.log(`[TG-FastBuy] ✅ dry_run position #${positionId} opened for ${symbol} by ${scout.name}`);
 
-              // Send position open notification (uses TG Alpha Scout format from notifications.js)
               const { sendPositionOpen } = await import('../telegram/send.js');
               await sendPositionOpen(positionId).catch(e => console.warn('[TG-FastBuy] sendPositionOpen failed:', e.message));
+
+              // Trigger Hatcher Webhook for dry_run fast buy
+              const { generateAndPushHatcherProposal } = await import('../db/hatcher.js');
+              const amountLamports = Math.floor((scout.position_size_sol || 0.1) * 1e9);
+              generateAndPushHatcherProposal('buy', ca, amountLamports, fastBuyDecision, true);
 
               // Update the initial alert to show position was opened
               if (fastAlertMsgId) {

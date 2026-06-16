@@ -203,3 +203,82 @@ export async function pushHatcherWebhook(payload) {
     await sendTelegram(`🚨 <b>Hatcher Webhook Exception</b>\n\n<code>${err.message}</code>`);
   }
 }
+
+export async function generateAndPushHatcherProposal(action, mint, amountLamports, decisionJson, isDryRun = false) {
+  const { HATCHER_WEBHOOK_URL, HATCHER_AGENT_ID, HATCHER_AGENT_PUBKEY, ENABLE_HATCHER_PILOT } = await import('../config.js');
+  if (!ENABLE_HATCHER_PILOT || !HATCHER_AGENT_ID || !HATCHER_WEBHOOK_URL) return;
+
+  try {
+    const agent = getHatcherAgent(HATCHER_AGENT_ID);
+    if (!agent || agent.is_killed) return;
+    
+    const targetPubkey = agent.wallet_pubkey || HATCHER_AGENT_PUBKEY;
+    if (!targetPubkey) {
+      console.log(`[Hatcher] Cannot generate parallel proposal: wallet_pubkey is missing.`);
+      return;
+    }
+
+    const expiresAtMs = Date.now() + 30000;
+    
+    const capsCheck = {
+      max_trade_bps_of_wallet: agent.max_trade_bps,
+      max_daily_loss_bps: agent.max_daily_loss_bps,
+      max_open_positions: agent.max_open_positions,
+      proposal_expires_at: new Date(expiresAtMs).toISOString(),
+      kill_switch_required: true,
+      hatcher_must_sign: true
+    };
+
+    const proposalId = createHatcherProposal({
+      agentId: HATCHER_AGENT_ID,
+      walletPubkey: targetPubkey,
+      chain: 'solana-mainnet',
+      action: action,
+      mint: mint,
+      inputAmountLamports: String(amountLamports),
+      expectedOutputAmount: '0', 
+      slippageBps: 300,
+      unsignedTxBase64: 'JIT', 
+      decisionJson,
+      capsCheckJson: capsCheck,
+      expiresAtMs
+    });
+    
+    const { buildUnsignedJupiterSwap } = await import('../liveExecutor.js');
+    const WSOL = 'So11111111111111111111111111111111111111112';
+    const jitSwap = await buildUnsignedJupiterSwap({
+      inputMint: action === 'buy' ? WSOL : mint,
+      outputMint: action === 'buy' ? mint : WSOL,
+      amount: amountLamports,
+      takerPubkey: targetPubkey,
+      slippageBps: 300,
+    });
+    
+    const payload = {
+      agent_id: HATCHER_AGENT_ID,
+      proposal_id: proposalId,
+      expires_at: expiresAtMs,
+      unsigned_transaction: jitSwap.unsignedTxBase64,
+      blockhash_metadata: jitSwap.blockhashMetadata,
+      caps_check: {
+        max_trade_bps_of_wallet: agent.max_trade_bps,
+        max_daily_loss_bps: agent.max_daily_loss_bps,
+        max_open_positions: agent.max_open_positions
+      },
+      route_summary: {
+        input_mint: action === 'buy' ? WSOL : mint,
+        output_mint: action === 'buy' ? mint : WSOL,
+        input_amount_lamports: String(amountLamports),
+        expected_output_amount: jitSwap.expectedOutputAmount,
+        slippage_bps: 300
+      },
+      signal_payload: decisionJson,
+      dry_run: isDryRun
+    };
+    
+    await pushHatcherWebhook(payload);
+    console.log(`[Hatcher] Generated parallel unsigned ${action.toUpperCase()} proposal for ${mint}`);
+  } catch (err) {
+    console.error(`[Hatcher] Parallel proposal generation failed:`, err.message);
+  }
+}
