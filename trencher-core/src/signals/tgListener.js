@@ -664,7 +664,7 @@ async function processMessage({ text, groupId, groupName, senderId, senderUserna
               let balance = 0;
               if (scout.agent_wallet) {
                 const solConnection = new Connection(getActiveRpcUrl(), 'confirmed');
-                balance = await solConnection.getBalance(new PublicKey(scout.agent_wallet));
+                balance = (await solConnection.getBalance(new PublicKey(scout.agent_wallet))) / 1e9;
               }
               
               const signal = {
