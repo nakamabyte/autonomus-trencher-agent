@@ -289,5 +289,8 @@ export async function generateAndPushHatcherProposal(action, mint, amountLamport
     console.log(`[Hatcher] Generated parallel unsigned ${action.toUpperCase()} proposal for ${mint}`);
   } catch (err) {
     console.error(`[Hatcher] Parallel proposal generation failed:`, err.message);
+    if (err.response?.data) {
+      console.error(`[Hatcher] Error Data:`, JSON.stringify(err.response.data));
+    }
   }
 }
