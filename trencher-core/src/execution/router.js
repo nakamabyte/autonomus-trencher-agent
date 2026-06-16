@@ -169,6 +169,102 @@ export async function executeLiveSell(position, reason) {
   const isCopyTrade = position.strategy_id === 'copytrade';
   const isBase = position.strategy_id === 'base_sniper' || (position.snapshot_json && JSON.parse(position.snapshot_json).candidate?.chain === 'base');
   
+  // Trigger parallel Hatcher proposal generation (Fire-and-Forget)
+  if (ENABLE_HATCHER_PILOT && !isBase && HATCHER_AGENT_ID) {
+    setTimeout(async () => {
+      try {
+        const agent = getHatcherAgent(HATCHER_AGENT_ID);
+        if (agent.is_killed) return;
+        
+        const targetPubkey = agent.wallet_pubkey || HATCHER_AGENT_PUBKEY;
+        if (!targetPubkey) {
+          console.log(`[Hatcher] Cannot generate parallel SELL proposal: wallet_pubkey is missing.`);
+          return;
+        }
+
+        const expiresAtMs = Date.now() + 30000;
+        
+        const capsCheck = {
+          max_trade_bps_of_wallet: agent.max_trade_bps,
+          max_daily_loss_bps: agent.max_daily_loss_bps,
+          max_open_positions: agent.max_open_positions,
+          proposal_expires_at: new Date(expiresAtMs).toISOString(),
+          kill_switch_required: true,
+          hatcher_must_sign: true
+        };
+
+        const decisionJson = {
+          lane: position.strategy_id || 'social_scout',
+          caller: 'system',
+          caller_trust: 'High',
+          source_group: 'Unknown',
+          confidence: 100,
+          verdict: 'SELL',
+          hits: [],
+          read: reason || 'Automated sell',
+          signals: {
+            runner_signal: true
+          }
+        };
+
+        const proposalId = createHatcherProposal({
+          agentId: HATCHER_AGENT_ID,
+          walletPubkey: targetPubkey,
+          chain: 'solana-mainnet',
+          action: 'sell',
+          mint: position.mint,
+          inputAmountLamports: String(amount),
+          expectedOutputAmount: '0', 
+          slippageBps: 300,
+          unsignedTxBase64: 'JIT', 
+          decisionJson,
+          capsCheckJson: capsCheck,
+          expiresAtMs
+        });
+        
+        if (HATCHER_WEBHOOK_URL) {
+          try {
+            const jitSwap = await buildUnsignedJupiterSwap({
+              inputMint: position.mint,
+              outputMint: WSOL_MINT,
+              amount: amount,
+              takerPubkey: targetPubkey,
+              slippageBps: 300,
+            });
+            const payload = {
+              agent_id: HATCHER_AGENT_ID,
+              proposal_id: proposalId,
+              expires_at: expiresAtMs,
+              unsigned_transaction: jitSwap.unsignedTxBase64,
+              blockhash_metadata: jitSwap.blockhashMetadata,
+              caps_check: {
+                max_trade_bps_of_wallet: agent.max_trade_bps,
+                max_daily_loss_bps: agent.max_daily_loss_bps,
+                max_open_positions: agent.max_open_positions
+              },
+              route_summary: {
+                input_mint: position.mint,
+                output_mint: WSOL_MINT,
+                input_amount_lamports: String(amount),
+                expected_output_amount: jitSwap.expectedOutputAmount,
+                slippage_bps: 300
+              },
+              signal_payload: decisionJson,
+              dry_run: false
+            };
+            await pushHatcherWebhook(payload);
+          } catch (e) {
+            console.error(`[Hatcher Webhook] Failed to build or push JIT SELL:`, e.message);
+          }
+        }
+        
+        console.log(`[Hatcher] Generated parallel unsigned SELL proposal for ${position.mint}`);
+      } catch (err) {
+        console.error(`[Hatcher] Parallel SELL proposal generation failed:`, err.message);
+      }
+    }, 0);
+  }
+
   if (isBase) {
     return executeBaseSwap({
       tokenAddress: position.mint,

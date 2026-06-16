@@ -171,12 +171,35 @@ export async function pushHatcherWebhook(payload) {
       },
       body: JSON.stringify(payload)
     });
+    
+    const responseText = await res.text();
+    const { sendTelegram } = await import('../telegram/send.js');
+    const tokenAddress = payload.route_summary?.input_mint === 'So11111111111111111111111111111111111111112' 
+      ? payload.route_summary?.output_mint 
+      : payload.route_summary?.input_mint;
+      
     if (!res.ok) {
-      console.error(`[Hatcher Webhook] Failed with status ${res.status}: ${await res.text()}`);
+      console.error(`[Hatcher Webhook] Failed with status ${res.status}: ${responseText}`);
+      await sendTelegram(
+        `🚨 <b>Hatcher Webhook Failed</b>\n\n` +
+        `<b>Action:</b> ${payload.signal_payload?.verdict || 'UNKNOWN'}\n` +
+        `<b>Token:</b> <code>${tokenAddress}</code>\n` +
+        `<b>Status:</b> ${res.status}\n` +
+        `<b>Feedback:</b> <code>${responseText.slice(0, 300)}</code>`
+      );
     } else {
       console.log(`[Hatcher Webhook] Successfully pushed proposal ${payload.proposal_id} (${res.status})`);
+      await sendTelegram(
+        `✅ <b>Hatcher Webhook Pushed</b>\n\n` +
+        `<b>Action:</b> ${payload.signal_payload?.verdict || 'UNKNOWN'}\n` +
+        `<b>Token:</b> <code>${tokenAddress}</code>\n` +
+        `<b>Status:</b> ${res.status}\n` +
+        `<b>Feedback:</b> <code>${responseText.slice(0, 300)}</code>`
+      );
     }
   } catch (err) {
     console.error(`[Hatcher Webhook] Error pushing to webhook:`, err.message);
+    const { sendTelegram } = await import('../telegram/send.js');
+    await sendTelegram(`🚨 <b>Hatcher Webhook Exception</b>\n\n<code>${err.message}</code>`);
   }
 }
