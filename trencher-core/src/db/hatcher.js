@@ -158,3 +158,25 @@ export function markProposalExecuted(proposalId, status, txSignature, reason) {
     WHERE proposal_id = ?
   `).run(status, txSignature, nowMs(), proposalId);
 }
+
+export async function pushHatcherWebhook(payload) {
+  const { HATCHER_WEBHOOK_URL, HATCHER_PARTNER_API_KEY } = await import('../config.js');
+  if (!HATCHER_WEBHOOK_URL) return;
+  try {
+    const res = await fetch(HATCHER_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer hatcher_${HATCHER_PARTNER_API_KEY}`
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      console.error(`[Hatcher Webhook] Failed with status ${res.status}: ${await res.text()}`);
+    } else {
+      console.log(`[Hatcher Webhook] Successfully pushed proposal ${payload.proposal_id} (${res.status})`);
+    }
+  } catch (err) {
+    console.error(`[Hatcher Webhook] Error pushing to webhook:`, err.message);
+  }
+}

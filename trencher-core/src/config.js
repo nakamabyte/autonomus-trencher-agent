@@ -124,6 +124,7 @@ export const ENABLE_HATCHER_PILOT = process.env.ENABLE_HATCHER_PILOT === 'true';
 export const HATCHER_PARTNER_API_KEY = process.env.HATCHER_PARTNER_API_KEY || '';
 export const HATCHER_AGENT_PUBKEY = process.env.HATCHER_AGENT_PUBKEY || '';
 export const HATCHER_AGENT_ID = process.env.HATCHER_AGENT_ID || '';
+export const HATCHER_WEBHOOK_URL = process.env.HATCHER_WEBHOOK_URL || '';
 
 export function validateConfig() {
   if (!TELEGRAM_BOT_TOKEN) throw new Error('TELEGRAM_BOT_TOKEN is required.');

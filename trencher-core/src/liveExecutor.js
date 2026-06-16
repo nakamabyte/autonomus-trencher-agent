@@ -234,11 +234,23 @@ export async function buildUnsignedJupiterSwap({ inputMint, outputMint, amount, 
   const transactionBase64 = order?.transaction || order?.swapTransaction || null;
   if (!transactionBase64) throw new Error('Jupiter order did not include a transaction.');
 
+  const { VersionedTransaction, Connection } = await import('@solana/web3.js');
+  const tx = VersionedTransaction.deserialize(Buffer.from(transactionBase64, 'base64'));
+  const blockhash = tx.message.recentBlockhash;
+  
+  const { getActiveRpcUrl } = await import('./config.js');
+  const connection = new Connection(getActiveRpcUrl(), 'confirmed');
+  const { lastValidBlockHeight } = await connection.getLatestBlockhash();
+
   return {
     unsignedTxBase64: transactionBase64,
     order,
     inputAmountLamports: String(amount),
     expectedOutputAmount: String(order.outAmount || ''),
     slippageBps: slippageBps || JUPITER_SLIPPAGE_BPS,
+    blockhashMetadata: {
+      blockhash,
+      lastValidBlockHeight
+    }
   };
 }
