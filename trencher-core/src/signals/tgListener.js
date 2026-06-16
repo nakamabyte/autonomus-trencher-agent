@@ -665,6 +665,10 @@ async function processMessage({ text, groupId, groupName, senderId, senderUserna
               if (scout.agent_wallet) {
                 const solConnection = new Connection(getActiveRpcUrl(), 'confirmed');
                 balance = (await solConnection.getBalance(new PublicKey(scout.agent_wallet))) / 1e9;
+                if (balance < 0.02) {
+                  console.log(`[TG-FastBuy] ⚠️ Agent ${scout.name} low balance (${balance} SOL), skipping live trade`);
+                  continue;
+                }
               }
               
               const signal = {
