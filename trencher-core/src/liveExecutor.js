@@ -240,7 +240,13 @@ export async function buildUnsignedJupiterSwap({ inputMint, outputMint, amount, 
   
   const { getActiveRpcUrl } = await import('./config.js');
   const connection = new Connection(getActiveRpcUrl(), 'confirmed');
-  const { lastValidBlockHeight } = await connection.getLatestBlockhash();
+  let lastValidBlockHeight = 999999999;
+  try {
+    const fresh = await connection.getLatestBlockhash();
+    lastValidBlockHeight = fresh.lastValidBlockHeight;
+  } catch (rpcErr) {
+    console.warn(`[LiveExecutor] Warning: Failed to fetch fresh blockhash metadata: ${rpcErr.message}`);
+  }
 
   return {
     unsignedTxBase64: transactionBase64,
