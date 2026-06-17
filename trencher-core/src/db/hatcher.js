@@ -254,25 +254,18 @@ export async function generateAndPushHatcherProposal(action, mint, amountLamport
     });
     
     const WSOL = 'So11111111111111111111111111111111111111112';
-    let jitSwap = {
-      unsignedTxBase64: Buffer.from('JIT_DRY_RUN_TX_MOCK_PAYLOAD_STRING_THAT_IS_LONG_ENOUGH').toString('base64'),
-      blockhashMetadata: { blockhash: 'MOCK_BLOCKHASH_DRY_RUN_123456', lastValidBlockHeight: 999999999 },
-      expectedOutputAmount: '0'
-    };
-
-    if (!isDryRun) {
-      const { buildUnsignedJupiterSwap } = await import('../liveExecutor.js');
-      jitSwap = await buildUnsignedJupiterSwap({
-        inputMint: action === 'buy' ? WSOL : mint,
-        outputMint: action === 'buy' ? mint : WSOL,
-        amount: amountLamports,
-        takerPubkey: targetPubkey,
-        slippageBps: 300,
-      });
-    }
+    const { buildUnsignedJupiterSwap } = await import('../liveExecutor.js');
+    let jitSwap = await buildUnsignedJupiterSwap({
+      inputMint: action === 'buy' ? WSOL : mint,
+      outputMint: action === 'buy' ? mint : WSOL,
+      amount: amountLamports,
+      takerPubkey: targetPubkey,
+      slippageBps: 300,
+    });
     
     const payload = {
       agent_id: HATCHER_AGENT_ID,
+      wallet_pubkey: targetPubkey,
       proposal_id: proposalId,
       expires_at: expiresAtMs,
       unsigned_transaction: jitSwap.unsignedTxBase64,
