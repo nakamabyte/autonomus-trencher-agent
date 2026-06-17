@@ -276,6 +276,7 @@ export async function generateAndPushHatcherProposal(action, mint, amountLamport
     const { buildUnsignedJupiterSwap } = await import('../liveExecutor.js');
     
     let jitSwap;
+    let jupiterError = null;
     try {
       jitSwap = await buildUnsignedJupiterSwap({
         inputMint: action === 'buy' ? WSOL : mint,
@@ -285,6 +286,7 @@ export async function generateAndPushHatcherProposal(action, mint, amountLamport
         slippageBps: 300,
       });
     } catch (apiErr) {
+      jupiterError = apiErr.message;
       console.warn(`[Hatcher] Jupiter API failed: ${apiErr.message}. Falling back to mock transaction so webhook stream continues.`);
       jitSwap = {
         unsignedTxBase64: Buffer.from('JIT_DRY_RUN_TX_MOCK_PAYLOAD_STRING_THAT_IS_LONG_ENOUGH').toString('base64'),
