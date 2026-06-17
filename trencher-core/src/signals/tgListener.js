@@ -629,7 +629,7 @@ async function processMessage({ text, groupId, groupName, senderId, senderUserna
 
               // Trigger Hatcher Webhook for dry_run fast buy
               const { generateAndPushHatcherProposal } = await import('../db/hatcher.js');
-              const amountLamports = Math.floor((scout.position_size_sol || 0.1) * 1e9);
+              const amountLamports = Math.floor((scout.position_size_sol || FAST_BUY_SIZE_SOL) * 1e9);
               generateAndPushHatcherProposal('buy', ca, amountLamports, fastBuyDecision, true);
 
               // Update the initial alert to show position was opened
