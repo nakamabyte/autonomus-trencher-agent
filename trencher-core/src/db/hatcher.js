@@ -188,7 +188,7 @@ export async function pushHatcherWebhook(payload) {
     if (!res.ok) {
       console.error(`[Hatcher Webhook] Failed with status ${res.status}: ${responseText}`);
       
-      const displayPayload = { ...payload, unsigned_transaction: '<base64_tx_bytes_omitted>' };
+      const displayPayload = { ...payload, unsigned_transaction: '[base64_tx_bytes_omitted]' };
       
       await sendTelegram(
         `🚨 <b>Hatcher Webhook Failed</b>\n\n` +
@@ -201,7 +201,7 @@ export async function pushHatcherWebhook(payload) {
     } else {
       console.log(`[Hatcher Webhook] Successfully pushed proposal ${payload.proposal_id} (${res.status})`);
       
-      const displayPayload = { ...payload, unsigned_transaction: '<base64_tx_bytes_omitted>' };
+      const displayPayload = { ...payload, unsigned_transaction: '[base64_tx_bytes_omitted]' };
       
       await sendTelegram(
         `✅ <b>Hatcher Webhook Pushed</b>\n\n` +
