@@ -178,23 +178,38 @@ export async function pushHatcherWebhook(payload) {
       ? payload.route_summary?.output_mint 
       : payload.route_summary?.input_mint;
       
+    let prettyFeedback = responseText.slice(0, 300);
+    try {
+      prettyFeedback = JSON.stringify(JSON.parse(responseText), null, 2);
+    } catch (e) {
+      // Keep as text if not JSON
+    }
+
     if (!res.ok) {
       console.error(`[Hatcher Webhook] Failed with status ${res.status}: ${responseText}`);
+      
+      const displayPayload = { ...payload, unsigned_transaction: '<base64_tx_bytes_omitted>' };
+      
       await sendTelegram(
         `🚨 <b>Hatcher Webhook Failed</b>\n\n` +
         `<b>Action:</b> ${payload.signal_payload?.verdict || 'UNKNOWN'}\n` +
         `<b>Token:</b> <code>${tokenAddress}</code>\n` +
-        `<b>Status:</b> ${res.status}\n` +
-        `<b>Feedback:</b> <code>${responseText.slice(0, 300)}</code>`
+        `<b>Status:</b> ${res.status}\n\n` +
+        `<b>Feedback:</b>\n<pre><code class="language-json">${prettyFeedback}</code></pre>\n` +
+        `<b>Payload:</b>\n<pre><code class="language-json">${JSON.stringify(displayPayload, null, 2)}</code></pre>`
       );
     } else {
       console.log(`[Hatcher Webhook] Successfully pushed proposal ${payload.proposal_id} (${res.status})`);
+      
+      const displayPayload = { ...payload, unsigned_transaction: '<base64_tx_bytes_omitted>' };
+      
       await sendTelegram(
         `✅ <b>Hatcher Webhook Pushed</b>\n\n` +
         `<b>Action:</b> ${payload.signal_payload?.verdict || 'UNKNOWN'}\n` +
         `<b>Token:</b> <code>${tokenAddress}</code>\n` +
-        `<b>Status:</b> ${res.status}\n` +
-        `<b>Feedback:</b> <code>${responseText.slice(0, 300)}</code>`
+        `<b>Status:</b> ${res.status}\n\n` +
+        `<b>Feedback:</b>\n<pre><code class="language-json">${prettyFeedback}</code></pre>\n` +
+        `<b>Payload:</b>\n<pre><code class="language-json">${JSON.stringify(displayPayload, null, 2)}</code></pre>`
       );
     }
   } catch (err) {
