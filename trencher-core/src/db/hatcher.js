@@ -159,7 +159,7 @@ export function markProposalExecuted(proposalId, status, txSignature, reason) {
   `).run(status, txSignature, nowMs(), proposalId);
 }
 
-export async function pushHatcherWebhook(payload) {
+export async function pushHatcherWebhook(payload, jupiterError = null) {
   const { HATCHER_WEBHOOK_URL, HATCHER_PARTNER_API_KEY } = await import('../config.js');
   if (!HATCHER_WEBHOOK_URL) return;
   try {
@@ -185,6 +185,8 @@ export async function pushHatcherWebhook(payload) {
       // Keep as text if not JSON
     }
 
+    const jupWarning = jupiterError ? `⚠️ <b>Jupiter API Error:</b> <code>${jupiterError}</code>\n` : '';
+
     if (!res.ok) {
       console.error(`[Hatcher Webhook] Failed with status ${res.status}: ${responseText}`);
       
@@ -194,7 +196,8 @@ export async function pushHatcherWebhook(payload) {
         `🚨 <b>Hatcher Webhook Failed</b>\n\n` +
         `<b>Action:</b> ${payload.signal_payload?.verdict || 'UNKNOWN'}\n` +
         `<b>Token:</b> <code>${tokenAddress}</code>\n` +
-        `<b>Status:</b> ${res.status}\n\n` +
+        `<b>Status:</b> ${res.status}\n` +
+        jupWarning + `\n` +
         `<b>Feedback:</b>\n<pre><code class="language-json">${prettyFeedback}</code></pre>\n` +
         `<b>Payload:</b>\n<pre><code class="language-json">${JSON.stringify(displayPayload, null, 2)}</code></pre>`
       );
@@ -207,7 +210,8 @@ export async function pushHatcherWebhook(payload) {
         `✅ <b>Hatcher Webhook Pushed</b>\n\n` +
         `<b>Action:</b> ${payload.signal_payload?.verdict || 'UNKNOWN'}\n` +
         `<b>Token:</b> <code>${tokenAddress}</code>\n` +
-        `<b>Status:</b> ${res.status}\n\n` +
+        `<b>Status:</b> ${res.status}\n` +
+        jupWarning + `\n` +
         `<b>Feedback:</b>\n<pre><code class="language-json">${prettyFeedback}</code></pre>\n` +
         `<b>Payload:</b>\n<pre><code class="language-json">${JSON.stringify(displayPayload, null, 2)}</code></pre>`
       );
@@ -326,7 +330,7 @@ export async function generateAndPushHatcherProposal(action, mint, amountLamport
       dry_run: isDryRun
     };
     
-    await pushHatcherWebhook(payload);
+    await pushHatcherWebhook(payload, jupiterError);
     console.log(`[Hatcher] Generated parallel unsigned ${action.toUpperCase()} proposal for ${mint}`);
   } catch (err) {
     console.error(`[Hatcher] Parallel proposal generation failed:`, err.message);
