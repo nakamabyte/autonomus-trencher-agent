@@ -288,10 +288,25 @@ export async function generateAndPushHatcherProposal(action, mint, amountLamport
     } catch (apiErr) {
       jupiterError = apiErr.message;
       console.warn(`[Hatcher] Jupiter API failed: ${apiErr.message}. Falling back to mock transaction so webhook stream continues.`);
+      
+      let fallbackExpectedOutput = '0';
+      try {
+        const quoteUrl = `https://api.jup.ag/swap/v1/quote?inputMint=${action === 'buy' ? WSOL : mint}&outputMint=${action === 'buy' ? mint : WSOL}&amount=${amountLamports}&slippageBps=300`;
+        const quoteRes = await fetch(quoteUrl);
+        if (quoteRes.ok) {
+          const quoteData = await quoteRes.json();
+          if (quoteData && quoteData.outAmount) {
+            fallbackExpectedOutput = String(quoteData.outAmount);
+          }
+        }
+      } catch (qErr) {
+        console.warn(`[Hatcher] Failed to fetch fallback quote from Jupiter: ${qErr.message}`);
+      }
+      
       jitSwap = {
         unsignedTxBase64: Buffer.from('JIT_DRY_RUN_TX_MOCK_PAYLOAD_STRING_THAT_IS_LONG_ENOUGH').toString('base64'),
         blockhashMetadata: { blockhash: 'MOCK_BLOCKHASH_DRY_RUN_123456', lastValidBlockHeight: 999999999 },
-        expectedOutputAmount: '0'
+        expectedOutputAmount: fallbackExpectedOutput
       };
     }
     
