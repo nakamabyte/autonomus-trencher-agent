@@ -303,9 +303,22 @@ export async function generateAndPushHatcherProposal(action, mint, amountLamport
         console.warn(`[Hatcher] Failed to fetch fallback quote from Jupiter: ${qErr.message}`);
       }
       
+      let realBlockhash = 'MOCK_BLOCKHASH_DRY_RUN_123456';
+      let realBlockHeight = 999999999;
+      try {
+        const { Connection } = await import('@solana/web3.js');
+        const { getActiveRpcUrl } = await import('../config.js');
+        const connection = new Connection(getActiveRpcUrl(), 'confirmed');
+        const fresh = await connection.getLatestBlockhash();
+        realBlockhash = fresh.blockhash;
+        realBlockHeight = fresh.lastValidBlockHeight;
+      } catch (rpcErr) {
+        console.warn(`[Hatcher] Failed to fetch real blockhash for fallback: ${rpcErr.message}`);
+      }
+      
       jitSwap = {
         unsignedTxBase64: Buffer.from('JIT_DRY_RUN_TX_MOCK_PAYLOAD_STRING_THAT_IS_LONG_ENOUGH').toString('base64'),
-        blockhashMetadata: { blockhash: 'MOCK_BLOCKHASH_DRY_RUN_123456', lastValidBlockHeight: 999999999 },
+        blockhashMetadata: { blockhash: realBlockhash, lastValidBlockHeight: realBlockHeight },
         expectedOutputAmount: fallbackExpectedOutput
       };
     }
