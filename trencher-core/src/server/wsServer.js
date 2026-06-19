@@ -714,8 +714,8 @@ export function startWsServer(port = 4001, x402App = null) {
             const signature = await connection.sendRawTransaction(tx.serialize());
             await connection.confirmTransaction(signature, 'confirmed');
 
-            const amountSol = (transferLamports / 1e9).toFixed(6);
-            console.log(`[withdraw] ✅ Withdrew ${amountSol} SOL from ${agent.name} to ${destinationAddress} | Sig: ${signature}`);
+            const withdrawnSol = (transferLamports / 1e9).toFixed(6);
+            console.log(`[withdraw] ✅ Withdrew ${withdrawnSol} SOL from ${agent.name} to ${destinationAddress} | Sig: ${signature}`);
 
             // Broadcast updated DNA
             const { listBreeds } = await import('../db/agentDna.js');
@@ -723,7 +723,7 @@ export function startWsServer(port = 4001, x402App = null) {
 
             const msg = `💸 <b>Agent Withdrawal</b>\n\n` +
               `<b>Agent:</b> ${agent.name}\n` +
-              `<b>Amount:</b> ${amountSol} SOL\n` +
+              `<b>Amount:</b> ${withdrawnSol} SOL\n` +
               `<b>Destination:</b> <code>${destinationAddress}</code>\n` +
               `<b>Tx:</b> <code>${signature}</code>`;
             import('../telegram/send.js').then(({ sendTelegram }) => sendTelegram(msg)).catch(() => {});
@@ -732,7 +732,7 @@ export function startWsServer(port = 4001, x402App = null) {
             res.end(JSON.stringify({
               success: true,
               signature,
-              amountSol: parseFloat(amountSol),
+              amountSol: parseFloat(withdrawnSol),
               destination: destinationAddress,
             }));
           } catch (txErr) {
