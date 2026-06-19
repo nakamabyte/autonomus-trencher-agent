@@ -86,9 +86,9 @@ export default function AgentProfilePage() {
           'Content-Type': 'application/json',
           'x-agent-key': withdrawSecret.trim(),
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           destinationAddress: withdrawAddress.trim(),
-          amountSol: amountNum 
+          amountSol: amountNum
         }),
       });
       const data = await res.json();
@@ -137,29 +137,29 @@ export default function AgentProfilePage() {
         alignItems: 'center',
         gap: '24px'
       }}>
-        <button 
+        <button
           className="pv-back"
           style={{ marginRight: 0 }}
           onClick={() => router.push('/?platform=true')}
         >
           ← BACK
         </button>
-        <div 
-          onClick={() => router.push('/')} 
-          style={{ 
-            color: '#00C896', 
-            fontFamily: "'Barlow Condensed', sans-serif", 
-            fontSize: '18px', 
-            fontWeight: 700, 
+        <div
+          onClick={() => router.push('/')}
+          style={{
+            color: '#00C896',
+            fontFamily: "'Barlow Condensed', sans-serif",
+            fontSize: '18px',
+            fontWeight: 700,
             letterSpacing: '0.1em',
             cursor: 'pointer'
           }}
         >
           TRENCHER AGENT
         </div>
-        <div style={{ 
-          fontSize: '12px', 
-          fontFamily: "'JetBrains Mono', monospace", 
+        <div style={{
+          fontSize: '12px',
+          fontFamily: "'JetBrains Mono', monospace",
           color: '#888',
           marginLeft: 'auto'
         }}>
@@ -169,19 +169,19 @@ export default function AgentProfilePage() {
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Left Column: DNA Profile */}
-        <div style={{ 
-          width: '380px', 
-          borderRight: '1px solid #1a1a24', 
-          padding: '24px', 
-          overflowY: 'auto' 
+        <div style={{
+          width: '380px',
+          borderRight: '1px solid #1a1a24',
+          padding: '24px',
+          overflowY: 'auto'
         }}>
           {!isLoaded ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', textAlign: 'center' }}>
-              <div 
+              <div
                 className="animate-spin"
                 style={{
                   width: '30px', height: '30px', border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#00C896', borderRadius: '50%', marginBottom: '12px'
-                }} 
+                }}
               />
               <div style={{ color: '#888', fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', letterSpacing: '0.1em' }}>
                 LOADING PROFILE...
@@ -200,9 +200,9 @@ export default function AgentProfilePage() {
               <div style={{ fontSize: '11px', color: '#555', fontFamily: "'JetBrains Mono', monospace" }}>
                 DNA Hash: {agent.id}
               </div>
-              
+
               <AgentProfileCard agent={agent} compact={false} hideViewProfile={true} />
-              
+
               <div style={{ background: '#0a0a0f', padding: '16px', borderRadius: '6px', border: '1px solid #1a1a24' }}>
                 <div style={{ color: '#00C896', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px', fontWeight: 'bold' }}>
                   Lineage
@@ -226,7 +226,7 @@ export default function AgentProfilePage() {
               {/* Social Scout: TG Groups Panel */}
               {agent.breed === 'social_scout' && (() => {
                 let dnaConfig: any = {};
-                try { dnaConfig = JSON.parse(agent.dna_config || '{}'); } catch {}
+                try { dnaConfig = JSON.parse(agent.dna_config || '{}'); } catch { }
                 const groups: string[] = dnaConfig.tgGroups || [];
                 return (
                   <div style={{ background: '#0a0a0f', padding: '16px', borderRadius: '6px', border: '1px solid rgba(0,187,249,0.25)' }}>
@@ -276,14 +276,14 @@ export default function AgentProfilePage() {
                     <span style={{ fontSize: '8px', background: 'rgba(0,200,150,0.1)', padding: '2px 6px', borderRadius: '4px' }}>FUNDING ADDRESS</span>
 
                   </div>
-                  <div 
+                  <div
                     onClick={() => {
                       if (agent.agent_wallet) handleCopy(agent.agent_wallet);
                     }}
-                    style={{ 
-                      fontSize: '11px', 
-                      fontFamily: "'JetBrains Mono', monospace", 
-                      color: '#ddd', 
+                    style={{
+                      fontSize: '11px',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      color: '#ddd',
                       background: 'rgba(0,0,0,0.3)',
                       padding: '8px',
                       borderRadius: '4px',
@@ -315,17 +315,17 @@ export default function AgentProfilePage() {
                     Transfer SOL to this address to start automatic Live Trading.
                   </div>
                   {balance !== null && (
-                    <div style={{ 
-                      marginTop: '12px', 
-                      paddingTop: '12px', 
+                    <div style={{
+                      marginTop: '12px',
+                      paddingTop: '12px',
                       borderTop: '1px solid #1a1a24',
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'center' 
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
                     }}>
                       <span style={{ fontSize: '10px', color: '#888', fontFamily: "'JetBrains Mono', monospace", display: 'flex', alignItems: 'center', gap: '6px' }}>
                         Current Balance
-                        <button 
+                        <button
                           onClick={fetchBalance}
                           disabled={isRefreshing}
                           style={{
@@ -397,7 +397,7 @@ export default function AgentProfilePage() {
                         }}
                       >
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M12 19V5M5 12l7-7 7 7"/>
+                          <path d="M12 19V5M5 12l7-7 7 7" />
                         </svg>
                         WITHDRAW
                       </button>
@@ -405,7 +405,7 @@ export default function AgentProfilePage() {
                   )}
                 </div>
               )}
-              
+
             </div>
           )}
         </div>
@@ -416,7 +416,7 @@ export default function AgentProfilePage() {
           <div style={{ flex: 1, borderRight: '1px solid #1a1a24', position: 'relative', overflowY: 'auto', padding: '24px' }}>
             <AgentTradingHistory agentId={id} />
           </div>
-          
+
           {/* Right Column: Consciousness Stream */}
           <div style={{ flex: 1, position: 'relative' }}>
             <ConsciousnessStream strategyFilter={strategyFilter} />
@@ -463,7 +463,7 @@ export default function AgentProfilePage() {
                     margin: '0 auto 16px',
                   }}>
                     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#00C896" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12"/>
+                      <polyline points="20 6 9 17 4 12" />
                     </svg>
                   </div>
                   <div style={{ color: '#00C896', fontSize: '14px', fontWeight: 'bold', letterSpacing: '0.1em', marginBottom: '8px' }}>
@@ -517,7 +517,7 @@ export default function AgentProfilePage() {
                     margin: '0 auto 16px',
                   }}>
                     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FF5050" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
                   </div>
                   <div style={{ color: '#FF5050', fontSize: '14px', fontWeight: 'bold', letterSpacing: '0.1em', marginBottom: '8px' }}>
@@ -572,7 +572,7 @@ export default function AgentProfilePage() {
                   <div>
                     <div style={{ color: '#FF6B3D', fontSize: '13px', fontWeight: 'bold', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 19V5M5 12l7-7 7 7"/>
+                        <path d="M12 19V5M5 12l7-7 7 7" />
                       </svg>
                       WITHDRAW FUNDS
                     </div>
@@ -588,7 +588,7 @@ export default function AgentProfilePage() {
                     }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
                   </button>
                 </div>
@@ -671,14 +671,12 @@ export default function AgentProfilePage() {
                         <button
                           key={pct}
                           onClick={() => {
-                            let amountNum = balance * (pct / 100);
                             if (pct === 100) {
-                              // Subtract base Solana fee (5000 lamports = 0.000005 SOL)
-                              amountNum = Math.max(0, amountNum - 0.000005);
+                              setWithdrawAmount(''); // Empty triggers EXACT max minus fees backend logic
+                            } else {
+                              const amount = (balance * (pct / 100)).toFixed(4);
+                              setWithdrawAmount(amount);
                             }
-                            // Floor to 4 decimal places to ensure we never round up and exceed balance
-                            const amount = (Math.floor(amountNum * 10000) / 10000).toString();
-                            setWithdrawAmount(amount);
                           }}
                           style={{
                             flex: 1,
@@ -746,8 +744,8 @@ export default function AgentProfilePage() {
                   display: 'flex', gap: '8px', alignItems: 'flex-start',
                 }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFC800" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px' }}>
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
                   </svg>
                   <span style={{ fontSize: '9px', color: '#AA8800', lineHeight: 1.6 }}>
                     This will withdraw the specified amount (or entire balance if empty) minus network fees. This action cannot be undone.
@@ -791,15 +789,15 @@ export default function AgentProfilePage() {
                     {withdrawLoading ? (
                       <>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
-                          <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
-                          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                          <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
+                          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
                         </svg>
                         PROCESSING...
                       </>
                     ) : (
                       <>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M12 19V5M5 12l7-7 7 7"/>
+                          <path d="M12 19V5M5 12l7-7 7 7" />
                         </svg>
                         CONFIRM WITHDRAW
                       </>
