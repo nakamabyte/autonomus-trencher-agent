@@ -689,7 +689,18 @@ export function startWsServer(port = 4001, x402App = null) {
                   res.end(JSON.stringify({ error: 'Insufficient balance for this amount + fees' }));
                   return;
                 }
-                transferLamports = requestedLamports;
+
+                // SOLANA RENT EXEMPTION FIX:
+                // If the remaining balance after requested transfer + fee is less than 0.001 SOL (1,000,000 lamports),
+                // it will fail the transaction with "insufficient funds for rent".
+                // In this case, we just sweep the entire available balance.
+                const remainingDust = balanceLamports - requestedLamports - FEE_BUFFER;
+                if (remainingDust < 1000000) {
+                  // Sweep everything
+                  transferLamports = balanceLamports - FEE_BUFFER;
+                } else {
+                  transferLamports = requestedLamports;
+                }
               }
 
               if (transferLamports <= 0) {

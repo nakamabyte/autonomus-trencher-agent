@@ -644,7 +644,7 @@ export default function AgentProfilePage() {
                   <input
                     id="withdraw-amount"
                     type="number"
-                    step="0.0001"
+                    step="any"
                     min="0"
                     value={withdrawAmount}
                     onChange={e => setWithdrawAmount(e.target.value)}
@@ -670,13 +670,16 @@ export default function AgentProfilePage() {
                       {[25, 50, 75, 100].map(pct => (
                         <button
                           key={pct}
-                          onClick={() => {
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            let amountNum = balance * (pct / 100);
                             if (pct === 100) {
-                              setWithdrawAmount(''); // Empty triggers EXACT max minus fees backend logic
-                            } else {
-                              const amount = (balance * (pct / 100)).toFixed(4);
-                              setWithdrawAmount(amount);
+                              amountNum = Math.max(0, amountNum - 0.000005);
                             }
+                            // Calculate to 6 decimal places (safe for Solana, avoids rounding to 0 for small balances)
+                            const amount = (Math.floor(amountNum * 1e6) / 1e6).toString();
+                            setWithdrawAmount(amount);
                           }}
                           style={{
                             flex: 1,
