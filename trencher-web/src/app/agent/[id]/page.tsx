@@ -671,12 +671,14 @@ export default function AgentProfilePage() {
                         <button
                           key={pct}
                           onClick={() => {
+                            let amountNum = balance * (pct / 100);
                             if (pct === 100) {
-                              setWithdrawAmount(''); // Empty triggers exact max minus fees backend logic
-                            } else {
-                              const amount = (balance * (pct / 100)).toFixed(4);
-                              setWithdrawAmount(amount);
+                              // Subtract base Solana fee (5000 lamports = 0.000005 SOL)
+                              amountNum = Math.max(0, amountNum - 0.000005);
                             }
+                            // Floor to 4 decimal places to ensure we never round up and exceed balance
+                            const amount = (Math.floor(amountNum * 10000) / 10000).toString();
+                            setWithdrawAmount(amount);
                           }}
                           style={{
                             flex: 1,
