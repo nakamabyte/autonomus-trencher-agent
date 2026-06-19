@@ -665,6 +665,40 @@ export default function AgentProfilePage() {
                     onFocus={e => { e.currentTarget.style.borderColor = '#FF6B3D'; }}
                     onBlur={e => { e.currentTarget.style.borderColor = '#1e1e2e'; }}
                   />
+                  {balance !== null && balance > 0 && (
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                      {[25, 50, 75, 100].map(pct => (
+                        <button
+                          key={pct}
+                          onClick={() => {
+                            if (pct === 100) {
+                              setWithdrawAmount(''); // Empty triggers exact max minus fees backend logic
+                            } else {
+                              const amount = (balance * (pct / 100)).toFixed(4);
+                              setWithdrawAmount(amount);
+                            }
+                          }}
+                          style={{
+                            flex: 1,
+                            padding: '6px 0',
+                            background: '#1e1e2e',
+                            border: '1px solid #333',
+                            borderRadius: '4px',
+                            color: '#FF6B3D',
+                            fontSize: '10px',
+                            fontWeight: 'bold',
+                            fontFamily: "'JetBrains Mono', monospace",
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#2a2a3a'; e.currentTarget.style.borderColor = '#FF6B3D'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = '#1e1e2e'; e.currentTarget.style.borderColor = '#333'; }}
+                        >
+                          {pct}%
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Agent Secret Key */}
