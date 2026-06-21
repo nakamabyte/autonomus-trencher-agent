@@ -125,14 +125,27 @@ export async function refreshPosition(position, { autoExit = true, jupiterPnl = 
     pnlPercent = Number(jupiterPnl.totalPnlPercentageNative);
     pnlSol = Number.isFinite(Number(jupiterPnl.totalPnlNative)) ? Number(jupiterPnl.totalPnlNative) : pnlSol;
   }
+  
+  // FAST RUG DETECTION: Missing asset or totally drained liquidity
+  if (!asset && (now() - position.opened_at_ms > 120000)) {
+    pnlPercent = -100;
+    pnlSol = -Number(position.size_sol);
+  } else if (asset && Number(asset.liquidity) < 500 && (now() - position.opened_at_ms > 120000)) {
+    pnlPercent = -100;
+    pnlSol = -Number(position.size_sol);
+  }
   const tpHit = pnlPercent >= Number(position.tp_percent);
   const slHit = pnlPercent <= Number(position.sl_percent);
-  const trailingArmed = position.trailing_armed || (position.trailing_enabled && tpHit);
+
+  const highWaterPnlPercent = (highWaterMcap / Number(position.entry_mcap) - 1) * 100;
+  const isSocialScout = position.strategy_id === 'social_scout' || position.agent_breed === 'social_scout';
+  const earlyTrailingArmed = isSocialScout && highWaterPnlPercent >= 25;
+
+  const trailingArmed = position.trailing_armed || (position.trailing_enabled && (tpHit || earlyTrailingArmed));
   const trailDrop = highWaterMcap > 0 ? (Number(mcap) / highWaterMcap - 1) * 100 : 0;
   
   // Smart Trailing: Adjust trailing stop drop based on how high the profit reached
   let dynamicTrailingPercent = Number(position.trailing_percent);
-  const highWaterPnlPercent = (highWaterMcap / Number(position.entry_mcap) - 1) * 100;
   if (highWaterPnlPercent > 100) {
     dynamicTrailingPercent = Math.max(dynamicTrailingPercent, 10); // Tighten to 10% if we are up > 2x to lock in profit
   } else if (highWaterPnlPercent > 50 && highWaterPnlPercent <= 100) {
@@ -190,13 +203,17 @@ export async function refreshPosition(position, { autoExit = true, jupiterPnl = 
   // Fast-Exit Anti Rug check
   if (!exitReason) {
     const ageMs = now() - position.opened_at_ms;
-    // If it dumps >= 15% within the first 60 seconds, or >= 20% in 120s, exit immediately
-    if (ageMs < 60000 && pnlPercent <= -15) {
+    const firstMinDump = isSocialScout ? -10 : -15;
+    // If it dumps early, exit immediately
+    if (ageMs < 60000 && pnlPercent <= firstMinDump) {
       exitReason = 'FAST_EXIT_RUG';
-      console.log(`[position] ${position.id} FAST EXIT TRIGGERED: -15% dump in <60s`);
+      console.log(`[position] ${position.id} FAST EXIT TRIGGERED: ${firstMinDump}% dump in <60s`);
     } else if (ageMs < 120000 && pnlPercent <= -20) {
       exitReason = 'FAST_EXIT_RUG';
       console.log(`[position] ${position.id} FAST EXIT TRIGGERED: -20% dump in <120s`);
+    } else if (pnlPercent <= -50) {
+      exitReason = 'FAST_EXIT_RUG';
+      console.log(`[position] ${position.id} FAST EXIT TRIGGERED: Massive dump/rug (${pnlPercent.toFixed(1)}%)`);
     }
   }
 
