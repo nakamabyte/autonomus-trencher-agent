@@ -64,6 +64,15 @@ async function main() {
           closedCount++;
         } catch (err) {
           console.error(`  Failed to close position ${position.id}:`, err.message);
+          
+          // Force close in DB if the error is related to no tokens or insufficient funds
+          const msg = err.message.toLowerCase();
+          if (msg.includes('no token amount') || msg.includes('insufficient') || msg.includes('balance is 0')) {
+             console.log(`  Force closing position ${position.id} in database due to missing tokens...`);
+             db.prepare(`UPDATE dry_run_positions SET status = 'closed', closed_at_ms = ?, exit_reason = 'FORCE_CLOSE_NO_TOKENS', pnl_percent = ?, pnl_sol = ? WHERE id = ?`)
+               .run(Date.now(), refreshed.pnlPercent, refreshed.pnlSol, position.id);
+             closedCount++;
+          }
         }
       } else {
         console.log(`  Position ${position.id} is at a loss (${refreshed.pnlPercent.toFixed(2)}%). Skipping.`);
