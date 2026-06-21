@@ -448,6 +448,24 @@ To deploy an agent, you need to pay SOL via the Trenchyard platform.
     return bot.sendMessage(chatId, `Updated ${id}.${key} = ${value}\n\n${strategyMenuText()}`, { parse_mode: 'HTML' });
   }
   if (text.startsWith('/pnl')) return sendPnl(chatId);
+  if (text.startsWith('/closeold')) {
+    const statusMsg = await bot.sendMessage(chatId, '⏳ Running close-old-profitable script...');
+    import('child_process').then(({ exec }) => {
+      exec('node scripts/close-old-profitable.js', { cwd: process.cwd() }, (err, stdout, stderr) => {
+        if (err) {
+          return bot.editMessageText(`❌ Script failed:\n${err.message}`, { chat_id: chatId, message_id: statusMsg.message_id });
+        }
+        const lines = stdout.trim().split('\\n');
+        const summaryLines = lines.slice(-15).join('\\n'); // just show the last 15 lines so it doesn't overflow Telegram limits
+        bot.editMessageText(`✅ <b>Script Finished</b>\n<pre>${escapeHtml(summaryLines)}</pre>`, { 
+          chat_id: chatId, 
+          message_id: statusMsg.message_id, 
+          parse_mode: 'HTML' 
+        }).catch(e => console.error(e));
+      });
+    });
+    return;
+  }
   if (text.startsWith('/learn')) {
     const windowArg = text.split(/\s+/)[1] || '12h';
     return runLearning(chatId, windowArg);
