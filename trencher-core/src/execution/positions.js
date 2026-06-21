@@ -116,6 +116,7 @@ export async function refreshPosition(position, { autoExit = true, jupiterPnl = 
   const mcap = firstPositiveNumber(asset?.mcap, asset?.fdv, position.high_water_mcap, position.entry_mcap);
   if (!Number.isFinite(Number(mcap)) || !Number.isFinite(Number(position.entry_mcap)) || Number(position.entry_mcap) <= 0) {
     console.log(`[position] ${position.id} - Invalid mcap or entry_mcap. Forcing FAST_EXIT_RUG.`);
+    db.prepare(`UPDATE dry_run_positions SET status = 'closed', closed_at_ms = ?, exit_reason = 'FAST_EXIT_RUG', pnl_percent = -100 WHERE id = ?`).run(now(), position.id);
     return { position, exitReason: 'FAST_EXIT_RUG', pnlPercent: -100, pnlSol: -Number(position.size_sol), price: 0, mcap: 0 };
   }
   const highWaterMcap = Math.max(Number(position.high_water_mcap || 0), Number(mcap));
@@ -243,7 +244,7 @@ export async function refreshPosition(position, { autoExit = true, jupiterPnl = 
       sell = await executeLiveSell(position, exitReason);
     } catch (err) {
       const msg = err.message.toLowerCase();
-      if (msg.includes('insufficient funds') || msg.includes('not enough') || msg.includes('token balance is 0') || msg.includes('insufficient lamports')) {
+      if (msg.includes('insufficient funds') || msg.includes('not enough') || msg.includes('token balance is 0') || msg.includes('insufficient lamports') || msg.includes('no token amount')) {
          console.log(`[position] ${position.id} ${err.message}. Force closing position.`);
          db.prepare(`UPDATE dry_run_positions SET status = 'closed', closed_at_ms = ?, exit_reason = 'FORCE_CLOSE_FUNDS' WHERE id = ?`).run(now(), position.id);
          closed = true;
