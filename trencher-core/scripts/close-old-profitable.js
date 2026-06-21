@@ -20,7 +20,11 @@ async function main() {
       const refreshed = await refreshPosition(position, { autoExit: false });
       
       if (!refreshed) {
-        console.log(`  Failed to refresh position ${position.id}`);
+        console.log(`  Failed to refresh position ${position.id}. This token is likely completely rugged or dead. Force closing as DEAD...`);
+        // Force close as a total loss (-100%)
+        db.prepare(`UPDATE dry_run_positions SET status = 'closed', closed_at_ms = ?, exit_reason = 'FORCE_CLOSE_DEAD', pnl_percent = -100, pnl_sol = ? WHERE id = ?`)
+          .run(Date.now(), -position.size_sol, position.id);
+        closedCount++;
         continue;
       }
       
