@@ -115,7 +115,8 @@ export async function refreshPosition(position, { autoExit = true, jupiterPnl = 
   const price = firstPositiveNumber(asset?.usdPrice, position.high_water_price, position.entry_price);
   const mcap = firstPositiveNumber(asset?.mcap, asset?.fdv, position.high_water_mcap, position.entry_mcap);
   if (!Number.isFinite(Number(mcap)) || !Number.isFinite(Number(position.entry_mcap)) || Number(position.entry_mcap) <= 0) {
-    return null;
+    console.log(`[position] ${position.id} - Invalid mcap or entry_mcap. Forcing FAST_EXIT_RUG.`);
+    return { position, exitReason: 'FAST_EXIT_RUG', pnlPercent: -100, pnlSol: -Number(position.size_sol), price: 0, mcap: 0 };
   }
   const highWaterMcap = Math.max(Number(position.high_water_mcap || 0), Number(mcap));
   const highWaterPrice = Math.max(Number(position.high_water_price || 0), Number(price || 0));
