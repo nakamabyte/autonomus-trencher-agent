@@ -88,7 +88,7 @@ export function AgentTradingHistory({ agentId }: { agentId: string }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {trades.map((trade, i) => {
-            const isWin = trade.pnl_sol > 0;
+            const isWin = (trade.pnl_sol || 0) > 0;
             const isLive = trade.execution_mode === 'live';
             
             return (
@@ -136,14 +136,14 @@ export function AgentTradingHistory({ agentId }: { agentId: string }) {
                     fontFamily: "'JetBrains Mono', monospace",
                     fontWeight: 'bold'
                   }}>
-                    {isWin ? '+' : ''}{trade.pnl_sol.toFixed(4)} SOL
+                    {isWin ? '+' : ''}{(trade.pnl_sol || 0).toFixed(4)} SOL
                   </span>
                   <span style={{ 
                     color: isWin ? 'rgba(0,200,150,0.7)' : 'rgba(255,107,107,0.7)', 
                     fontSize: '10px',
                     fontFamily: "'JetBrains Mono', monospace"
                   }}>
-                    {trade.pnl_percent > 0 ? '+' : ''}{trade.pnl_percent.toFixed(2)}%
+                    {(trade.pnl_percent || 0) > 0 ? '+' : ''}{(trade.pnl_percent || 0).toFixed(2)}%
                   </span>
                 </div>
               </div>

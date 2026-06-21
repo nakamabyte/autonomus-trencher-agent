@@ -95,7 +95,7 @@ export default function AgentProfilePage() {
       if (res.ok && data.success) {
         setWithdrawResult({
           type: 'success',
-          message: `Successfully withdrew ${data.amountSol?.toFixed(6)} SOL`,
+          message: `Successfully withdrew ${(data.amountSol || 0).toFixed(6)} SOL`,
           signature: data.signature,
           amountSol: data.amountSol,
         });
@@ -356,7 +356,7 @@ export default function AgentProfilePage() {
                           {isRefreshing ? 'REFRESHING...' : 'REFRESH'}
                         </button>
                       </span>
-                      <span style={{ fontSize: '12px', color: '#fff', fontWeight: 'bold', fontFamily: "'JetBrains Mono', monospace" }}>{balance.toFixed(4)} SOL</span>
+                      <span style={{ fontSize: '12px', color: '#fff', fontWeight: 'bold', fontFamily: "'JetBrains Mono', monospace" }}>{(balance || 0).toFixed(4)} SOL</span>
                     </div>
                   )}
 
@@ -603,7 +603,7 @@ export default function AgentProfilePage() {
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   }}>
                     <span style={{ fontSize: '10px', color: '#888' }}>Available Balance</span>
-                    <span style={{ fontSize: '14px', color: '#FF6B3D', fontWeight: 'bold' }}>{balance.toFixed(4)} SOL</span>
+                    <span style={{ fontSize: '14px', color: '#FF6B3D', fontWeight: 'bold' }}>{(balance || 0).toFixed(4)} SOL</span>
                   </div>
                 )}
 

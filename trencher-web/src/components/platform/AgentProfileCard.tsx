@@ -73,8 +73,8 @@ export function AgentProfileCard({ agent, compact = false, onClick, hideViewProf
   const breed = BREEDS[agent.breed as keyof typeof BREEDS];
   if (!breed) return null;
 
-  const pnlPositive = agent.total_pnl_sol >= 0;
-  const winRatePct  = Math.round(agent.win_rate * 100);
+  const pnlPositive = (agent.total_pnl_sol || 0) >= 0;
+  const winRatePct  = Math.round((agent.win_rate || 0) * 100);
   const pnlColor    = pnlPositive ? '#00C896' : '#FF6B6B';
   const genLabel    = agent.generation === 0 ? 'Genesis' : `Gen ${agent.generation}`;
   const [showSettings, setShowSettings] = useState(false);
@@ -217,7 +217,7 @@ export function AgentProfileCard({ agent, compact = false, onClick, hideViewProf
         />
         <StatChip
           label="PnL (SOL)"
-          value={agent.total_trades > 0 ? `${pnlPositive ? '+' : ''}${agent.total_pnl_sol.toFixed(3)}` : '—'}
+          value={agent.total_trades > 0 ? `${pnlPositive ? '+' : ''}${(agent.total_pnl_sol || 0).toFixed(3)}` : '—'}
           color={agent.total_trades > 0 ? pnlColor : '#555'}
         />
         <StatChip

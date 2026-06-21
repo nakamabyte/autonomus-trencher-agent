@@ -381,10 +381,10 @@ export function PlatformView({ onClose }: PlatformViewProps) {
                 {[
                   { label: 'Trades', value: String(selectedDnaAgent.total_trades), color: '#aaa' },
                   { label: 'Win Rate', value: selectedDnaAgent.total_trades > 0 ? `${winRatePct}%` : '—', color: winRatePct >= 50 ? '#00C896' : winRatePct > 0 ? '#FFB347' : '#555' },
-                  { label: 'PnL (SOL)', value: selectedDnaAgent.total_trades > 0 ? `${pnlPositive ? '+' : ''}${selectedDnaAgent.total_pnl_sol.toFixed(3)}` : '—', color: pnlPositive ? '#00C896' : '#FF6B6B' },
-                  { label: 'Max Drawdown', value: `${selectedDnaAgent.max_drawdown.toFixed(1)}%`, color: '#FF6B6B' },
-                  { label: 'Avg Hold', value: `${selectedDnaAgent.avg_hold_min.toFixed(0)}m`, color: '#aaa' },
-                  { label: 'Rug Survival', value: `${Math.round(selectedDnaAgent.rug_survival_rate * 100)}%`, color: '#81C784' },
+                  { label: 'PnL (SOL)', value: selectedDnaAgent.total_trades > 0 ? `${pnlPositive ? '+' : ''}${(selectedDnaAgent.total_pnl_sol || 0).toFixed(3)}` : '—', color: pnlPositive ? '#00C896' : '#FF6B6B' },
+                  { label: 'Max Drawdown', value: `${(selectedDnaAgent.max_drawdown || 0).toFixed(1)}%`, color: '#FF6B6B' },
+                  { label: 'Avg Hold', value: `${(selectedDnaAgent.avg_hold_min || 0).toFixed(0)}m`, color: '#aaa' },
+                  { label: 'Rug Survival', value: `${Math.round((selectedDnaAgent.rug_survival_rate || 0) * 100)}%`, color: '#81C784' },
                 ].map(s => (
                   <div key={s.label} style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center',
