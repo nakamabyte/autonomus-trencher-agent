@@ -46,7 +46,7 @@ function tagline(isWin: boolean, exitReason: string | null): string {
 }
 
 function PnlModal({ pos, onClose }: { pos: ClosedPos; onClose: () => void }) {
-  const isWin = pos.pnl_percent >= 0;
+  const isWin = (pos.pnl_percent || 0) >= 0;
   const sign = isWin ? '+' : '';
   const accentColor = isWin ? '#00E87A' : '#FF4D4D';
   const exitLabel = pos.exit_reason ? (EXIT_LABELS[pos.exit_reason] || pos.exit_reason) : '—';
@@ -72,7 +72,7 @@ function PnlModal({ pos, onClose }: { pos: ClosedPos; onClose: () => void }) {
         logging: false,
       });
       const link = document.createElement('a');
-      link.download = `trencher-${pos.symbol}-${sign}${pos.pnl_percent.toFixed(1)}pct.png`;
+      link.download = `trencher-${pos.symbol}-${sign}${(pos.pnl_percent || 0).toFixed(1)}pct.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     } catch (e) {
@@ -96,7 +96,7 @@ function PnlModal({ pos, onClose }: { pos: ClosedPos; onClose: () => void }) {
         if (!blob) return;
         const file = new File([blob], `trencher-pnl-${pos.symbol}.png`, { type: 'image/png' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: `$${pos.symbol} ${sign}${pos.pnl_percent.toFixed(2)}% | Trencher Agent` });
+          await navigator.share({ files: [file], title: `$${pos.symbol} ${sign}${(pos.pnl_percent || 0).toFixed(2)}% | Trencher Agent` });
         } else {
           // Fallback: just download
           const link = document.createElement('a');
@@ -257,7 +257,7 @@ function PnlModal({ pos, onClose }: { pos: ClosedPos; onClose: () => void }) {
                     fontSize: '42px', fontWeight: 900, color: '#000', letterSpacing: '-0.04em', 
                     lineHeight: '40px', height: '40px', display: 'flex', alignItems: 'center' 
                   }}>
-                    {sign}{pos.pnl_sol.toFixed(3)}
+                    {sign}{(pos.pnl_sol || 0).toFixed(3)}
                   </div>
                 </div>
               </div>
@@ -266,8 +266,8 @@ function PnlModal({ pos, onClose }: { pos: ClosedPos; onClose: () => void }) {
             {/* Bottom Row: Stats grid */}
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px' }}>
               {([
-                ['PNL %', `${sign}${pos.pnl_percent.toFixed(2)}%`, accentColor],
-                ['INVESTED', `${pos.size_sol.toFixed(3)} ${unit}`, '#9945FF'],
+                ['PNL %', `${sign}${(pos.pnl_percent || 0).toFixed(2)}%`, accentColor],
+                ['INVESTED', `${(pos.size_sol || 0).toFixed(3)} ${unit}`, '#9945FF'],
                 ['STRATEGY', (pos.strategy || 'SNIPER').toUpperCase(), '#fff'],
                 ['ENTRY MCAP', formatMcap(pos.entry_mcap), '#fff'],
                 ['HOLD / EXIT', `${holdStr} · ${exitLabel}`, '#fff'],
@@ -415,7 +415,7 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
             </div>
           ) : (
             panelPositions.map((pos) => {
-              const isProfit = pos.pnl_percent >= 0;
+              const isProfit = (pos.pnl_percent || 0) >= 0;
               const colorClass = isProfit ? '#4ADE80' : '#F87171';
               const sign = isProfit ? '+' : '';
               const isBase = pos.strategy === 'base_sniper';
@@ -472,7 +472,7 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
                           {pos.mint.slice(0, 4)}...{pos.mint.slice(-4)}
                         </a>
                       </span>
-                      <span style={{ color: colorClass }}>{sign}{pos.pnl_percent.toFixed(2)}%</span>
+                      <span style={{ color: colorClass }}>{sign}{(pos.pnl_percent || 0).toFixed(2)}%</span>
                     </div>
                     <div className="pv-abar" style={{ background: `${colorClass}22`, height: '2px', marginBottom: '4px' }}>
                       <div className="pv-afill" style={{ width: '100%', background: colorClass }}></div>
@@ -480,7 +480,7 @@ export function PlatformHistory({ metrics, rightOffset = 16 }: PlatformHistoryPr
                     <div className="pv-ast" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
                       <span>MODE: {pos.mode.toUpperCase()}</span>
                       <span suppressHydrationWarning>{new Date(pos.opened_at_ms).toLocaleString('en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                      <span style={{ color: colorClass }}>{sign}{pos.pnl_sol.toFixed(4)} {unit}</span>
+                      <span style={{ color: colorClass }}>{sign}{(pos.pnl_sol || 0).toFixed(4)} {unit}</span>
                     </div>
                     {pos.exit_signature && (
                       <div className="pv-ast" style={{ marginTop: '4px', display: 'flex' }}>

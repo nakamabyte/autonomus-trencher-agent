@@ -31,7 +31,7 @@ export function PlatformPositions({ metrics, logHeight }: PlatformPositionsProps
             </div>
           ) : (
             positions.map((pos) => {
-              const isProfit = pos.pnl_percent >= 0;
+              const isProfit = (pos.pnl_percent || 0) >= 0;
               const colorClass = isProfit ? '#4ADE80' : '#F87171'; // Matching pv-mv.pos / neg
               const sign = isProfit ? '+' : '';
               const isBase = pos.strategy === 'base_sniper';
@@ -87,7 +87,7 @@ export function PlatformPositions({ metrics, logHeight }: PlatformPositionsProps
                           </span>
                         </a>
                       </div>
-                      <span style={{ color: colorClass }}>{sign}{pos.pnl_percent.toFixed(2)}%</span>
+                      <span style={{ color: colorClass }}>{sign}{(pos.pnl_percent || 0).toFixed(2)}%</span>
                     </div>
                     <div className="pv-abar" style={{ background: `${colorClass}22`, height: '2px', marginBottom: '4px' }}>
                       <div className="pv-afill" style={{ width: '100%', background: colorClass }}></div>
@@ -95,7 +95,7 @@ export function PlatformPositions({ metrics, logHeight }: PlatformPositionsProps
                     <div className="pv-ast" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
                       <span>MODE: {pos.mode.toUpperCase()}</span>
                       <span suppressHydrationWarning>{new Date(pos.opened_at_ms).toLocaleString('en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                      <span style={{ color: colorClass }}>{sign}{pos.pnl_sol.toFixed(4)} {unit}</span>
+                      <span style={{ color: colorClass }}>{sign}{(pos.pnl_sol || 0).toFixed(4)} {unit}</span>
                     </div>
                     {pos.entry_signature && (
                       <div className="pv-ast" style={{ marginTop: '4px', display: 'flex' }}>
