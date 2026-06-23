@@ -719,6 +719,48 @@ SLANG EXTRACTION GUIDELINES:
   }
 }
 
+export function calculateSocialPreConfidence(candidate) {
+  let score = 0.75; // Base passing score
+  
+  const mcap = candidate.metrics?.marketCapUsd || candidate.mcap_usd || 0;
+  const liq = candidate.metrics?.liquidityUsd || candidate.liquidity_usd || 0;
+  const holders = candidate.metrics?.holderCount || candidate.holders || 0;
+  
+  // 1. Liquidity health (relative to mcap)
+  if (liq > 0 && mcap > 0) {
+    const ratio = liq / mcap;
+    if (ratio > 0.15) score += 0.04;
+    else if (ratio < 0.05) score -= 0.05;
+  }
+  
+  // 2. Liquidity absolute floor
+  if (liq >= 15000) score += 0.05;
+  else if (liq > 0 && liq < 6000) score -= 0.05;
+  
+  // 3. Holder distribution
+  if (holders > 50) score += 0.03;
+  else if (holders === 0) score -= 0.02;
+  
+  // 4. Smart Money presence
+  const smartMoney = candidate.signals?.smart_money_overlap || candidate.smart_money_overlap || 0;
+  if (smartMoney > 0) score += (0.02 * Math.min(smartMoney, 3));
+  
+  // 5. Caller Trust Score (if available)
+  const trust = candidate.sourceMeta?.callerMeta?.trustScore;
+  if (trust !== undefined) {
+    if (trust >= 0.8) score += 0.05;
+    else if (trust < 0.4) score -= 0.05;
+  }
+  
+  // Bonus for fast_buy group because it's a curated channel
+  if (candidate.route === 'tg_fast_buy' || candidate.signals?.route === 'tg_fast_buy') {
+    score += 0.05;
+  }
+
+  // Clamp score between 0.60 and 0.95
+  return Math.max(0.60, Math.min(0.95, score));
+}
+
 // ─── Main Cascade Screener ─────────────────────────────────────────
 export async function screenCandidates(candidates) {
   if (!candidates || candidates.length === 0) {
@@ -726,15 +768,17 @@ export async function screenCandidates(candidates) {
   }
 
   // For TG Alpha (Social Scout) signals, bypass Tier 1 and route directly to Grok (Tier 2)
-  const isTgAlpha = candidates.some(c => c.route === 'tg_alpha');
+  const isTgAlpha = candidates.some(c => c.route === 'tg_alpha' || c.signals?.route === 'tg_alpha');
   
   if (isTgAlpha) {
-    console.log('[LLM-T1] Bypassing Tier 1 for Social Scout (tg_alpha) signal. Routing directly to Grok (Tier 2).');
+    const dynamicConf = calculateSocialPreConfidence(candidates[0]);
+    console.log(`[LLM-T1] Bypassing Tier 1 for Social Scout. Calculated dynamic baseline confidence: ${dynamicConf.toFixed(2)}`);
+    
     const mockTier1 = { 
-      decision: 'ESCALATE', 
+      decision: dynamicConf >= 0.75 ? 'ESCALATE' : 'SKIP', 
       mint: candidates[0].mint || candidates[0].token?.mint, 
-      confidence: 0.85, 
-      reasoning: 'Bypassed Tier 1 for TG Alpha signal' 
+      confidence: dynamicConf, 
+      reasoning: `Bypassed T1. Dynamic baseline score derived from metrics (Liq: $${Math.round(candidates[0].metrics?.liquidityUsd || 0)}, Holders: ${candidates[0].metrics?.holderCount || 0}).` 
     };
     
     const tier2 = await runTier2(candidates, mockTier1);

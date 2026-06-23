@@ -589,12 +589,18 @@ async function processMessage({ text, groupId, groupName, senderId, senderUserna
           const candidateId = upsertCandidate(candidate);
 
           // --- GROK INJECTION FOR FAST BUY ---
-          const { runTier2 } = await import('../agents/llmScreener.js');
+          const { runTier2, calculateSocialPreConfidence } = await import('../agents/llmScreener.js');
           const { compactCandidateForLlm } = await import('../pipeline/llm.js');
-          const mockT1 = { decision: 'ESCALATE', confidence: 0.90, reasoning: 'Bypassed T1 because this is a highly curated Telegram Fast Buy Signal with high conviction.' };
+          
+          const dynamicConf = calculateSocialPreConfidence(candidate);
+          const mockT1 = { 
+            decision: dynamicConf >= 0.75 ? 'ESCALATE' : 'SKIP', 
+            confidence: dynamicConf, 
+            reasoning: `Bypassed T1. Dynamic baseline score derived from metrics (Liq: $${Math.round(liqUsd)}, Holders: ${candidate.metrics?.holderCount}).` 
+          };
           const grokPayload = [compactCandidateForLlm({ id: candidateId, candidate })];
           
-          console.log(`[TG-FastBuy] 🤖 Invoking Grok (T2) for ${symbol}...`);
+          console.log(`[TG-FastBuy] 🤖 Invoking Grok (T2) with pre-confidence ${dynamicConf.toFixed(2)} for ${symbol}...`);
           const grokResult = await runTier2(grokPayload, mockT1);
 
           if (grokResult.decision !== 'BUY' || grokResult.confidence < 0.75) {
