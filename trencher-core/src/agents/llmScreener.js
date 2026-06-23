@@ -725,6 +725,27 @@ export async function screenCandidates(candidates) {
     return { decision: 'SKIP', mint: null, confidence: 0.0, reasoning: 'Empty batch.' };
   }
 
+  // For TG Alpha (Social Scout) signals, bypass Tier 1 and route directly to Grok (Tier 2)
+  const isTgAlpha = candidates.some(c => c.route === 'tg_alpha');
+  
+  if (isTgAlpha) {
+    console.log('[LLM-T1] Bypassing Tier 1 for Social Scout (tg_alpha) signal. Routing directly to Grok (Tier 2).');
+    const mockTier1 = { 
+      decision: 'ESCALATE', 
+      mint: candidates[0].mint || candidates[0].token?.mint, 
+      confidence: 0.85, 
+      reasoning: 'Bypassed Tier 1 for TG Alpha signal' 
+    };
+    
+    const tier2 = await runTier2(candidates, mockTier1);
+    _logAllCandidates(candidates, tier2, 'T2');
+    
+    if (tier2.decision === 'BUY' && tier2.confidence >= LLM_T2_CONFIDENCE_BUY) {
+      return tier2;
+    }
+    return { decision: 'SKIP', mint: null, confidence: 0.0, reasoning: tier2.reasoning };
+  }
+
   // ── TIER 1 — DeepSeek fast pass ───────────────────────────────────
   const tier1 = await runTier1(candidates);
 

@@ -591,7 +591,7 @@ async function processMessage({ text, groupId, groupName, senderId, senderUserna
           // --- GROK INJECTION FOR FAST BUY ---
           const { runTier2 } = await import('../agents/llmScreener.js');
           const { compactCandidateForLlm } = await import('../pipeline/llm.js');
-          const mockT1 = { decision: 'ESCALATE', confidence: 0.75, reasoning: 'Bypassed T1 (Fast Buy Group)' };
+          const mockT1 = { decision: 'ESCALATE', confidence: 0.90, reasoning: 'Bypassed T1 because this is a highly curated Telegram Fast Buy Signal with high conviction.' };
           const grokPayload = [compactCandidateForLlm({ id: candidateId, candidate })];
           
           console.log(`[TG-FastBuy] 🤖 Invoking Grok (T2) for ${symbol}...`);
