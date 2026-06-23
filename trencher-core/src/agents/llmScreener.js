@@ -548,7 +548,7 @@ async function runTier1(candidates) {
 import { db } from '../db/connection.js';
 
 // ─── Tier 2 (Grok/Anthropic) ───────────────────────────────────────
-async function runTier2(candidates, tier1Result) {
+export async function runTier2(candidates, tier1Result) {
   try {
     let dynamicPrompt = SYSTEM_PROMPT_T2;
     try {

@@ -588,12 +588,47 @@ async function processMessage({ text, groupId, groupName, senderId, senderUserna
 
           const candidateId = upsertCandidate(candidate);
 
+          // --- GROK INJECTION FOR FAST BUY ---
+          const { runTier2 } = await import('../agents/llmScreener.js');
+          const { compactCandidateForLlm } = await import('../pipeline/llm.js');
+          const mockT1 = { decision: 'ESCALATE', confidence: 0.75, reasoning: 'Bypassed T1 (Fast Buy Group)' };
+          const grokPayload = [compactCandidateForLlm({ id: candidateId, candidate })];
+          
+          console.log(`[TG-FastBuy] 🤖 Invoking Grok (T2) for ${symbol}...`);
+          const grokResult = await runTier2(grokPayload, mockT1);
+
+          if (grokResult.decision !== 'BUY' || grokResult.confidence < 0.75) {
+             console.log(`[TG-FastBuy] 🛑 Grok rejected ${symbol}. Confidence: ${grokResult.confidence}. Reason: ${grokResult.reasoning}`);
+             if (fastAlertMsgId) {
+                const { bot } = await import('../telegram/bot.js');
+                const { TELEGRAM_CHAT_ID, TELEGRAM_TOPIC_ID } = await import('../config.js');
+                await bot.editMessageText(
+                  `⚡ <b>TG Fast Buy — Grok Analysis</b>\n\n` +
+                  `👥 <b>Group:</b> ${escapeHtml(groupName || groupId)}\n` +
+                  `🪙 <b>Token:</b> <a href="${gmgnUrl}"><code>${ca}</code></a>\n` +
+                  `📛 <b>Symbol:</b> ${escapeHtml(symbol)}\n` +
+                  `💎 <b>MCap:</b> $${mcapUsd ? (mcapUsd / 1000).toFixed(1) + 'K' : 'N/A'} · Liq: $${liqUsd ? (liqUsd / 1000).toFixed(1) + 'K' : 'N/A'}\n\n` +
+                  `🛑 <b>REJECTED BY GROK</b>\n` +
+                  `<i>${escapeHtml(grokResult.reasoning || 'No reason provided.')}</i>`,
+                  {
+                    chat_id: TELEGRAM_CHAT_ID,
+                    message_id: fastAlertMsgId,
+                    parse_mode: 'HTML',
+                    disable_web_page_preview: true,
+                    ...(TELEGRAM_TOPIC_ID ? { message_thread_id: Number(TELEGRAM_TOPIC_ID) } : {}),
+                  }
+                ).catch(e => console.warn('[TG-FastBuy] edit alert failed:', e.message));
+             }
+             return;
+          }
+          // --- END GROK INJECTION ---
+
           // Open position for EACH active scout
           for (const scout of activeScouts) {
             const fastBuyDecision = {
               verdict: 'BUY',
-              confidence: 100,
-              reason: `Fast Buy: trusted group ${groupId} (${groupName || ''}) — direct signal, no LLM`,
+              confidence: Math.round(grokResult.confidence * 100),
+              reason: `Fast Buy: ${grokResult.reasoning}`,
               selected_mint: ca,
               selected_candidate_id: candidateId,
               tp_percent:  scout.tp_percent  ?? 60,
@@ -602,14 +637,14 @@ async function processMessage({ text, groupId, groupName, senderId, senderUserna
               trailing_percent: scout.trailing_percent ?? 20,
               // Add missing fields that Hatcher API / standard LLM decision requires:
               risks: [],
-              x_narrative: `Fast Buy: trusted group ${groupId} (${groupName || ''})`,
+              x_narrative: `Fast Buy : trusted group ${groupId} (${groupName || ''})\n\n${grokResult.reasoning}`,
               suggested_tp_percent: scout.tp_percent ?? 60,
               suggested_sl_percent: scout.sl_percent ?? 25,
               raw: {
                 decision: 'BUY',
                 mint: ca,
-                confidence: 100,
-                reasoning: `Fast Buy: trusted group ${groupId}`
+                confidence: grokResult.confidence,
+                reasoning: grokResult.reasoning
               },
               selected_row: {
                 id: candidateId,

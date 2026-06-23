@@ -716,7 +716,7 @@ export function initDb() {
     partial_tp: false,
     partial_tp_at_percent: 0,
     partial_tp_sell_percent: 0,
-    max_hold_ms: 3600000,
+    max_hold_ms: 0,
     use_llm: true,
     llm_min_confidence: 75,
     liquidity_floor_usd: 10000,
